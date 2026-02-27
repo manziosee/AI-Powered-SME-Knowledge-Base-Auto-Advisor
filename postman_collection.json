@@ -1,8 +1,9 @@
 {
   "info": {
     "name": "AI-Powered SME Knowledge Base API",
-    "description": "Complete API collection for SME Knowledge Base & Auto Advisor",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "description": "Complete API collection for SME Knowledge Base & Auto Advisor with Groq AI integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
   },
   "variable": [
     {
@@ -209,11 +210,36 @@
               ]
             }
           }
+        },
+        {
+          "name": "Search Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"contract terms\",\n  \"limit\": 10,\n  \"similarity_threshold\": 0.7\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/documents/search",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "search"]
+            }
+          }
         }
       ]
     },
     {
-      "name": "AI Advisor",
+      "name": "AI Advisor (Groq Powered)",
       "item": [
         {
           "name": "Ask Question",
@@ -289,6 +315,139 @@
               "path": ["advisor", "ask"]
             }
           }
+        },
+        {
+          "name": "Generate Summary",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document_id\": \"your-document-uuid\",\n  \"summary_type\": \"executive\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/advisor/summarize",
+              "host": ["{{base_url}}"],
+              "path": ["advisor", "summarize"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ML Models",
+      "item": [
+        {
+          "name": "Train Custom Model",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_type\": \"classifier\",\n  \"training_data\": [\n    {\"text\": \"This is a contract document\", \"label\": \"contract\"},\n    {\"text\": \"Invoice for services\", \"label\": \"invoice\"}\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ml/train",
+              "host": ["{{base_url}}"],
+              "path": ["ml", "train"]
+            }
+          }
+        },
+        {
+          "name": "Get Model Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/ml/models",
+              "host": ["{{base_url}}"],
+              "path": ["ml", "models"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Knowledge Base",
+      "item": [
+        {
+          "name": "Get Knowledge Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/knowledge/?entry_type=obligation&skip=0&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["knowledge", ""],
+              "query": [
+                {
+                  "key": "entry_type",
+                  "value": "obligation"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Knowledge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"compliance deadlines\",\n  \"limit\": 10,\n  \"entry_types\": [\"obligation\", \"deadline\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/knowledge/search",
+              "host": ["{{base_url}}"],
+              "path": ["knowledge", "search"]
+            }
+          }
         }
       ]
     },
@@ -306,6 +465,18 @@
               "host": ["localhost"],
               "port": "8000",
               "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "API Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/info",
+              "host": ["{{base_url}}"],
+              "path": ["info"]
             }
           }
         }

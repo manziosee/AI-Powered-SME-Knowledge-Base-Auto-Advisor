@@ -1,0 +1,16 @@
+{
+  "trained_at": "2026-02-27T19:31:42.063868",
+  "training_samples": 15,
+  "categories": [
+    "policy",
+    "tax_document",
+    "invoice",
+    "report",
+    "contract"
+  ],
+  "models": [
+    "keyword_classifier.json",
+    "risk_scorer.json"
+  ],
+  "status": "ready"
+}

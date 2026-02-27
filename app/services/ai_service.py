@@ -1,26 +1,27 @@
-from openai import AsyncOpenAI
+from groq import AsyncGroq
+from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any
 from app.core.config import settings
+import json
 
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+embedding_model = SentenceTransformer(settings.HUGGINGFACE_MODEL)
 
 
 async def generate_embedding(text: str) -> List[float]:
-    response = await client.embeddings.create(
-        model=settings.OPENAI_EMBEDDING_MODEL,
-        input=text
-    )
-    return response.data[0].embedding
+    embedding = embedding_model.encode(text, convert_to_tensor=False)
+    return embedding.tolist()
 
 
 async def summarize_document(text: str) -> str:
     response = await client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
+        model=settings.GROQ_MODEL,
         messages=[
             {"role": "system", "content": "You are an expert at summarizing business documents. Provide concise, actionable summaries."},
             {"role": "user", "content": f"Summarize this document:\n\n{text[:4000]}"}
         ],
-        max_tokens=500
+        max_tokens=500,
+        temperature=0.3
     )
     return response.choices[0].message.content
 
@@ -35,41 +36,45 @@ async def extract_knowledge(text: str, document_type: str) -> Dict[str, Any]:
     Document text:
     {text[:4000]}
     
-    Return as JSON with keys: obligations, deadlines, risks, metrics"""
+    Return ONLY valid JSON with keys: obligations, deadlines, risks, metrics"""
     
     response = await client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
+        model=settings.GROQ_MODEL,
         messages=[
-            {"role": "system", "content": "You are an AI that extracts structured information from business documents."},
+            {"role": "system", "content": "You are an AI that extracts structured information from business documents. Always respond with valid JSON only."},
             {"role": "user", "content": prompt}
         ],
-        response_format={"type": "json_object"},
-        max_tokens=1000
+        max_tokens=1000,
+        temperature=0.1
     )
     
-    import json
-    return json.loads(response.choices[0].message.content)
+    try:
+        return json.loads(response.choices[0].message.content)
+    except:
+        return {"obligations": [], "deadlines": [], "risks": [], "metrics": []}
 
 
 async def answer_query(query: str, context: str) -> str:
     response = await client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
+        model=settings.GROQ_MODEL,
         messages=[
             {"role": "system", "content": "You are an AI advisor for SMEs. Answer questions based on the provided context."},
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
         ],
-        max_tokens=500
+        max_tokens=500,
+        temperature=0.5
     )
     return response.choices[0].message.content
 
 
 async def classify_document(filename: str, text_preview: str) -> str:
     response = await client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
+        model=settings.GROQ_MODEL,
         messages=[
-            {"role": "system", "content": "Classify documents into: contract, invoice, policy, report, tax_document, hr_document, compliance, or other."},
+            {"role": "system", "content": "Classify documents into: contract, invoice, policy, report, tax_document, hr_document, compliance, or other. Respond with ONE word only."},
             {"role": "user", "content": f"Filename: {filename}\nContent preview: {text_preview[:500]}\n\nClassify this document."}
         ],
-        max_tokens=50
+        max_tokens=10,
+        temperature=0.1
     )
     return response.choices[0].message.content.strip().lower()

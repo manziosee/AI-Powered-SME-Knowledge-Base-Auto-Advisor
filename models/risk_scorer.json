@@ -1,0 +1,37 @@
+{
+  "critical": [
+    "breach",
+    "violation",
+    "penalty",
+    "lawsuit",
+    "terminate",
+    "fraud",
+    "illegal"
+  ],
+  "high": [
+    "deadline",
+    "compliance",
+    "audit",
+    "regulation",
+    "mandatory",
+    "tax",
+    "gdpr"
+  ],
+  "medium": [
+    "review",
+    "update",
+    "renew",
+    "expiring",
+    "notice",
+    "payment",
+    "vendor"
+  ],
+  "low": [
+    "optional",
+    "recommendation",
+    "suggestion",
+    "consider",
+    "report",
+    "invoice"
+  ]
+}

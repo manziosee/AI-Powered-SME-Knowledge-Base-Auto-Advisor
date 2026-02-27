@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: str
     
-    OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4-turbo-preview"
-    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    GROQ_API_KEY: str
+    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    HUGGINGFACE_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     
     MAX_UPLOAD_SIZE_MB: int = 50
     ALLOWED_EXTENSIONS: str = ".pdf,.docx,.xlsx,.doc,.xls,.txt"

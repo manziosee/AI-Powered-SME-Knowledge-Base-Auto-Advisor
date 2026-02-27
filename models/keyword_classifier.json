@@ -1,0 +1,45 @@
+{
+  "contract": [
+    "agreement",
+    "contract",
+    "party",
+    "terms",
+    "conditions",
+    "vendor",
+    "employment"
+  ],
+  "invoice": [
+    "invoice",
+    "bill",
+    "payment",
+    "amount",
+    "due",
+    "net",
+    "total"
+  ],
+  "policy": [
+    "policy",
+    "conduct",
+    "compliance",
+    "standards",
+    "procedures",
+    "guidelines"
+  ],
+  "report": [
+    "report",
+    "analysis",
+    "performance",
+    "metrics",
+    "quarterly",
+    "annual"
+  ],
+  "tax_document": [
+    "tax",
+    "form",
+    "w-2",
+    "1040",
+    "deduction",
+    "withholding",
+    "fiscal"
+  ]
+}

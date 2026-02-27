@@ -36,7 +36,7 @@ Enterprise-grade backend system for SMEs to manage documents, extract knowledge 
 | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white) | Database | 16+ |
 | ![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white) | Cache & Queue | 7+ |
 | ![Celery](https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white) | Task Queue | 5.3+ |
-| ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white) | AI/NLP | GPT-4 |
+| ![Groq](https://img.shields.io/badge/Groq-FF6B35?style=for-the-badge&logo=groq&logoColor=white) | AI/NLP | Llama 3.1 70B |
 | ![AWS](https://img.shields.io/badge/AWS_S3-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white) | Storage | S3 |
 | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) | Containerization | Latest |
 | ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white) | ORM | 2.0+ |
@@ -45,10 +45,26 @@ Enterprise-grade backend system for SMEs to manage documents, extract knowledge 
 </div>
 
 ### Additional Technologies
+- **AI & NLP**: Groq (Llama 3.1 70B), sentence-transformers, spaCy
 - **Document Processing**: PyPDF, python-docx, openpyxl
 - **Authentication**: JWT with bcrypt
 - **Vector Search**: pgvector extension
 - **Monitoring**: Flower for Celery tasks
+
+## 🚀 Groq AI Integration
+
+This system uses **Groq's lightning-fast inference** with Llama 3.1 70B model for:
+
+- **Document Classification** - Instant document type detection
+- **Knowledge Extraction** - Extract obligations, deadlines, risks
+- **Natural Language Queries** - Fast AI advisor responses
+- **Content Summarization** - Generate executive summaries
+
+### Why Groq?
+- **10x Faster** than traditional cloud AI
+- **Cost Effective** - Free tier available
+- **High Quality** - Llama 3.1 70B performance
+- **Reliable** - Enterprise-grade infrastructure
 
 ## Setup
 
@@ -57,8 +73,8 @@ Enterprise-grade backend system for SMEs to manage documents, extract knowledge 
 - Python 3.11+
 - PostgreSQL 16+ with pgvector extension
 - Redis
-- AWS S3 account
-- OpenAI API key
+- AWS S3 account (optional)
+- Groq API key
 
 ### Installation
 
@@ -179,6 +195,15 @@ app/
 
 ### AI Advisor
 - `POST /api/v1/advisor/ask` - Ask natural language question
+- `POST /api/v1/advisor/summarize` - Generate document summary
+
+### ML Models
+- `POST /api/v1/ml/train` - Train custom model
+- `GET /api/v1/ml/models` - Get model status
+
+### Knowledge Base
+- `GET /api/v1/knowledge/` - Get knowledge entries
+- `POST /api/v1/knowledge/search` - Search knowledge base
 
 ## 🔄 System Architecture & Real-Time Flow
 
@@ -211,7 +236,7 @@ flowchart TB
     end
 
     subgraph AI["🤖 AI Services"]
-        GPT4[OpenAI GPT-4]
+        Groq[Groq Llama 3.1 70B]
         Embeddings[Text Embeddings]
         Custom[Custom ML Models]
     end
@@ -238,10 +263,10 @@ flowchart TB
     
     Celery --> Extract
     Extract --> Classify
-    Classify --> GPT4
+    Classify --> Groq
     Classify --> Custom
     
-    GPT4 --> Embed
+    Groq --> Embed
     Embed --> Embeddings
     Embeddings --> Store
     
@@ -280,7 +305,7 @@ Celery Task Triggered
     ↓ (2-5s)
 Extract Text (PDF/DOCX/XLSX)
     ↓ (3-5s)
-AI Classification (GPT-4)
+AI Classification (Groq Llama 3.1)
     ↓ (2-3s)
 Generate Summary
     ↓ (5-10s)
@@ -304,7 +329,7 @@ Vector Similarity Search (pgvector)
     ↓ (< 500ms)
 Retrieve Top K Relevant Entries
     ↓ (2-3s)
-GPT-4 Generates Answer
+Groq Llama 3.1 Generates Answer
     ↓ (< 1s)
 Return Response with Sources
 ```

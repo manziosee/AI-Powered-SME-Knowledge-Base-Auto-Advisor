@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import List
+from sqlalchemy import select, text
+from typing import List, Optional
+from datetime import datetime
 import uuid
 from app.core.database import get_db
 from app.api.dependencies import get_current_active_user
 from app.models.user import User
-from app.models.document import Document, DocumentStatus
+from app.models.document import Document, DocumentStatus, DocumentType
 from app.schemas.document import DocumentResponse, DocumentUpdate
 from app.tasks.document_tasks import process_document_task
 from app.core.config import settings
@@ -113,17 +114,67 @@ async def update_document(
     return document
 
 
-@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_document(
-    document_id: uuid.UUID,
+@router.post("/search")
+async def search_documents(
+    query: str,
+    document_type: Optional[DocumentType] = None,
+    status: Optional[DocumentStatus] = None,
+    tags: Optional[List[str]] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    document = result.scalar_one_or_none()
+    from sqlalchemy import or_, text
+    from app.services.ai_service import generate_embedding
     
-    if not document or document.company_id != current_user.company_id:
-        raise HTTPException(status_code=404, detail="Document not found")
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User must belong to a company")
     
-    await db.delete(document)
-    await db.commit()
+    # Build base query
+    filters = [Document.company_id == current_user.company_id]
+    
+    if document_type:
+        filters.append(Document.document_type == document_type)
+    
+    if status:
+        filters.append(Document.status == status)
+    
+    if date_from:
+        filters.append(Document.created_at >= date_from)
+    
+    if date_to:
+        filters.append(Document.created_at <= date_to)
+    
+    # Semantic search with embeddings
+    if query:
+        query_embedding = await generate_embedding(query)
+        
+        sql = text("""
+            SELECT id, filename, original_filename, document_type, status, 
+                   created_at, embedding <=> :query_embedding as distance
+            FROM documents
+            WHERE company_id = :company_id
+            ORDER BY distance
+            LIMIT :limit
+        """)
+        
+        result = await db.execute(
+            sql,
+            {
+                "query_embedding": str(query_embedding),
+                "company_id": str(current_user.company_id),
+                "limit": limit
+            }
+        )
+        
+        documents = result.fetchall()
+        return [{"id": str(doc.id), "filename": doc.filename, "type": doc.document_type, "distance": doc.distance} for doc in documents]
+    
+    # Regular filtered search
+    result = await db.execute(
+        select(Document).where(*filters).limit(limit).order_by(Document.created_at.desc())
+    )
+    
+    return result.scalars().all()

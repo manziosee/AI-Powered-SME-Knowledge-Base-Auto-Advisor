@@ -1,9 +1,38 @@
 version: '3.8'
 
+# ─────────────────────────────────────────────────────────────
+# Development compose — hot-reload, MinIO (local S3), Flower
+# Usage: docker compose up --build
+# ─────────────────────────────────────────────────────────────
+
+x-common-env: &common-env
+  DATABASE_URL: postgresql+asyncpg://sme_user:sme_password@postgres:5432/sme_kb
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+  # MinIO as local S3 replacement (no AWS account needed in dev)
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minioadmin
+  AWS_REGION: us-east-1
+  S3_BUCKET_NAME: sme-kb-documents
+  S3_ENDPOINT_URL: http://minio:9000
+  ENVIRONMENT: development
+
+x-app-build: &app-build
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: runtime
+  env_file: .env
+  environment:
+    <<: *common-env
+
 services:
+  # ── Infrastructure ──────────────────────────────────────────
+
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: sme_kb_postgres
+    container_name: sme_postgres
     environment:
       POSTGRES_USER: sme_user
       POSTGRES_PASSWORD: sme_password
@@ -13,19 +42,21 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sme_user"]
+      test: ["CMD-SHELL", "pg_isready -U sme_user -d sme_kb"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    container_name: sme_kb_redis
+    container_name: sme_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --save 60 1
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -33,24 +64,93 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # MinIO — local S3-compatible storage (zero AWS cost in dev)
+  minio:
+    image: minio/minio:latest
+    container_name: sme_minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # MinIO Console UI
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Auto-create the S3 bucket on startup
+  minio_init:
+    image: minio/mc:latest
+    container_name: sme_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/sme-kb-documents &&
+      mc anonymous set download local/sme-kb-documents &&
+      echo 'MinIO bucket ready.'
+      "
+    restart: on-failure
+
+  # ── Application services ────────────────────────────────────
+
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: sme_kb_backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    <<: *app-build
+    container_name: sme_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level info
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - .:/app                          # hot-reload (dev only)
       - uploads:/app/uploads
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://sme_user:sme_password@postgres:5432/sme_kb
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
-    env_file:
-      - .env
+      - models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Run DB migrations automatically on startup
+  migrate:
+    <<: *app-build
+    container_name: sme_migrate
+    command: alembic upgrade head
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  # ── Celery workers ──────────────────────────────────────────
+
+  celery_worker:
+    <<: *app-build
+    container_name: sme_celery_worker
+    command: >
+      celery -A app.core.celery_app worker
+      --loglevel=info
+      --concurrency=2
+      --queues=default,documents,training
+      --hostname=worker@%h
+    volumes:
+      - uploads:/app/uploads
+      - models:/app/models
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,68 +158,48 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  celery_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: sme_kb_celery_worker
-    command: celery -A app.core.celery_app worker --loglevel=info
-    volumes:
-      - .:/app
-      - uploads:/app/uploads
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://sme_user:sme_password@postgres:5432/sme_kb
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
-    env_file:
-      - .env
-    depends_on:
-      - redis
-      - postgres
-      - backend
-    restart: unless-stopped
-
   celery_beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: sme_kb_celery_beat
-    command: celery -A app.core.celery_app beat --loglevel=info
-    volumes:
-      - .:/app
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://sme_user:sme_password@postgres:5432/sme_kb
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
-    env_file:
-      - .env
+    <<: *app-build
+    container_name: sme_celery_beat
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     depends_on:
-      - redis
-      - postgres
-      - backend
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: sme_kb_flower
-    command: celery -A app.core.celery_app flower --port=5555
+    <<: *app-build
+    container_name: sme_flower
+    command: celery -A app.core.celery_app flower --port=5555 --basic_auth=admin:admin
     ports:
       - "5555:5555"
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
-    env_file:
-      - .env
     depends_on:
-      - redis
-      - celery_worker
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+
+  # ── Model training service ──────────────────────────────────
+  # Run ad-hoc: docker compose run --rm model_trainer
+  # Or scheduled: docker compose up model_trainer
+  model_trainer:
+    <<: *app-build
+    container_name: sme_model_trainer
+    command: python train_model.py --mode full --save-dir /app/models
+    volumes:
+      - models:/app/models
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - training               # only starts with: docker compose --profile training up
+    restart: no
 
 volumes:
   postgres_data:
   redis_data:
+  minio_data:
   uploads:
+  models:                      # shared across backend, worker, trainer

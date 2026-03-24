@@ -1,36 +1,66 @@
-__pycache__
+# Python bytecode
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
 *.so
 *.egg
-*.egg-info
-dist
-build
-.env
-.env.local
-.venv
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
 venv/
+.venv/
 ENV/
 env/
-.git
+
+# Git
+.git/
 .gitignore
-.pytest_cache
-.coverage
-htmlcov/
-*.log
-.DS_Store
-Thumbs.db
-.vscode
-.idea
+.gitattributes
+
+# Env files (injected at runtime via Docker env / secrets)
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
-uploads/
-models/*.pkl
-docs/
+
+# Test artefacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
 tests/
-README.md
-LICENSE
+
+# Logs & uploads (mounted as volumes)
+*.log
+logs/
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
 *.md
+docs/
+
+# Trained model binaries (mounted as volume in prod — keep out of image layer)
+models/*.pkl
+models/*.joblib
+models/*.pt
+models/*.bin
+
+# Docker files themselves
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+nginx.conf

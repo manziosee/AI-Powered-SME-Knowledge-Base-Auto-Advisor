@@ -1,42 +1,68 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
-from typing import List, Optional
-from datetime import datetime
+"""
+Document management endpoints.
+
+POST   /documents/upload          — upload file (triggers async processing)
+GET    /documents/                — list company documents (filterable, paginated)
+GET    /documents/search          — semantic search across documents + knowledge
+GET    /documents/{id}            — get document detail
+GET    /documents/{id}/download   — get presigned S3 download URL
+GET    /documents/{id}/knowledge  — get extracted knowledge entries for a document
+PATCH  /documents/{id}            — update metadata / tags
+DELETE /documents/{id}            — delete document + S3 file
+"""
+
 import uuid
-from app.core.database import get_db
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from sqlalchemy import select, and_, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.dependencies import get_current_active_user
-from app.models.user import User
-from app.models.document import Document, DocumentStatus, DocumentType
-from app.schemas.document import DocumentResponse, DocumentUpdate
-from app.tasks.document_tasks import process_document_task
 from app.core.config import settings
+from app.core.database import get_db
+from app.models.document import Document, DocumentStatus, DocumentType
+from app.models.knowledge_entry import KnowledgeEntry
+from app.models.user import User
+from app.schemas.document import DocumentResponse, DocumentUpdate
+from app.services.ai_service import generate_embedding
+from app.tasks.document_tasks import process_document_task
 
 router = APIRouter()
 
+
+# ---------------------------------------------------------------------------
+# Upload
+# ---------------------------------------------------------------------------
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="User must belong to a company")
-    
-    file_ext = f".{file.filename.split('.')[-1]}" if '.' in file.filename else ""
+
+    file_ext = f".{file.filename.split('.')[-1].lower()}" if "." in file.filename else ""
     if file_ext not in settings.allowed_extensions_list:
-        raise HTTPException(status_code=400, detail="File type not allowed")
-    
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{file_ext}' not allowed. Allowed: {settings.ALLOWED_EXTENSIONS}",
+        )
+
     file_content = await file.read()
     file_size = len(file_content)
-    
+
     if file_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large")
-    
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE_MB} MB",
+        )
+
     document_id = uuid.uuid4()
     file_key = f"{current_user.company_id}/{document_id}/{file.filename}"
-    
+
     document = Document(
         id=document_id,
         company_id=current_user.company_id,
@@ -46,135 +72,309 @@ async def upload_document(
         file_size=file_size,
         mime_type=file.content_type or "application/octet-stream",
         uploaded_by=current_user.id,
-        status=DocumentStatus.UPLOADED
+        status=DocumentStatus.UPLOADED,
     )
-    
+
     db.add(document)
     await db.commit()
     await db.refresh(document)
-    
+
     process_document_task.delay(str(document.id), file_content, file.content_type)
-    
+
     return document
 
 
+# ---------------------------------------------------------------------------
+# List (with filters)
+# ---------------------------------------------------------------------------
+
 @router.get("/", response_model=List[DocumentResponse])
 async def list_documents(
-    skip: int = 0,
-    limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    status_filter: Optional[DocumentStatus] = Query(None, alias="status"),
+    doc_type: Optional[DocumentType] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="User must belong to a company")
-    
+
+    filters = [Document.company_id == current_user.company_id]
+    if status_filter:
+        filters.append(Document.status == status_filter)
+    if doc_type:
+        filters.append(Document.document_type == doc_type)
+
     result = await db.execute(
         select(Document)
-        .where(Document.company_id == current_user.company_id)
-        .offset(skip)
-        .limit(limit)
+        .where(and_(*filters))
         .order_by(Document.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     return result.scalars().all()
 
+
+# ---------------------------------------------------------------------------
+# Semantic search
+# ---------------------------------------------------------------------------
+
+@router.get("/search")
+async def search_documents(
+    q: str = Query(..., min_length=2, description="Search query"),
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Semantic search over both documents and knowledge entries using pgvector.
+    Returns the most relevant matches ranked by cosine similarity.
+    """
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User must belong to a company")
+
+    query_embedding = await generate_embedding(q)
+
+    # Search knowledge entries (most granular)
+    ke_sql = text("""
+        SELECT
+            ke.id,
+            ke.title,
+            ke.content,
+            ke.knowledge_type,
+            ke.risk_level,
+            ke.deadline,
+            d.original_filename as source_document,
+            ke.embedding <=> :embedding AS distance
+        FROM knowledge_entries ke
+        LEFT JOIN documents d ON ke.document_id = d.id
+        WHERE ke.company_id = :company_id
+          AND ke.is_active = true
+          AND ke.embedding IS NOT NULL
+        ORDER BY distance ASC
+        LIMIT :limit
+    """)
+
+    ke_result = await db.execute(
+        ke_sql,
+        {
+            "embedding": str(query_embedding),
+            "company_id": str(current_user.company_id),
+            "limit": limit,
+        },
+    )
+    ke_rows = ke_result.fetchall()
+
+    # Search document summaries
+    doc_sql = text("""
+        SELECT
+            id,
+            original_filename,
+            document_type,
+            status,
+            summary,
+            embedding <=> :embedding AS distance
+        FROM documents
+        WHERE company_id = :company_id
+          AND embedding IS NOT NULL
+        ORDER BY distance ASC
+        LIMIT :limit
+    """)
+
+    doc_result = await db.execute(
+        doc_sql,
+        {
+            "embedding": str(query_embedding),
+            "company_id": str(current_user.company_id),
+            "limit": max(5, limit // 2),
+        },
+    )
+    doc_rows = doc_result.fetchall()
+
+    return {
+        "query": q,
+        "knowledge_results": [
+            {
+                "id": str(r.id),
+                "title": r.title,
+                "content": r.content[:400],
+                "type": str(r.knowledge_type),
+                "risk_level": str(r.risk_level),
+                "deadline": r.deadline.isoformat() if r.deadline else None,
+                "source_document": r.source_document,
+                "relevance_score": round(1 - float(r.distance), 4),
+            }
+            for r in ke_rows
+        ],
+        "document_results": [
+            {
+                "id": str(r.id),
+                "filename": r.original_filename,
+                "type": str(r.document_type),
+                "status": str(r.status),
+                "summary": (r.summary or "")[:300],
+                "relevance_score": round(1 - float(r.distance), 4),
+            }
+            for r in doc_rows
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Get single document
+# ---------------------------------------------------------------------------
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    document = result.scalar_one_or_none()
-    
-    if not document or document.company_id != current_user.company_id:
-        raise HTTPException(status_code=404, detail="Document not found")
-    
+    document = await _get_doc_or_404(db, document_id, current_user.company_id)
     return document
 
+
+# ---------------------------------------------------------------------------
+# Presigned download URL
+# ---------------------------------------------------------------------------
+
+@router.get("/{document_id}/download")
+async def get_download_url(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    expires_in: int = Query(300, ge=60, le=3600, description="URL validity in seconds"),
+):
+    document = await _get_doc_or_404(db, document_id, current_user.company_id)
+
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION,
+        )
+        url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": settings.S3_BUCKET_NAME, "Key": document.file_path},
+            ExpiresIn=expires_in,
+        )
+        return {
+            "download_url": url,
+            "filename": document.original_filename,
+            "expires_in": expires_in,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not generate download URL: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Knowledge entries for a document
+# ---------------------------------------------------------------------------
+
+@router.get("/{document_id}/knowledge")
+async def get_document_knowledge(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    document = await _get_doc_or_404(db, document_id, current_user.company_id)
+
+    result = await db.execute(
+        select(KnowledgeEntry)
+        .where(
+            and_(
+                KnowledgeEntry.document_id == document.id,
+                KnowledgeEntry.is_active.is_(True),
+            )
+        )
+        .order_by(KnowledgeEntry.knowledge_type)
+    )
+    entries = result.scalars().all()
+
+    return {
+        "document_id": str(document_id),
+        "knowledge_entries": [
+            {
+                "id": str(e.id),
+                "type": e.knowledge_type.value,
+                "title": e.title,
+                "content": e.content,
+                "risk_level": e.risk_level.value if e.risk_level else None,
+                "deadline": e.deadline.isoformat() if e.deadline else None,
+                "tags": e.tags,
+            }
+            for e in entries
+        ],
+        "total": len(entries),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Update metadata
+# ---------------------------------------------------------------------------
 
 @router.patch("/{document_id}", response_model=DocumentResponse)
 async def update_document(
     document_id: uuid.UUID,
     update_data: DocumentUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    document = result.scalar_one_or_none()
-    
-    if not document or document.company_id != current_user.company_id:
-        raise HTTPException(status_code=404, detail="Document not found")
-    
+    document = await _get_doc_or_404(db, document_id, current_user.company_id)
+
     for field, value in update_data.model_dump(exclude_unset=True).items():
         setattr(document, field, value)
-    
+
     await db.commit()
     await db.refresh(document)
     return document
 
 
-@router.post("/search")
-async def search_documents(
-    query: str,
-    document_type: Optional[DocumentType] = None,
-    status: Optional[DocumentStatus] = None,
-    tags: Optional[List[str]] = None,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
-    limit: int = 50,
+# ---------------------------------------------------------------------------
+# Delete
+# ---------------------------------------------------------------------------
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
-    from sqlalchemy import or_, text
-    from app.services.ai_service import generate_embedding
-    
-    if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="User must belong to a company")
-    
-    # Build base query
-    filters = [Document.company_id == current_user.company_id]
-    
-    if document_type:
-        filters.append(Document.document_type == document_type)
-    
-    if status:
-        filters.append(Document.status == status)
-    
-    if date_from:
-        filters.append(Document.created_at >= date_from)
-    
-    if date_to:
-        filters.append(Document.created_at <= date_to)
-    
-    # Semantic search with embeddings
-    if query:
-        query_embedding = await generate_embedding(query)
-        
-        sql = text("""
-            SELECT id, filename, original_filename, document_type, status, 
-                   created_at, embedding <=> :query_embedding as distance
-            FROM documents
-            WHERE company_id = :company_id
-            ORDER BY distance
-            LIMIT :limit
-        """)
-        
-        result = await db.execute(
-            sql,
-            {
-                "query_embedding": str(query_embedding),
-                "company_id": str(current_user.company_id),
-                "limit": limit
-            }
+    document = await _get_doc_or_404(db, document_id, current_user.company_id)
+
+    # Best-effort S3 deletion
+    try:
+        import boto3
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION,
         )
-        
-        documents = result.fetchall()
-        return [{"id": str(doc.id), "filename": doc.filename, "type": doc.document_type, "distance": doc.distance} for doc in documents]
-    
-    # Regular filtered search
+        s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=document.file_path)
+    except Exception:
+        pass  # DB record still deleted even if S3 cleanup fails
+
+    await db.delete(document)
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
+
+async def _get_doc_or_404(db: AsyncSession, document_id, company_id) -> Document:
     result = await db.execute(
-        select(Document).where(*filters).limit(limit).order_by(Document.created_at.desc())
+        select(Document).where(
+            and_(Document.id == document_id, Document.company_id == company_id)
+        )
     )
-    
-    return result.scalars().all()
+    document = result.scalar_one_or_none()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return document

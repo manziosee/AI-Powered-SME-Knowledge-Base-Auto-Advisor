@@ -44,7 +44,7 @@ class Document(Base):
     summary = Column(Text, nullable=True)
     metadata = Column(JSON, default={})
     tags = Column(JSON, default=[])
-    embedding = Column(Vector(1536), nullable=True)
+    embedding = Column(Vector(384), nullable=True)   # all-MiniLM-L6-v2 = 384-dim
     uploaded_by = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

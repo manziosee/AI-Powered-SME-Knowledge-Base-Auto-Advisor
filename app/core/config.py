@@ -30,9 +30,24 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: str
     
-    GROQ_API_KEY: str
+    # OpenAI (optional — used only if GROQ_API_KEY is not set)
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4-turbo-preview"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+
+    # Groq (primary LLM — fast, free tier available)
+    GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.1-70b-versatile"
+
+    # Embeddings — local HuggingFace model (no API cost)
     HUGGINGFACE_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    EMBEDDING_DIMENSION: int = 384   # all-MiniLM-L6-v2 = 384, text-embedding-3-small = 1536
+
+    # RAG settings
+    RAG_CHUNK_SIZE: int = 800
+    RAG_CHUNK_OVERLAP: int = 150
+    RAG_TOP_K: int = 8
+    RAG_RERANK_TOP_N: int = 4
     
     MAX_UPLOAD_SIZE_MB: int = 50
     ALLOWED_EXTENSIONS: str = ".pdf,.docx,.xlsx,.doc,.xls,.txt"
@@ -45,6 +60,16 @@ class Settings(BaseSettings):
     
     SENTRY_DSN: str = ""
     CORS_ORIGINS: str = "http://localhost:3000"
+
+    # Webhook security
+    WEBHOOK_SECRET: str = ""
+
+    # Report TTL (seconds before generated reports expire from S3)
+    REPORT_TTL_SECONDS: int = 86400  # 24 hours
+
+    # Feature flags
+    ENABLE_RATE_LIMITING: bool = True
+    ENABLE_AUDIT_LOG: bool = True
     
     @property
     def cors_origins_list(self) -> List[str]:

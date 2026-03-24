@@ -37,7 +37,7 @@ class KnowledgeEntry(Base):
     deadline = Column(DateTime, nullable=True)
     metadata = Column(JSON, default={})
     tags = Column(JSON, default=[])
-    embedding = Column(Vector(1536), nullable=True)
+    embedding = Column(Vector(384), nullable=True)   # all-MiniLM-L6-v2 = 384-dim
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

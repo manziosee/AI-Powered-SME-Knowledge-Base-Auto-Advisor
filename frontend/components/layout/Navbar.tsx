@@ -6,18 +6,27 @@ import Logo from "@/components/ui/Logo";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-const navLinks = [
-  { label: "Features",     href: "#features"     },
-  { label: "How it works", href: "#how-it-works"  },
-  { label: "Use Cases",    href: "#use-cases"     },
-  { label: "Pricing",      href: "#pricing"       },
+const NAV_SECTIONS = [
+  { label: "Features",     anchor: "features"     },
+  { label: "How it works", anchor: "how-it-works"  },
+  { label: "Use Cases",    anchor: "use-cases"     },
+  { label: "Pricing",      anchor: "pricing"       },
 ];
 
 export default function Navbar() {
   const { theme, toggle } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [open,     setOpen]     = useState(false);
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+
+  // Build href: on home page use "#anchor", elsewhere use "/#anchor"
+  const navLinks = NAV_SECTIONS.map(({ label, anchor }) => ({
+    label,
+    href: isHome ? `#${anchor}` : `/#${anchor}`,
+  }));
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -42,7 +51,7 @@ export default function Navbar() {
               <li key={link.href}>
                 <a
                   href={link.href}
-                  className="px-4 py-2 text-sm text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors rounded-xl hover:bg-[var(--surface-hover)]"
+                  className="px-4 py-2 text-sm font-medium text-[var(--fg-soft)] hover:text-[var(--fg)] transition-colors rounded-xl hover:bg-[var(--surface-hover)]"
                 >
                   {link.label}
                 </a>
@@ -61,21 +70,22 @@ export default function Navbar() {
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            {/* LOG IN — ghost */}
+            {/* LOG IN — styled outlined pill */}
             <Link
               href="/login"
-              className="px-4 py-2 rounded-full text-sm font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all border border-transparent hover:border-[var(--border)]"
+              className="px-5 py-2 rounded-full text-sm font-semibold text-violet-600 dark:text-violet-300 border border-violet-500/40 hover:border-violet-500/70 hover:bg-violet-500/8 transition-all duration-200 active:scale-95"
             >
-              LOG IN
+              Log In
             </Link>
 
-            {/* SIGN UP — solid pill with arrow */}
+            {/* SIGN UP — gradient pill with glow */}
             <Link
               href="/register"
-              className="group inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--fg)] text-[var(--bg)] hover:bg-violet-600 hover:text-white text-sm font-semibold transition-all shadow-sm hover:shadow-[0_0_20px_rgba(124,58,237,0.35)] active:scale-95"
+              className="group relative inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-bold tracking-wide transition-all duration-200 shadow-[0_4px_20px_rgba(124,58,237,0.4)] hover:shadow-[0_6px_28px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             >
-              SIGN UP
-              <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative z-10">Get Started</span>
+              <ArrowRight size={14} className="relative z-10 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
 
@@ -116,15 +126,15 @@ export default function Navbar() {
             <hr className="border-[var(--border)] my-1" />
             <Link
               href="/login"
-              className="w-full py-2.5 rounded-xl border border-[var(--border)] text-center text-sm font-medium text-[var(--fg-soft)] hover:border-violet-500/40 hover:text-violet-500 transition-all"
+              className="w-full py-2.5 rounded-xl border border-violet-500/35 text-center text-sm font-semibold text-violet-600 dark:text-violet-300 hover:bg-violet-500/8 transition-all"
             >
-              LOG IN
+              Log In
             </Link>
             <Link
               href="/register"
-              className="w-full py-2.5 rounded-xl bg-[var(--fg)] text-[var(--bg)] text-center text-sm font-semibold hover:bg-violet-600 hover:text-white transition-all"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white text-center text-sm font-bold shadow-[0_4px_16px_rgba(124,58,237,0.4)] hover:from-violet-500 hover:to-purple-500 transition-all"
             >
-              SIGN UP FREE
+              Get Started Free
             </Link>
           </div>
         )}

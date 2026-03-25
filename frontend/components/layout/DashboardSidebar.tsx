@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, MessageSquare, BarChart3,
   ShieldCheck, Bell, Settings, Building2, LogOut,
-  ChevronLeft, ChevronRight, Sun, Moon, HelpCircle,
+  ChevronLeft, ChevronRight, Sun, Moon, HelpCircle, Brain, Calendar,
 } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -21,11 +21,13 @@ const NAV = [
   { label: "Compliance",    href: "/dashboard/compliance",    icon: ShieldCheck     },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell            },
   { label: "Company",       href: "/dashboard/company",       icon: Building2       },
+  { label: "AI Training",   href: "/dashboard/training",      icon: Brain           },
+  { label: "Calendar",      href: "/dashboard/calendar",      icon: Calendar        },
 ];
 
 const BOTTOM_NAV = [
-  { label: "Settings",      href: "/dashboard/settings",      icon: Settings        },
-  { label: "Help & support", href: "#",                        icon: HelpCircle      },
+  { label: "Settings",      href: "/dashboard/settings",      icon: Settings   },
+  { label: "Help & Support", href: "/dashboard/help",         icon: HelpCircle },
 ];
 
 const unreadCount = NOTIFICATIONS.filter((n) => !n.read).length;
@@ -53,8 +55,8 @@ export default function DashboardSidebar() {
         "flex items-center h-14 border-b border-[var(--border)] px-3",
         collapsed ? "justify-center" : "justify-between"
       )}>
-        {!collapsed && <Logo size="sm" />}
-        {collapsed  && <Logo size="sm" showText={false} />}
+        {!collapsed && <Logo size="sm" href="/dashboard" />}
+        {collapsed  && <Logo size="sm" showText={false} href="/dashboard" />}
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
@@ -69,7 +71,7 @@ export default function DashboardSidebar() {
       <nav className="flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto">
 
         {!collapsed && (
-          <p className="px-3 text-[8px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-[var(--fg-muted)] mb-1.5">
+          <p className="px-3 text-[8px] font-semibold uppercase tracking-[0.18em] text-[var(--fg-muted)] mb-1.5">
             Main menu
           </p>
         )}
@@ -87,7 +89,7 @@ export default function DashboardSidebar() {
                 "flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-sm transition-all duration-300 group relative overflow-hidden",
                 active
                   ? "bg-gradient-to-r from-violet-500/15 to-purple-500/15 text-violet-600 dark:text-violet-300 border border-violet-500/25 font-medium shadow-lg shadow-violet-500/10"
-                  : "text-gray-700 dark:text-[var(--fg-muted)] hover:text-gray-900 dark:hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] hover:scale-[1.02] hover:shadow-md",
+                  : "text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] hover:scale-[1.02] hover:shadow-md",
                 collapsed && "justify-center px-2"
               )}
             >
@@ -125,7 +127,7 @@ export default function DashboardSidebar() {
         <div className="my-2 border-t border-[var(--border)]" />
 
         {!collapsed && (
-          <p className="px-3 text-[8px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-[var(--fg-muted)] mb-1.5">
+          <p className="px-3 text-[8px] font-semibold uppercase tracking-[0.18em] text-[var(--fg-muted)] mb-1.5">
             General
           </p>
         )}
@@ -141,7 +143,7 @@ export default function DashboardSidebar() {
                 "flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-sm transition-all duration-300 group relative overflow-hidden",
                 active
                   ? "bg-gradient-to-r from-violet-500/15 to-purple-500/15 text-violet-600 dark:text-violet-300 border border-violet-500/25 font-medium shadow-lg shadow-violet-500/10"
-                  : "text-gray-700 dark:text-[var(--fg-muted)] hover:text-gray-900 dark:hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] hover:scale-[1.02] hover:shadow-md",
+                  : "text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] hover:scale-[1.02] hover:shadow-md",
                 collapsed && "justify-center px-2"
               )}
             >
@@ -175,7 +177,7 @@ export default function DashboardSidebar() {
           onClick={toggle}
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           className={cn(
-            "flex items-center gap-2 px-2.5 py-2.5 rounded-xl text-gray-600 dark:text-[var(--fg-muted)] hover:text-gray-900 dark:hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all duration-300 text-xs w-full overflow-hidden group hover:scale-[1.02] hover:shadow-md",
+            "flex items-center gap-2 px-2.5 py-2.5 rounded-xl text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all duration-300 text-xs w-full overflow-hidden group hover:scale-[1.02] hover:shadow-md",
             collapsed && "justify-center px-2"
           )}
         >
@@ -196,13 +198,13 @@ export default function DashboardSidebar() {
               {user.avatar}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-gray-700 dark:text-[var(--fg-soft)] text-xs font-semibold truncate group-hover:text-gray-900 dark:group-hover:text-[var(--fg)] transition-colors">{user.name}</p>
-              <p className="text-gray-600 dark:text-[var(--fg-muted)] text-[10px] truncate group-hover:text-gray-800 dark:group-hover:text-[var(--fg-soft)] transition-colors">{user.company}</p>
+              <p className="text-[var(--fg-soft)] text-xs font-semibold truncate group-hover:text-[var(--fg)] transition-colors">{user.name}</p>
+              <p className="text-[var(--fg-muted)] text-[10px] truncate group-hover:text-[var(--fg-soft)] transition-colors">{user.company}</p>
             </div>
             <Link
               href="/login"
               onClick={() => localStorage.removeItem("auth_user")}
-              className="text-gray-600 dark:text-[var(--fg-muted)] hover:text-rose-500 transition-all duration-300 flex-shrink-0 hover:scale-110 hover:rotate-12"
+              className="text-[var(--fg-muted)] hover:text-rose-500 transition-all duration-300 flex-shrink-0 hover:scale-110 hover:rotate-12"
               title="Sign out"
             >
               <LogOut size={13} />
@@ -212,7 +214,7 @@ export default function DashboardSidebar() {
           <Link
             href="/login"
             onClick={() => localStorage.removeItem("auth_user")}
-            className="p-2 text-gray-600 dark:text-[var(--fg-muted)] hover:text-rose-500 transition-all duration-300 hover:scale-110 hover:rotate-12"
+            className="p-2 text-[var(--fg-muted)] hover:text-rose-500 transition-all duration-300 hover:scale-110 hover:rotate-12"
             title="Sign out"
           >
             <LogOut size={15} />

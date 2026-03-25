@@ -37,7 +37,7 @@ export default function Footer() {
 
           {/* Brand */}
           <div className="md:col-span-2">
-            <Logo size="md" className="mb-5" />
+            <Logo size="md" href="/" className="mb-5" />
             <p className="text-[var(--fg-muted)] text-sm leading-relaxed max-w-xs">
               AI-powered knowledge base and compliance advisor for small and
               medium enterprises. Built for Africa and the world.

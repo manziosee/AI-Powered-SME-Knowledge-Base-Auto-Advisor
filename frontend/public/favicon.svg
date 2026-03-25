@@ -1,9 +1,39 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="8" fill="url(#gradient)"/>
-  <path d="M8 12C8 10.9391 8.42143 9.92172 9.17157 9.17157C9.92172 8.42143 10.9391 8 12 8H20C21.0609 8 22.0783 8.42143 22.8284 9.17157C23.5786 9.92172 24 10.9391 24 12V20C24 21.0609 23.5786 22.0783 22.8284 22.8284C22.0783 23.5786 21.0609 24 20 24H12C10.9391 24 9.92172 23.5786 9.17157 22.8284C8.42143 22.0783 8 21.0609 8 20V12Z" fill="white" fill-opacity="0.9"/>
-  <circle cx="16" cy="16" r="3" fill="url(#gradient)"/>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded background with violet-cyan gradient -->
+  <rect width="48" height="48" rx="12" fill="url(#bgGrad)"/>
+
+  <!-- Outer ring -->
+  <circle cx="24" cy="24" r="21" stroke="white" stroke-width="1" stroke-opacity="0.25"/>
+
+  <!-- Center node -->
+  <circle cx="24" cy="24" r="4.5" fill="white"/>
+
+  <!-- Outer nodes -->
+  <circle cx="24" cy="8"  r="2.8" fill="white" fill-opacity="0.92"/>
+  <circle cx="38" cy="16" r="2.8" fill="white" fill-opacity="0.92"/>
+  <circle cx="38" cy="32" r="2.8" fill="white" fill-opacity="0.92"/>
+  <circle cx="24" cy="40" r="2.8" fill="white" fill-opacity="0.92"/>
+  <circle cx="10" cy="32" r="2.8" fill="white" fill-opacity="0.92"/>
+  <circle cx="10" cy="16" r="2.8" fill="white" fill-opacity="0.92"/>
+
+  <!-- Spokes center → nodes -->
+  <line x1="24" y1="19.5" x2="24"  y2="10.8" stroke="white" stroke-width="1.4" stroke-opacity="0.7"/>
+  <line x1="27.9" y1="21.8" x2="35.4" y2="17.7" stroke="white" stroke-width="1.4" stroke-opacity="0.7"/>
+  <line x1="27.9" y1="26.2" x2="35.4" y2="30.3" stroke="white" stroke-width="1.4" stroke-opacity="0.7"/>
+  <line x1="24" y1="28.5" x2="24"  y2="37.2" stroke="white" stroke-width="1.4" stroke-opacity="0.7"/>
+  <line x1="20.1" y1="26.2" x2="12.6" y2="30.3" stroke="white" stroke-width="1.4" stroke-opacity="0.7"/>
+  <line x1="20.1" y1="21.8" x2="12.6" y2="17.7" stroke="white" stroke-width="1.4" stroke-opacity="0.7"/>
+
+  <!-- Outer ring connections -->
+  <line x1="24"  y1="8"  x2="38" y2="16" stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+  <line x1="38"  y1="16" x2="38" y2="32" stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+  <line x1="38"  y1="32" x2="24" y2="40" stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+  <line x1="24"  y1="40" x2="10" y2="32" stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+  <line x1="10"  y1="32" x2="10" y2="16" stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+  <line x1="10"  y1="16" x2="24" y2="8"  stroke="white" stroke-width="0.7" stroke-opacity="0.2"/>
+
   <defs>
-    <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
       <stop stop-color="#7C3AED"/>
       <stop offset="1" stop-color="#06B6D4"/>
     </linearGradient>

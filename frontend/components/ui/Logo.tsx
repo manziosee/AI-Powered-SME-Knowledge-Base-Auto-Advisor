@@ -1,11 +1,14 @@
 import React from "react";
 import { clsx } from "clsx";
+import Link from "next/link";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   variant?: "light" | "dark";
   showText?: boolean;
   className?: string;
+  /** href to navigate on click. Pass null to render without a link. */
+  href?: string | null;
 }
 
 const sizes = {
@@ -20,12 +23,22 @@ export default function Logo({
   variant = "light",
   showText = true,
   className,
+  href = "/",
 }: LogoProps) {
   const { icon, text } = sizes[size];
-  
+  const Wrapper = href !== null
+    ? ({ children }: { children: React.ReactNode }) => (
+        <Link href={href ?? "/"} className={clsx("flex items-center gap-2.5 hover:opacity-85 transition-opacity", className)}>
+          {children}
+        </Link>
+      )
+    : ({ children }: { children: React.ReactNode }) => (
+        <div className={clsx("flex items-center gap-2.5", className)}>{children}</div>
+      );
+
   // Use CSS variables for theme-aware colors instead of useTheme hook
   return (
-    <div className={clsx("flex items-center gap-2.5", className)}>
+    <Wrapper>
       {/* SVG Icon Mark */}
       <svg
         width={icon}
@@ -79,6 +92,6 @@ export default function Logo({
           )}
         </div>
       )}
-    </div>
+    </Wrapper>
   );
 }

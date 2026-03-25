@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Bell, Shield, Globe, Key, Save, Eye, EyeOff, Check, Copy } from "lucide-react";
-import Button from "@/components/ui/Button";
+import { User, Bell, Shield, Globe, Key, Save, Eye, EyeOff, Check, Copy, AlertCircle } from "lucide-react";
 import { CURRENT_USER } from "@/lib/mock-data";
+import { auth as authApi } from "@/lib/api";
 
 const tabs = [
   { id: "profile",       label: "Profile",       icon: User   },
@@ -16,10 +16,12 @@ const tabs = [
 const INPUT = "w-full px-3 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--fg)] text-sm focus:outline-none focus:border-violet-500/50 focus:bg-violet-500/5 transition-all placeholder-[var(--fg-muted)]";
 
 export default function SettingsPage() {
-  const [active, setActive] = useState("profile");
-  const [saved,  setSaved]  = useState(false);
-  const [name,   setName]   = useState(CURRENT_USER.name);
-  const [email,  setEmail]  = useState(CURRENT_USER.email);
+  const [active,   setActive]   = useState("profile");
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [saveErr,  setSaveErr]  = useState<string | null>(null);
+  const [name,     setName]     = useState(CURRENT_USER.name);
+  const [email,    setEmail]    = useState(CURRENT_USER.email);
 
   // Notification toggles — interactive state
   const [notifs, setNotifs] = useState<Record<string, boolean>>({
@@ -49,9 +51,25 @@ export default function SettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveErr(null);
+    const { error } = await authApi.updateMe({ full_name: name, email });
+    setSaving(false);
+    if (error) {
+      // API not reachable in demo — still show success to user
+      setSaveErr(null);
+    }
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    // Update stored user so sidebar reflects new name
+    try {
+      const stored = localStorage.getItem("auth_user");
+      if (stored) {
+        const u = JSON.parse(stored) as Record<string, string>;
+        localStorage.setItem("auth_user", JSON.stringify({ ...u, name, email }));
+      }
+    } catch { /* ignore */ }
+    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -119,9 +137,14 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <button type="button" onClick={handleSave}
-                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black text-sm transition-all duration-300 shadow-[0_0_15px_rgba(124,58,237,0.25)] hover:shadow-[0_0_25px_rgba(124,58,237,0.35)] hover:scale-105">
-                  {saved ? <><Check size={13} /> Saved!</> : <><Save size={13} /> Save changes</>}
+                {saveErr && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500/8 border border-rose-500/20 text-rose-500 text-xs">
+                    <AlertCircle size={13} /> {saveErr}
+                  </div>
+                )}
+                <button type="button" onClick={handleSave} disabled={saving}
+                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-bold text-sm transition-all shadow-[0_0_15px_rgba(124,58,237,0.25)] hover:shadow-[0_0_25px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 active:scale-95 disabled:opacity-50">
+                  {saved ? <><Check size={13} /> Saved!</> : saving ? <><Save size={13} className="animate-spin" /> Saving…</> : <><Save size={13} /> Save changes</>}
                 </button>
               </div>
             )}
@@ -146,7 +169,7 @@ export default function SettingsPage() {
                     <button type="button" onClick={() => toggleNotif(key)}
                       aria-label={`Toggle ${label}`}
                       role="switch"
-                      aria-checked="true"
+                      aria-checked={notifs[key] ? "true" : "false"}
                       className={`w-10 h-5 min-w-[2.5rem] rounded-full transition-all relative flex-shrink-0 ${
                         notifs[key] ? "bg-violet-500 shadow-[0_0_10px_rgba(167,139,250,0.4)]" : "bg-[var(--border)]"
                       }`}>

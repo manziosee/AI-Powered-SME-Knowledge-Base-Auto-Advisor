@@ -8,7 +8,7 @@ function Message({ role, content }: { role: string; content: string }) {
   if (role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="bg-white/10 text-white/80 text-sm px-4 py-3 rounded-2xl rounded-tr-sm max-w-lg leading-relaxed">
+        <div className="bg-[var(--bg-soft)] border border-[var(--border)] text-[var(--fg)] text-sm px-4 py-3 rounded-2xl rounded-tr-sm max-w-lg leading-relaxed">
           {content}
         </div>
       </div>
@@ -23,7 +23,7 @@ function Message({ role, content }: { role: string; content: string }) {
         return <li key={i} className="ml-4 list-disc" dangerouslySetInnerHTML={{ __html: boldLine.slice(2) }} />;
       }
       if (line.startsWith("**") && line.endsWith("**")) {
-        return <p key={i} className="font-semibold text-white/90 mt-2" dangerouslySetInnerHTML={{ __html: boldLine }} />;
+        return <p key={i} className="font-semibold text-[var(--fg)] mt-2" dangerouslySetInnerHTML={{ __html: boldLine }} />;
       }
       if (line === "") return <div key={i} className="h-1" />;
       return <p key={i} dangerouslySetInnerHTML={{ __html: boldLine }} />;
@@ -34,7 +34,7 @@ function Message({ role, content }: { role: string; content: string }) {
       <div className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/25 flex items-center justify-center flex-shrink-0 mt-1">
         <Brain size={14} className="text-violet-400" />
       </div>
-      <div className="bg-violet-500/5 border border-violet-500/15 text-white/70 text-sm px-4 py-3 rounded-2xl rounded-tl-sm max-w-2xl leading-relaxed flex flex-col gap-1">
+      <div className="bg-[var(--bg-soft)] border border-[var(--border)] text-[var(--fg)] text-sm px-4 py-3 rounded-2xl rounded-tl-sm max-w-2xl leading-relaxed flex flex-col gap-1">
         {formatted}
       </div>
     </div>
@@ -74,15 +74,15 @@ export default function AdvisorPage() {
   return (
     <div className="flex h-full">
       {/* Sidebar — sessions */}
-      <div className="w-64 border-r border-white/8 flex flex-col bg-ink-soft">
-        <div className="p-4 border-b border-white/8 flex items-center justify-between">
-          <h2 className="text-white/70 font-semibold text-sm">Conversations</h2>
+      <div className="w-64 border-r border-[var(--border)] flex flex-col bg-[var(--bg-soft)]">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+          <h2 className="text-[var(--fg)] font-semibold text-sm">Conversations</h2>
           <button
             type="button"
             title="New conversation"
             aria-label="New conversation"
             onClick={() => { setMessages([]); setActiveSession({ id: "new", title: "New chat", updatedAt: "now", messages: [] }); }}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-white transition-all"
+            className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-all"
           >
             <Plus size={14} />
           </button>
@@ -92,10 +92,10 @@ export default function AdvisorPage() {
           {CHAT_SESSIONS.map((s) => (
             <button key={s.id} type="button" onClick={() => selectSession(s)}
               className={`w-full text-left px-3 py-2.5 rounded-xl transition-all group ${
-                activeSession.id === s.id ? "bg-violet-500/12 border border-violet-500/25 text-violet-300" : "hover:bg-white/4"
+                activeSession.id === s.id ? "bg-violet-500/12 border border-violet-500/25 text-violet-600 dark:text-violet-300" : "hover:bg-[var(--surface-hover] text-[var(--fg)]"
               }`}>
-              <p className="text-white/70 text-xs font-medium truncate">{s.title}</p>
-              <div className="flex items-center gap-1 mt-0.5 text-white/25 text-[10px]">
+              <p className="text-[var(--fg)] text-xs font-medium truncate">{s.title}</p>
+              <div className="flex items-center gap-1 mt-0.5 text-[var(--fg-muted)] text-[10px]">
                 <Clock size={9} /> {s.updatedAt}
               </div>
             </button>
@@ -106,10 +106,10 @@ export default function AdvisorPage() {
       {/* Main chat */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Chat header */}
-        <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Brain size={16} className="text-violet-400" />
-            <span className="text-white/70 text-sm font-medium">{activeSession.title}</span>
+            <Brain size={16} className="text-violet-600 dark:text-violet-400" />
+            <span className="text-[var(--fg)] text-sm font-medium">{activeSession.title}</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-emerald-400/70">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow shadow-[0_0_6px_#34d399]" />
@@ -124,8 +124,8 @@ export default function AdvisorPage() {
               <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(167,139,250,0.1)]">
                 <Brain size={28} className="text-violet-400" />
               </div>
-              <h3 className="text-white/50 font-semibold mb-2">Ask anything about your business</h3>
-              <p className="text-white/25 text-sm max-w-sm">
+              <h3 className="text-[var(--fg)] font-semibold mb-2">Ask anything about your business</h3>
+              <p className="text-[var(--fg-muted)] text-sm max-w-sm">
                 I can search your documents, check compliance deadlines, score risks, and answer in plain English.
               </p>
               <div className="grid grid-cols-2 gap-2 mt-6 w-full max-w-sm">
@@ -136,7 +136,7 @@ export default function AdvisorPage() {
                   "Check our tax compliance status",
                 ].map((s) => (
                   <button key={s} type="button" onClick={() => setInput(s)}
-                    className="text-left px-3 py-2.5 rounded-xl bg-violet-500/5 border border-violet-500/15 hover:border-violet-500/35 hover:bg-violet-500/10 transition-all text-white/60 hover:text-white text-xs">
+                    className="text-left px-3 py-2.5 rounded-xl bg-violet-500/5 border border-violet-500/15 hover:border-violet-500/35 hover:bg-violet-500/10 transition-all text-[var(--fg-muted)] hover:text-[var(--fg)] text-xs">
                     {s} <ChevronRight size={10} className="inline ml-1 opacity-50" />
                   </button>
                 ))}

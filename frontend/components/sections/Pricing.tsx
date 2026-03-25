@@ -86,59 +86,132 @@ export default function Pricing() {
           </p>
         </div>
 
-        {/* Plans */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative flex flex-col rounded-2xl border transition-all duration-300 ${
-                plan.highlight
-                  ? "lift border-violet-500/50 bg-violet-500/5 shadow-2xl shadow-violet-500/15 scale-[1.02]"
-                  : "lift-l border-[var(--border)] bg-[var(--bg-soft)] hover:border-violet-500/20"
-              }`}
-            >
-              {plan.highlight && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3.5 py-1.5 bg-violet-600 text-white text-xs font-semibold rounded-full shadow-[0_0_16px_rgba(124,58,237,0.5)]">
-                  <Zap size={11} />
-                  Most popular
+        {/* Plans - Beautiful Gradient Cards */}
+        <div className="relative max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Left Plan - Starter */}
+            <div className="relative group">
+              <div className="relative flex flex-col h-full rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-1 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-emerald-500/30">
+                <div className="flex flex-col h-full rounded-3xl bg-[var(--bg)] p-8">
+                  <div className="mb-8">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 text-sm font-semibold mb-4">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      STARTER
+                    </div>
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <span className="text-5xl font-black text-[var(--fg)]">Free</span>
+                      <span className="text-[var(--fg-muted)] text-lg">forever</span>
+                    </div>
+                    <p className="text-[var(--fg-muted)] text-lg leading-relaxed mb-6">
+                      Perfect for solo founders and small teams getting started with AI-powered compliance.
+                    </p>
+                  </div>
+                  
+                  <ul className="space-y-4 mb-8 flex-1">
+                    {plans[0].features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check size={14} className="text-emerald-600" />
+                        </div>
+                        <span className="text-[var(--fg-soft)] text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Link
+                    href={plans[0].href}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-sm transition-all duration-300 hover:from-emerald-600 hover:to-teal-600 hover:shadow-lg hover:shadow-emerald-500/40 group/btn flex items-center justify-center"
+                  >
+                    Get started free
+                    <ArrowRight size={16} className="inline-block ml-2 transition-transform group-hover/btn:translate-x-1" />
+                  </Link>
                 </div>
-              )}
-
-              <div className="p-7 pb-0">
-                <p className={`text-xs font-semibold tracking-widest uppercase mb-3 ${plan.nameColor}`}>
-                  {plan.name}
-                </p>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className={`text-4xl font-black ${plan.priceColor}`}>{plan.price}</span>
-                  <span className="text-[var(--fg-muted)] text-sm">{plan.sub}</span>
-                </div>
-                <p className="text-[var(--fg-muted)] text-sm mb-6 leading-relaxed">{plan.desc}</p>
-              </div>
-
-              <ul className="flex flex-col gap-2.5 px-7 pb-7 flex-1">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[var(--fg-soft)] text-sm">
-                    <Check size={14} className={`mt-0.5 flex-shrink-0 ${plan.checkColor}`} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="px-7 pb-7">
-                <Link
-                  href={plan.href}
-                  className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all ${
-                    plan.highlight
-                      ? "bg-violet-600 hover:bg-violet-500 text-white shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_28px_rgba(124,58,237,0.45)]"
-                      : "border border-[var(--border)] text-[var(--fg-soft)] hover:border-violet-500/40 hover:text-violet-500"
-                  }`}
-                >
-                  {plan.cta}
-                  <ArrowRight size={14} />
-                </Link>
               </div>
             </div>
-          ))}
+
+            {/* Middle Plan - Growth (Featured) */}
+            <div className="relative lg:scale-105 lg:-translate-y-4">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-bold rounded-full shadow-2xl shadow-violet-500/30">
+                  <Zap size={16} className="animate-pulse" />
+                  MOST POPULAR
+                </div>
+              </div>
+              <div className="relative flex flex-col h-full rounded-3xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 p-1 transition-all duration-500 hover:scale-110 hover:shadow-3xl hover:shadow-violet-500/40">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-purple-500/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex flex-col h-full rounded-3xl bg-[var(--bg)] p-8 relative z-10">
+                  <div className="mb-8">
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <span className="text-6xl font-black text-violet-600">$49</span>
+                      <span className="text-[var(--fg-muted)] text-lg">/ month</span>
+                    </div>
+                    <p className="text-[var(--fg-muted)] text-lg leading-relaxed mb-6">
+                      For growing teams that need unlimited AI power and multi-country compliance coverage.
+                    </p>
+                  </div>
+                  
+                  <ul className="space-y-4 mb-8 flex-1">
+                    {plans[1].features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-violet-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check size={14} className="text-violet-600" />
+                        </div>
+                        <span className="text-[var(--fg-soft)] text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Link
+                    href={plans[1].href}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold text-sm transition-all duration-300 hover:from-violet-500 hover:to-purple-500 hover:shadow-2xl hover:shadow-violet-500/40 hover:-translate-y-1 flex items-center justify-center"
+                  >
+                    Start 14-day free trial
+                    <ArrowRight size={16} className="inline-block ml-2 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Plan - Enterprise */}
+            <div className="relative group">
+              <div className="relative flex flex-col h-full rounded-3xl bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-500 p-1 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/30">
+                <div className="flex flex-col h-full rounded-3xl bg-[var(--bg)] p-8">
+                  <div className="mb-8">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 text-blue-600 text-sm font-semibold mb-4">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                      ENTERPRISE
+                    </div>
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <span className="text-5xl font-black text-[var(--fg)]">Custom</span>
+                      <span className="text-[var(--fg-muted)] text-lg">contact us</span>
+                    </div>
+                    <p className="text-[var(--fg-muted)] text-lg leading-relaxed mb-6">
+                      For established businesses needing full control, private hosting, and guaranteed SLAs.
+                    </p>
+                  </div>
+                  
+                  <ul className="space-y-4 mb-8 flex-1">
+                    {plans[2].features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check size={14} className="text-blue-600" />
+                        </div>
+                        <span className="text-[var(--fg-soft)] text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Link
+                    href={plans[2].href}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-sm transition-all duration-300 hover:from-blue-600 hover:to-cyan-600 hover:shadow-lg hover:shadow-blue-500/40 group/btn flex items-center justify-center"
+                  >
+                    Talk to sales
+                    <ArrowRight size={16} className="inline-block ml-2 transition-transform group-hover/btn:translate-x-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <p className="text-center text-[var(--fg-muted)] text-xs mt-10">

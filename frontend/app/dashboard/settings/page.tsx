@@ -56,7 +56,7 @@ export default function SettingsPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-[var(--fg)] mb-8">Settings</h1>
+      <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight mb-8">Settings</h1>
 
       <div className="flex gap-6">
         {/* Sidebar */}
@@ -64,12 +64,12 @@ export default function SettingsPage() {
           <nav className="flex flex-col gap-1">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button key={id} type="button" onClick={() => setActive(id)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-all ${
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-300 hover:scale-105 ${
                   active === id
-                    ? "bg-violet-500/15 border border-violet-500/30 text-violet-500 font-medium"
-                    : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface)]"
+                    ? "bg-gradient-to-r from-violet-500/15 to-purple-500/15 border border-violet-500/30 text-violet-500 font-semibold shadow-lg shadow-violet-500/10"
+                    : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface)] hover:border-violet-500/20"
                 }`}>
-                <Icon size={15} /> {label}
+                <Icon size={15} className="transition-transform duration-300 group-hover:scale-110" /> {label}
               </button>
             ))}
           </nav>
@@ -100,11 +100,11 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">Full name</label>
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={INPUT} />
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="Enter your full name" aria-label="Full name" />
                   </div>
                   <div>
                     <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">Email</label>
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} placeholder="Enter your email address" aria-label="Email address" />
                   </div>
                 </div>
 
@@ -120,7 +120,7 @@ export default function SettingsPage() {
                 </div>
 
                 <button type="button" onClick={handleSave}
-                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all shadow-[0_0_15px_rgba(124,58,237,0.25)]">
+                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black text-sm transition-all duration-300 shadow-[0_0_15px_rgba(124,58,237,0.25)] hover:shadow-[0_0_25px_rgba(124,58,237,0.35)] hover:scale-105">
                   {saved ? <><Check size={13} /> Saved!</> : <><Save size={13} /> Save changes</>}
                 </button>
               </div>
@@ -243,7 +243,7 @@ export default function SettingsPage() {
                 </div>
 
                 <button type="button"
-                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-soft)] hover:text-violet-500 hover:border-violet-500/40 text-sm font-medium transition-all">
+                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-soft)] hover:text-violet-500 hover:border-violet-500/40 hover:bg-violet-500/5 text-sm font-medium transition-all duration-300 hover:scale-105">
                   <Key size={13} /> Generate new key
                 </button>
 

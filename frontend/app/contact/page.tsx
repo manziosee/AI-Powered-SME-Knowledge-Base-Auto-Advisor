@@ -42,9 +42,9 @@ export default function ContactPage() {
                 { icon: MapPin,  title: "Headquarters",  body: "Kigali, Rwanda",               sub: "KG 11 Ave, Kicukiro"              },
                 { icon: Clock,   title: "Business hours",body: "Mon – Fri, 9 am – 6 pm EAT",  sub: "UTC+2 / Nairobi time"             },
               ].map(({ icon: Icon, title, body, sub }) => (
-                <div key={title} className="flex gap-4 p-5 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)]">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-                    <Icon size={18} className="text-violet-500" />
+                <div key={title} className="flex gap-4 p-5 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)] hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Icon size={18} className="text-violet-500 group-hover:rotate-12 transition-transform" />
                   </div>
                   <div>
                     <p className="text-[var(--fg)] font-semibold text-sm">{title}</p>
@@ -56,7 +56,7 @@ export default function ContactPage() {
             </div>
 
             {/* Form */}
-            <div className="lg:col-span-3 p-8 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)]">
+            <div className="lg:col-span-3 p-8 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)] hover:shadow-lg transition-all duration-300">
               {sent ? (
                 <div className="h-full flex flex-col items-center justify-center text-center py-12">
                   <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center mb-4">
@@ -96,7 +96,7 @@ export default function ContactPage() {
                       className={INPUT + " resize-none"} />
                   </div>
                   <button type="submit" disabled={loading}
-                    className="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(124,58,237,0.3)]">
+                    className="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black text-sm transition-all duration-300 disabled:opacity-50 shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] hover:scale-105">
                     {loading
                       ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Sending…</>
                       : <><Send size={15} /> Send message</>}

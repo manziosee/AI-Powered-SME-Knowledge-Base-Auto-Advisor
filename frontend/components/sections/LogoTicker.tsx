@@ -1,39 +1,41 @@
 import React from "react";
 
 const companies = [
-  "TechVentures",
-  "RetailPro",
-  "FinServe Africa",
-  "BuildRight Co.",
-  "AgriSmarts",
-  "MedCare Clinics",
-  "LegalEase",
-  "EduPath",
-  "GreenLogistics",
-  "CloudFirst",
+  { name: "TechVentures RW",  flag: "🇷🇼" },
+  { name: "RetailPro Africa", flag: "🌍" },
+  { name: "FinServe Kenya",   flag: "🇰🇪" },
+  { name: "BuildRight Co.",   flag: "🇳🇬" },
+  { name: "AgriSmarts",       flag: "🇿🇦" },
+  { name: "MedCare Clinics",  flag: "🇷🇼" },
+  { name: "LegalEase",        flag: "🌍" },
+  { name: "EduPath Africa",   flag: "🇰🇪" },
+  { name: "GreenLogistics",   flag: "🇳🇬" },
+  { name: "CloudFirst",       flag: "🇫🇷" },
+  { name: "Horizon Consult",  flag: "🇺🇸" },
+  { name: "Savanna Group",    flag: "🇿🇦" },
 ];
 
 export default function LogoTicker() {
   return (
-    <section className="py-16 border-y border-white/8 overflow-hidden">
-      <p className="text-center text-white/30 text-xs tracking-[0.2em] uppercase mb-8">
+    <section className="py-16 border-y border-[var(--border)] overflow-hidden bg-[var(--bg-soft)]">
+      <p className="text-center text-[var(--fg-muted)] text-xs tracking-[0.2em] uppercase mb-8 font-medium">
         Trusted by growing businesses across Africa &amp; beyond
       </p>
 
       <div className="relative">
         {/* Fade edges */}
-        <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-ink to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-ink to-transparent z-10 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[var(--bg-soft)] to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[var(--bg-soft)] to-transparent z-10 pointer-events-none" />
 
         <div className="flex animate-marquee whitespace-nowrap">
-          {[...companies, ...companies].map((name, i) => (
+          {[...companies, ...companies].map((c, i) => (
             <div
               key={i}
-              className="mx-10 flex items-center gap-2 text-white/25 hover:text-white/50 transition-colors"
+              className="mx-8 flex items-center gap-2.5 text-[var(--fg-muted)] hover:text-violet-500 transition-colors duration-200 cursor-default"
             >
-              {/* Mini logo dot */}
-              <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-              <span className="text-sm font-medium tracking-wide">{name}</span>
+              <span className="text-base leading-none">{c.flag}</span>
+              <span className="w-px h-3.5 bg-[var(--border)]" />
+              <span className="text-sm font-medium tracking-wide">{c.name}</span>
             </div>
           ))}
         </div>

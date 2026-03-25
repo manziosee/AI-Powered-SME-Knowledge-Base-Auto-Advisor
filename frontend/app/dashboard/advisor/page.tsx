@@ -31,10 +31,10 @@ function Message({ role, content }: { role: string; content: string }) {
 
   return (
     <div className="flex gap-3">
-      <div className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center flex-shrink-0 mt-1">
-        <Brain size={14} className="text-white/50" />
+      <div className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/25 flex items-center justify-center flex-shrink-0 mt-1">
+        <Brain size={14} className="text-violet-400" />
       </div>
-      <div className="bg-white/4 border border-white/8 text-white/65 text-sm px-4 py-3 rounded-2xl rounded-tl-sm max-w-2xl leading-relaxed flex flex-col gap-1">
+      <div className="bg-violet-500/5 border border-violet-500/15 text-white/70 text-sm px-4 py-3 rounded-2xl rounded-tl-sm max-w-2xl leading-relaxed flex flex-col gap-1">
         {formatted}
       </div>
     </div>
@@ -92,7 +92,7 @@ export default function AdvisorPage() {
           {CHAT_SESSIONS.map((s) => (
             <button key={s.id} type="button" onClick={() => selectSession(s)}
               className={`w-full text-left px-3 py-2.5 rounded-xl transition-all group ${
-                activeSession.id === s.id ? "bg-white/8 border border-white/12" : "hover:bg-white/4"
+                activeSession.id === s.id ? "bg-violet-500/12 border border-violet-500/25 text-violet-300" : "hover:bg-white/4"
               }`}>
               <p className="text-white/70 text-xs font-medium truncate">{s.title}</p>
               <div className="flex items-center gap-1 mt-0.5 text-white/25 text-[10px]">
@@ -108,11 +108,11 @@ export default function AdvisorPage() {
         {/* Chat header */}
         <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Brain size={16} className="text-white/50" />
+            <Brain size={16} className="text-violet-400" />
             <span className="text-white/70 text-sm font-medium">{activeSession.title}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-white/25">
-            <div className="w-2 h-2 rounded-full bg-white/40 animate-pulse-slow" />
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400/70">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow shadow-[0_0_6px_#34d399]" />
             AI Online
           </div>
         </div>
@@ -121,8 +121,8 @@ export default function AdvisorPage() {
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
           {messages.length === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
-              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-                <Brain size={28} className="text-white/25" />
+              <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(167,139,250,0.1)]">
+                <Brain size={28} className="text-violet-400" />
               </div>
               <h3 className="text-white/50 font-semibold mb-2">Ask anything about your business</h3>
               <p className="text-white/25 text-sm max-w-sm">
@@ -136,7 +136,7 @@ export default function AdvisorPage() {
                   "Check our tax compliance status",
                 ].map((s) => (
                   <button key={s} type="button" onClick={() => setInput(s)}
-                    className="text-left px-3 py-2.5 rounded-xl bg-white/4 border border-white/8 hover:border-white/20 hover:bg-white/7 transition-all text-white/50 text-xs">
+                    className="text-left px-3 py-2.5 rounded-xl bg-violet-500/5 border border-violet-500/15 hover:border-violet-500/35 hover:bg-violet-500/10 transition-all text-white/60 hover:text-white text-xs">
                     {s} <ChevronRight size={10} className="inline ml-1 opacity-50" />
                   </button>
                 ))}
@@ -150,13 +150,13 @@ export default function AdvisorPage() {
 
           {typing && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center flex-shrink-0">
-                <Brain size={14} className="text-white/50" />
+              <div className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/25 flex items-center justify-center flex-shrink-0">
+                <Brain size={14} className="text-violet-400" />
               </div>
-              <div className="bg-white/4 border border-white/8 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse-slow [animation-delay:0ms]"   />
-                <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse-slow [animation-delay:150ms]" />
-                <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse-slow [animation-delay:300ms]" />
+              <div className="bg-violet-500/5 border border-violet-500/15 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse-slow [animation-delay:0ms]"   />
+                <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse-slow [animation-delay:150ms]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400   animate-pulse-slow [animation-delay:300ms]" />
               </div>
             </div>
           )}
@@ -165,7 +165,7 @@ export default function AdvisorPage() {
 
         {/* Input */}
         <div className="px-6 py-4 border-t border-white/8">
-          <div className="flex items-end gap-3 bg-white/4 border border-white/10 rounded-2xl p-3 focus-within:border-white/25 transition-all">
+          <div className="flex items-end gap-3 bg-white/3 border border-white/10 rounded-2xl p-3 focus-within:border-violet-500/40 transition-all">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -180,7 +180,7 @@ export default function AdvisorPage() {
               aria-label="Send message"
               onClick={handleSend}
               disabled={!input.trim() || typing}
-              className="p-2 rounded-xl bg-white text-black hover:bg-white/90 transition-all disabled:opacity-30 flex-shrink-0"
+              className="p-2 rounded-xl bg-violet-500 text-white hover:bg-violet-400 transition-all disabled:opacity-30 flex-shrink-0 shadow-[0_0_12px_rgba(167,139,250,0.4)]"
             >
               <Send size={15} />
             </button>

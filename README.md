@@ -1,430 +1,357 @@
 <div align="center">
 
-# AI-Powered SME Knowledge Base & Auto Advisor
+<h1>⚡ AdvisorAI</h1>
+<h3>AI-Powered Knowledge Base & Compliance Advisor for SMEs</h3>
 
-[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-7+-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+<p>
+  <a href="https://github.com/manziosee/AI-Powered-SME-Knowledge-Base-Auto-Advisor/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-violet.svg" alt="MIT License" />
+  </a>
+  <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/Python-3.11%2B-blue?logo=python" alt="Python 3.11+" />
+  </a>
+  <a href="https://fastapi.tiangolo.com">
+    <img src="https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi" alt="FastAPI" />
+  </a>
+  <a href="https://nextjs.org">
+    <img src="https://img.shields.io/badge/Next.js-15.5-black?logo=next.js" alt="Next.js" />
+  </a>
+  <img src="https://img.shields.io/badge/AI-Groq%20%7C%20LangChain-8B5CF6" alt="AI Stack" />
+  <img src="https://img.shields.io/badge/DB-PostgreSQL%20%2B%20pgvector-336791?logo=postgresql" alt="pgvector" />
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker" alt="Docker" />
+</p>
 
-Enterprise-grade backend system for SMEs to manage documents, extract knowledge using AI, and receive automated business recommendations.
+<p>
+  <strong>Upload your business documents. Ask questions in plain English. Stay ahead of compliance — automatically.</strong>
+</p>
 
-</div>
-
-## Features
-
-- **Multi-tenant SaaS Architecture** - Isolated data per company
-- **Role-Based Access Control** - Admin, Manager, Employee roles
-- **Document Management** - Upload, classify, and version control
-- **AI Knowledge Extraction** - Extract obligations, deadlines, risks, metrics
-- **Auto Advisor** - Natural language queries with AI-powered responses
-- **Vector Search** - Semantic search using pgvector embeddings
-- **Automated Notifications** - Compliance deadlines, expiring contracts
-- **Analytics Dashboard** - Compliance scores, risk levels
-- **Async Processing** - Celery for background tasks
-
-## 🛠️ Tech Stack
-
-<div align="center">
-
-| Technology | Purpose | Version |
-|------------|---------|----------|
-| ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white) | Core Language | 3.11+ |
-| ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white) | Web Framework | 0.109+ |
-| ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white) | Database | 16+ |
-| ![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white) | Cache & Queue | 7+ |
-| ![Celery](https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white) | Task Queue | 5.3+ |
-| ![Groq](https://img.shields.io/badge/Groq-FF6B35?style=for-the-badge&logo=groq&logoColor=white) | AI/NLP | Llama 3.1 70B |
-| ![AWS](https://img.shields.io/badge/AWS_S3-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white) | Storage | S3 |
-| ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) | Containerization | Latest |
-| ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white) | ORM | 2.0+ |
-| ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white) | Validation | 2.5+ |
+<p>
+  Built for African SMEs and beyond · Multi-tenant SaaS · 100% open-source dependencies · Runs free in development
+</p>
 
 </div>
 
-### Additional Technologies
-- **AI & NLP**: Groq (Llama 3.1 70B), sentence-transformers, spaCy
-- **Document Processing**: PyPDF, python-docx, openpyxl
-- **Authentication**: JWT with bcrypt
-- **Vector Search**: pgvector extension
-- **Monitoring**: Flower for Celery tasks
+---
 
-## 🚀 Groq AI Integration
+## ✨ What it does
 
-This system uses **Groq's lightning-fast inference** with Llama 3.1 70B model for:
+AdvisorAI turns a pile of PDFs, contracts, invoices, and HR policies into an intelligent advisor you can talk to. Instead of manually searching through documents, you ask a question and get an answer with exact citations — powered by a local embedding model (free) and Groq's Llama 3.1 70B (free tier).
 
-- **Document Classification** - Instant document type detection
-- **Knowledge Extraction** - Extract obligations, deadlines, risks
-- **Natural Language Queries** - Fast AI advisor responses
-- **Content Summarization** - Generate executive summaries
+```
+"What are our VAT filing deadlines in Rwanda?"
+→ Based on your uploaded documents, your RRA VAT return is due by the 15th of each month.
+   Source: RRA_Compliance_Guide.pdf, page 3 | Risk: CRITICAL
+```
 
-### Why Groq?
-- **10x Faster** than traditional cloud AI
-- **Cost Effective** - Free tier available
-- **High Quality** - Llama 3.1 70B performance
-- **Reliable** - Enterprise-grade infrastructure
+---
 
-## Setup
+## 🚀 Quick Start (5 minutes)
 
 ### Prerequisites
+- [Docker & Docker Compose](https://docs.docker.com/get-docker/) *(only thing you need)*
+- [Groq API key](https://console.groq.com) *(free — sign up in 30 seconds)*
 
-- Python 3.11+
-- PostgreSQL 16+ with pgvector extension
-- Redis
-- AWS S3 account (optional)
-- Groq API key
+### 1. Clone & configure
 
-### Installation
-
-1. Clone and navigate:
 ```bash
+git clone https://github.com/manziosee/AI-Powered-SME-Knowledge-Base-Auto-Advisor.git
 cd AI-Powered-SME-Knowledge-Base-Auto-Advisor
-```
-
-2. Create virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate  # Windows
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-```
-
-4. Configure environment:
-```bash
 cp .env.example .env
-# Edit .env with your credentials
 ```
 
-5. Setup database:
-```bash
-# Enable pgvector extension
-psql -U postgres -d sme_kb -c "CREATE EXTENSION vector;"
+Edit `.env` — the **only** required change is your free Groq key:
+```env
+GROQ_API_KEY="gsk_your_key_from_console.groq.com"
+```
 
-# Run migrations
+### 2. Start everything
+
+```bash
+docker compose up --build
+```
+
+This starts: PostgreSQL + pgvector · Redis · MinIO (free S3) · FastAPI backend · Celery workers · Flower dashboard · Auto-runs DB migrations
+
+### 3. Open the apps
+
+| Service | URL |
+|---------|-----|
+| 🌐 Frontend | http://localhost:3000 |
+| 📖 API Docs (Swagger) | http://localhost:8000/api/v1/docs |
+| 📖 API Docs (ReDoc) | http://localhost:8000/api/v1/redoc |
+| ❤️ Health check | http://localhost:8000/health |
+| 🌸 Celery Flower | http://localhost:5555 |
+| 🗄️ MinIO Console | http://localhost:9001 |
+
+---
+
+## 💸 Free Services — No Credit Card Needed
+
+Everything you need to run AdvisorAI in development is **free**:
+
+| Service | Purpose | Free Tier |
+|---------|---------|-----------|
+| [**Groq**](https://console.groq.com) | LLM inference (Llama 3.1 70B) | 14,400 req/day — plenty for dev |
+| **SentenceTransformers** | Text embeddings (384-dim) | Free forever — runs locally, no API |
+| **PostgreSQL + pgvector** | Vector database | Self-hosted via Docker |
+| **Redis** | Cache + task queue | Self-hosted via Docker |
+| **MinIO** | S3-compatible file storage | Self-hosted via Docker |
+| **spaCy** | NLP / entity extraction | Open source |
+| **scikit-learn** | ML classification | Open source |
+| **Gmail SMTP** | Email notifications | Free — use App Passwords |
+
+**Optional paid upgrades** (plug in when you're ready to scale):
+
+| Service | Replace with | Cost |
+|---------|-------------|------|
+| MinIO → AWS S3 | Real cloud storage | ~$0.023/GB |
+| Groq → OpenAI GPT-4 | Higher accuracy | ~$0.01/1K tokens |
+| Self-hosted → Managed DB | Supabase / Neon | Free tier available |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Next.js 15 Frontend                         │
+│   Landing · Dashboard · AI Advisor · Documents · Compliance · ...   │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │ REST API (JWT)
+┌────────────────────────────▼────────────────────────────────────────┐
+│                    FastAPI Backend  /api/v1                          │
+│                                                                      │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
+│  │   Auth   │ │Documents │ │ Advisor  │ │Analytics │ │  Admin   │ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │
+│                                                                      │
+│  ┌─────────────────────┐   ┌──────────────────────────────────────┐ │
+│  │   RAG Pipeline      │   │           AI Services                │ │
+│  │  chunk → embed →    │   │  Groq Llama 3.1 70B (LLM)           │ │
+│  │  dense+sparse →     │   │  SentenceTransformers (embeddings)   │ │
+│  │  RRF fusion →       │   │  spaCy NLP + BM25 (hybrid search)    │ │
+│  │  compress → answer  │   │  scikit-learn (risk scoring)         │ │
+│  └─────────────────────┘   └──────────────────────────────────────┘ │
+└──────────┬─────────────────────────────────┬────────────────────────┘
+           │                                 │
+┌──────────▼──────────┐         ┌────────────▼───────────┐
+│  PostgreSQL + pgvector │      │   Redis                │
+│  (vector store +    │         │   (cache + task queue) │
+│   relational data)  │         └────────────────────────┘
+└─────────────────────┘
+           │
+┌──────────▼──────────┐         ┌────────────────────────┐
+│  Celery Workers     │         │   MinIO / AWS S3       │
+│  (async document    │         │   (file storage)       │
+│   processing)       │         └────────────────────────┘
+└─────────────────────┘
+```
+
+---
+
+## 📁 Project Structure
+
+```
+advisorai/
+├── app/                        # FastAPI backend
+│   ├── api/v1/endpoints/       # Route handlers
+│   │   ├── auth.py             # JWT auth, register, login, reset
+│   │   ├── documents.py        # Upload, classify, version-control
+│   │   ├── advisor.py          # RAG query, streaming chat
+│   │   ├── chatbot.py          # Multi-turn conversation
+│   │   ├── analytics.py        # Dashboards, PDF/Excel export
+│   │   ├── notifications.py    # Alerts + deadline reminders
+│   │   ├── companies.py        # Multi-tenant management
+│   │   ├── integrations.py     # Webhooks, ERP/HR connectors
+│   │   └── admin.py            # Super-admin operations
+│   ├── core/                   # Config, DB, Redis, security, middleware
+│   ├── models/                 # SQLAlchemy ORM models (12 tables)
+│   ├── schemas/                # Pydantic request/response schemas
+│   ├── services/               # Business logic
+│   │   ├── ai_service.py       # Groq/OpenAI LLM calls + embeddings
+│   │   ├── rag_pipeline.py     # Hybrid RAG (dense + BM25 + RRF)
+│   │   ├── compliance_service.py  # Rules engine + gap analysis
+│   │   ├── document_processor.py  # PDF/DOCX text extraction
+│   │   ├── s3_service.py       # MinIO / AWS S3 storage
+│   │   └── report_service.py   # PDF + Excel report generation
+│   └── tasks/                  # Celery async tasks
+│       ├── document_tasks.py   # Process, classify, embed documents
+│       ├── notification_tasks.py  # Scheduled deadline alerts
+│       └── ai_tasks.py         # Background LLM jobs
+├── alembic/versions/           # Database migrations (4 migrations)
+├── frontend/                   # Next.js 15 app
+│   ├── app/                    # App Router pages
+│   │   ├── dashboard/          # Dashboard, advisor, documents, ...
+│   │   ├── (auth)/             # Login, register
+│   │   └── (landing)/          # About, contact, privacy, terms
+│   ├── components/             # Reusable UI components
+│   └── styles/                 # Global CSS + theme tokens
+├── docker-compose.yml          # Development environment
+├── docker-compose.prod.yml     # Production environment
+├── Dockerfile                  # Multi-stage build
+├── requirements.txt            # Python dependencies
+└── .env.example                # Configuration template
+```
+
+---
+
+## 🔌 API Reference
+
+Full interactive documentation at `/api/v1/docs` (Swagger UI) or `/api/v1/redoc`.
+
+### Key endpoints
+
+```
+POST   /api/v1/auth/register          Register a new account
+POST   /api/v1/auth/login             Get access + refresh tokens
+POST   /api/v1/auth/refresh           Refresh access token
+POST   /api/v1/auth/logout            Invalidate refresh token
+
+POST   /api/v1/documents/upload       Upload a document (PDF, DOCX, XLSX, TXT)
+GET    /api/v1/documents              List company documents (paginated)
+GET    /api/v1/documents/{id}         Get document details
+DELETE /api/v1/documents/{id}         Delete document
+
+POST   /api/v1/advisor/query          RAG query → answer with sources
+POST   /api/v1/advisor/stream         Streaming query (SSE)
+POST   /api/v1/chatbot/message        Multi-turn conversation
+GET    /api/v1/chatbot/sessions       List conversation history
+
+GET    /api/v1/analytics/dashboard    KPI dashboard
+GET    /api/v1/analytics/compliance   Compliance gap report
+POST   /api/v1/analytics/export/pdf   Export report as PDF
+POST   /api/v1/analytics/export/excel Export report as Excel
+
+GET    /api/v1/notifications          List notifications
+PUT    /api/v1/notifications/{id}/read  Mark as read
+
+GET    /api/v1/companies/me           Get company profile
+PUT    /api/v1/companies/me           Update company profile
+GET    /api/v1/companies/members      List team members
+POST   /api/v1/companies/invite       Invite a team member
+```
+
+---
+
+## 🔐 Security
+
+- **JWT authentication** — access tokens (30 min) + refresh tokens (7 days) with Redis blacklist
+- **bcrypt password hashing** — with 12 rounds
+- **Multi-tenant isolation** — every DB query is scoped to `company_id`; cross-tenant access is impossible
+- **Rate limiting** — per-IP, configurable via `ENABLE_RATE_LIMITING`
+- **Security headers** — HSTS, X-Frame-Options, CSP, X-Content-Type-Options
+- **Request ID tracing** — `X-Request-ID` on every response for audit trail
+- **Role-based access control** — `SUPER_ADMIN > ADMIN > MANAGER > EMPLOYEE`
+- **Audit log** — every data mutation logged with user ID and timestamp
+- **CORS** — configurable allowed origins list
+- **TLS in production** — Nginx SSL termination (see `docker-compose.prod.yml`)
+
+---
+
+## 🌍 Compliance Jurisdictions
+
+Built-in compliance rules are seeded automatically at startup for:
+
+| Country | Rules include |
+|---------|--------------|
+| 🇷🇼 Rwanda | RRA VAT, CIT, PAYE, RSSB social security |
+| 🇰🇪 Kenya | KRA VAT, NSSF, NHIF, PAYE |
+| 🇳🇬 Nigeria | FIRS CIT, VAT, PENCOM, NSITF, ITF |
+| 🇿🇦 South Africa | SARS VAT, PAYE, UIF, SDL |
+| 🇫🇷 France | TVA, IS, charges sociales, URSSAF |
+| 🇺🇸 USA | Federal/state tax, EIN, payroll |
+| 🇪🇺 EU/GDPR | Data protection, consent, DPA |
+
+Rules are managed via the admin API and can be extended for any jurisdiction.
+
+---
+
+## 🧑‍💻 Development Setup (without Docker)
+
+If you prefer to run services individually:
+
+```bash
+# 1. Python environment
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Download NLP models
+python -m spacy download en_core_web_sm
+
+# 3. Run DB migrations
 alembic upgrade head
-```
 
-### Running with Docker
+# 4. Start the API
+uvicorn app.main:app --reload --port 8000
 
-```bash
-docker-compose up -d
-```
-
-### Running Locally
-
-Terminal 1 - API Server:
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Terminal 2 - Celery Worker:
-```bash
+# 5. Start Celery worker (in separate terminal)
 celery -A app.core.celery_app worker --loglevel=info
-```
 
-Terminal 3 - Celery Beat:
-```bash
+# 6. Start Celery Beat scheduler (in separate terminal)
 celery -A app.core.celery_app beat --loglevel=info
+
+# 7. Start frontend (in separate terminal)
+cd frontend && npm install && npm run dev
 ```
 
-Terminal 4 - Flower (optional):
-```bash
-celery -A app.core.celery_app flower --port=5555
-```
+---
 
-## 📡 API Documentation
-
-Once running, visit:
-- **Swagger UI**: http://localhost:8000/api/v1/docs
-- **ReDoc**: http://localhost:8000/api/v1/redoc
-- **Postman Collection**: Import `postman_collection.json`
-
-### Quick API Test
+## 🧪 Tests
 
 ```bash
-# 1. Import Postman collection
-postman_collection.json
+# Run all tests
+pytest
 
-# 2. Or use curl
-curl -X POST "http://localhost:8000/api/v1/auth/login?email=admin@test.com&password=Test123!"
+# With coverage report
+pytest --cov=app --cov-report=html
+
+# Run only fast unit tests
+pytest -m "not integration"
 ```
 
-## Project Structure
+---
 
-```
-app/
-├── api/
-│   └── v1/
-│       ├── endpoints/      # API routes
-│       └── router.py
-├── core/                   # Core configs
-│   ├── config.py
-│   ├── database.py
-│   ├── security.py
-│   ├── redis.py
-│   └── celery_app.py
-├── models/                 # SQLAlchemy models
-├── schemas/                # Pydantic schemas
-├── services/               # Business logic
-│   ├── ai_service.py
-│   ├── s3_service.py
-│   └── document_processor.py
-├── tasks/                  # Celery tasks
-└── main.py                 # FastAPI app
+## 🐳 Production Deployment
+
+```bash
+# Uses Nginx, production-grade Postgres settings, no hot-reload
+docker compose -f docker-compose.prod.yml up --build -d
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
-## Key Endpoints
-
-### Authentication
-- `POST /api/v1/auth/register` - Register user
-- `POST /api/v1/auth/login` - Login
-
-### Documents
-- `POST /api/v1/documents/upload` - Upload document
-- `GET /api/v1/documents/` - List documents
-- `GET /api/v1/documents/{id}` - Get document
-- `DELETE /api/v1/documents/{id}` - Delete document
-
-### AI Advisor
-- `POST /api/v1/advisor/ask` - Ask natural language question
-- `POST /api/v1/advisor/summarize` - Generate document summary
-
-### ML Models
-- `POST /api/v1/ml/train` - Train custom model
-- `GET /api/v1/ml/models` - Get model status
-
-### Knowledge Base
-- `GET /api/v1/knowledge/` - Get knowledge entries
-- `POST /api/v1/knowledge/search` - Search knowledge base
-
-## 🔄 System Architecture & Real-Time Flow
-
-```mermaid
-flowchart TB
-    subgraph Client["👤 Client Layer"]
-        Web[Web App]
-        Mobile[Mobile App]
-        API_Client[API Client]
-    end
-
-    subgraph Gateway["🚪 API Gateway"]
-        FastAPI[FastAPI Server]
-        Auth[JWT Auth]
-        CORS[CORS Middleware]
-    end
-
-    subgraph Processing["⚙️ Processing Layer"]
-        Upload[Document Upload]
-        Classify[AI Classification]
-        Extract[Text Extraction]
-        Embed[Generate Embeddings]
-        Store[Store Metadata]
-    end
-
-    subgraph Background["🔄 Background Tasks"]
-        Celery[Celery Worker]
-        Beat[Celery Beat]
-        Queue[Redis Queue]
-    end
-
-    subgraph AI["🤖 AI Services"]
-        Groq[Groq Llama 3.1 70B]
-        Embeddings[Text Embeddings]
-        Custom[Custom ML Models]
-    end
-
-    subgraph Storage["💾 Data Layer"]
-        Postgres[(PostgreSQL + pgvector)]
-        Redis_Cache[(Redis Cache)]
-        S3[(AWS S3)]
-    end
-
-    subgraph Notifications["🔔 Notifications"]
-        Email[Email Alerts]
-        WebSocket[Real-time Updates]
-        Push[Push Notifications]
-    end
-
-    Client --> FastAPI
-    FastAPI --> Auth
-    Auth --> CORS
-    CORS --> Upload
-    
-    Upload --> Queue
-    Queue --> Celery
-    
-    Celery --> Extract
-    Extract --> Classify
-    Classify --> Groq
-    Classify --> Custom
-    
-    Groq --> Embed
-    Embed --> Embeddings
-    Embeddings --> Store
-    
-    Store --> Postgres
-    Store --> S3
-    FastAPI --> Redis_Cache
-    
-    Beat --> Celery
-    Celery --> Notifications
-    Notifications --> Email
-    Notifications --> WebSocket
-    
-    Postgres -.->|Vector Search| FastAPI
-    Redis_Cache -.->|Cache Hit| FastAPI
-
-    style Client fill:#e1f5ff
-    style Gateway fill:#fff3e0
-    style Processing fill:#f3e5f5
-    style Background fill:#e8f5e9
-    style AI fill:#fce4ec
-    style Storage fill:#fff9c4
-    style Notifications fill:#e0f2f1
+For production, set these in your `.env`:
+```env
+ENVIRONMENT=production
+DEBUG=False
+SECRET_KEY="<64-char random hex>"
+DATABASE_URL="postgresql+asyncpg://user:pass@your-db-host/sme_kb"
 ```
 
-### Real-Time Data Flow
-
-#### 1️⃣ Document Upload Flow (Real-Time)
-```
-User Uploads Document
-    ↓ (< 1s)
-Validate & Create Record
-    ↓ (< 1s)
-Upload to S3
-    ↓ (Async)
-Celery Task Triggered
-    ↓ (2-5s)
-Extract Text (PDF/DOCX/XLSX)
-    ↓ (3-5s)
-AI Classification (Groq Llama 3.1)
-    ↓ (2-3s)
-Generate Summary
-    ↓ (5-10s)
-Extract Knowledge (Obligations/Risks)
-    ↓ (2-3s)
-Generate Embeddings (1536 dims)
-    ↓ (1s)
-Store in PostgreSQL + pgvector
-    ↓
-✅ Document Ready for Search
-```
-**Total Time**: 15-30 seconds
-
-#### 2️⃣ AI Advisor Query Flow (Real-Time)
-```
-User Asks Question
-    ↓ (< 1s)
-Generate Query Embedding
-    ↓ (< 1s)
-Vector Similarity Search (pgvector)
-    ↓ (< 500ms)
-Retrieve Top K Relevant Entries
-    ↓ (2-3s)
-Groq Llama 3.1 Generates Answer
-    ↓ (< 1s)
-Return Response with Sources
-```
-**Total Time**: 3-5 seconds
-
-#### 3️⃣ Scheduled Notifications (Background)
-```
-Celery Beat (Every Hour)
-    ↓
-Check Compliance Deadlines
-    ↓
-Query Knowledge Entries
-    ↓
-Find Upcoming Deadlines (< 7 days)
-    ↓
-Create Notifications
-    ↓
-Send Email Alerts
-    ↓
-Update User Dashboard
-```
-
-### Performance Metrics
-
-| Operation | Response Time | Throughput |
-|-----------|--------------|------------|
-| User Login | < 200ms | 1000 req/s |
-| Document Upload | < 1s | 100 req/s |
-| Document Processing | 15-30s | 50 docs/min |
-| AI Query | 3-5s | 200 req/s |
-| Vector Search | < 500ms | 500 req/s |
-| Cache Hit | < 50ms | 5000 req/s |
-
-### Scalability
-
-- **Horizontal Scaling**: Add more FastAPI instances behind load balancer
-- **Worker Scaling**: Scale Celery workers independently (10-100+ workers)
-- **Database**: Read replicas for queries, master for writes
-- **Cache**: Redis cluster for distributed caching
-- **Storage**: S3 auto-scales infinitely
-
-## 🔐 Security Features
-
-- JWT authentication with refresh tokens
-- Password hashing with bcrypt
-- Role-based access control
-- Multi-tenant data isolation
-- Audit logging
-- CORS protection
-
-## 🤖 Custom AI Model Training
-
-This project supports training custom AI models for:
-
-- **Document Classification** - Train on your specific document types
-- **Risk Assessment** - Custom risk scoring models
-- **Entity Extraction** - Domain-specific entity recognition
-- **Compliance Prediction** - Predict compliance issues
-
-### Training Your Models
-
-```python
-# Example: Train custom document classifier
-from app.services.ml_service import train_classifier
-
-# Prepare your training data
-training_data = [
-    {"text": "...", "label": "contract"},
-    {"text": "...", "label": "invoice"},
-]
-
-# Train model
-model = train_classifier(training_data)
-model.save("models/custom_classifier.pkl")
-```
-
-See `docs/MODEL_TRAINING.md` for detailed instructions.
-
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make your changes and add tests
+4. Ensure `pytest` passes
+5. Submit a pull request to `develop`
 
-## 📧 Contact
+---
 
-For questions or support, please open an issue on GitHub.
+## 📄 License
+
+[MIT License](LICENSE) — free for personal and commercial use.
 
 ---
 
 <div align="center">
-
-**Built with ❤️ for SMEs worldwide**
-
-[![Made with Python](https://img.shields.io/badge/Made%20with-Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Powered by FastAPI](https://img.shields.io/badge/Powered%20by-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![AI by OpenAI](https://img.shields.io/badge/AI%20by-OpenAI-412991?logo=openai&logoColor=white)](https://openai.com/)
-
+  <p>
+    Built with ❤️ for African SMEs ·
+    <a href="https://github.com/manziosee/AI-Powered-SME-Knowledge-Base-Auto-Advisor/issues">Report a Bug</a> ·
+    <a href="mailto:hello@advisorai.app">Contact</a>
+  </p>
 </div>

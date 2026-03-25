@@ -6,9 +6,9 @@ import { DEMO_USERS } from "@/lib/mock-data";
 import Button from "@/components/ui/Button";
 
 const roleColors: Record<string, string> = {
-  Admin:    "text-white/80 bg-white/10 border-white/20",
-  Manager:  "text-white/60 bg-white/6  border-white/12",
-  Employee: "text-white/40 bg-white/3  border-white/8",
+  Admin:    "text-violet-300 bg-violet-500/12 border-violet-500/30",
+  Manager:  "text-cyan-300   bg-cyan-500/10   border-cyan-500/25",
+  Employee: "text-blue-300   bg-blue-500/8    border-blue-500/20",
 };
 
 export default function CompanyPage() {
@@ -28,7 +28,7 @@ export default function CompanyPage() {
       {/* Company profile card */}
       <div className="p-6 rounded-2xl bg-white/3 border border-white/10 mb-6">
         <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-white/8 flex items-center justify-center text-white">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/12 border border-cyan-500/25 flex items-center justify-center text-cyan-400">
             <Building2 size={28} />
           </div>
           <div className="flex-1">
@@ -36,11 +36,11 @@ export default function CompanyPage() {
             <p className="text-white/40 text-sm mt-0.5">Professional Services · Rwanda</p>
             <div className="flex flex-wrap gap-4 mt-4">
               {[
-                { icon: Globe,  label: "Kigali, Rwanda"   },
-                { icon: Users,  label: "18 employees"     },
-                { icon: Shield, label: "94% compliant"    },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-1.5 text-white/40 text-xs">
+                { icon: Globe,  label: "Kigali, Rwanda", color: "text-blue-400/70"    },
+                { icon: Users,  label: "18 employees",   color: "text-cyan-400/70"    },
+                { icon: Shield, label: "94% compliant",  color: "text-emerald-400/80" },
+              ].map(({ icon: Icon, label, color }) => (
+                <div key={label} className={`flex items-center gap-1.5 text-xs ${color}`}>
                   <Icon size={12} /> {label}
                 </div>
               ))}

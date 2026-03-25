@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 export const metadata: Metadata = {
   title: {
@@ -13,14 +14,14 @@ export const metadata: Metadata = {
     "LangChain RAG", "business advisor", "compliance software",
     "Africa SME", "automated compliance",
   ],
-  authors: [{ name: "AdvisorAI" }],
-  creator: "AdvisorAI",
+  authors:  [{ name: "AdvisorAI" }],
+  creator:  "AdvisorAI",
   openGraph: {
     type:        "website",
     locale:      "en_US",
     url:         "https://advisorai.app",
     title:       "AdvisorAI — AI Knowledge Base & Auto Advisor for SMEs",
-    description: "Upload documents. Ask questions. Stay compliant. Powered by Groq and LangChain.",
+    description: "Upload documents. Ask questions. Stay compliant.",
     siteName:    "AdvisorAI",
   },
   twitter: {
@@ -29,27 +30,23 @@ export const metadata: Metadata = {
     description: "AI-powered document search, compliance alerts, and business advisor.",
     creator:     "@advisorai",
   },
-  robots: {
-    index:  true,
-    follow: true,
-    googleBot: { index: true, follow: true },
-  },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
-  colorScheme: "dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)",  color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#f8f9fa" },
+  ],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-ink text-ash antialiased">
-        {children}
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="antialiased">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

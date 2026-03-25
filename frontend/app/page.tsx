@@ -11,7 +11,7 @@ import CTA       from "@/components/sections/CTA";
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-ink noise">
+    <main className="min-h-screen bg-[var(--bg)]">
       <Navbar />
       <Hero />
       <LogoTicker />

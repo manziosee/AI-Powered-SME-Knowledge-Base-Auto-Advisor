@@ -17,8 +17,8 @@ export default function CompanyPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Company</h1>
-          <p className="text-white/40 text-sm mt-0.5">Manage your organisation profile</p>
+          <h1 className="text-2xl font-bold text-[var(--fg)]">Company</h1>
+          <p className="text-[var(--fg-muted)] text-sm mt-0.5">Manage your organisation profile</p>
         </div>
         <Button variant="primary" size="sm">
           <Plus size={13} /> Invite member
@@ -26,19 +26,19 @@ export default function CompanyPage() {
       </div>
 
       {/* Company profile card */}
-      <div className="p-6 rounded-2xl bg-white/3 border border-white/10 mb-6">
+      <div className="p-6 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)] mb-6">
         <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-cyan-500/12 border border-cyan-500/25 flex items-center justify-center text-cyan-400">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/12 border border-cyan-500/25 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
             <Building2 size={28} />
           </div>
           <div className="flex-1">
-            <h2 className="text-white text-xl font-bold">TechVentures RW</h2>
-            <p className="text-white/40 text-sm mt-0.5">Professional Services · Rwanda</p>
+            <h2 className="text-[var(--fg)] text-xl font-bold">TechVentures RW</h2>
+            <p className="text-[var(--fg-muted)] text-sm mt-0.5">Professional Services · Rwanda</p>
             <div className="flex flex-wrap gap-4 mt-4">
               {[
-                { icon: Globe,  label: "Kigali, Rwanda", color: "text-blue-400/70"    },
-                { icon: Users,  label: "18 employees",   color: "text-cyan-400/70"    },
-                { icon: Shield, label: "94% compliant",  color: "text-emerald-400/80" },
+                { icon: Globe,  label: "Kigali, Rwanda", color: "text-blue-600 dark:text-blue-400/70"    },
+                { icon: Users,  label: "18 employees",   color: "text-cyan-600 dark:text-cyan-400/70"    },
+                { icon: Shield, label: "94% compliant",  color: "text-emerald-600 dark:text-emerald-400/80" },
               ].map(({ icon: Icon, label, color }) => (
                 <div key={label} className={`flex items-center gap-1.5 text-xs ${color}`}>
                   <Icon size={12} /> {label}
@@ -50,16 +50,16 @@ export default function CompanyPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-px bg-white/8 rounded-xl overflow-hidden mt-6">
+        <div className="grid grid-cols-4 gap-px bg-[var(--border)] rounded-xl overflow-hidden mt-6">
           {[
             { label: "Documents",    value: "1,248" },
             { label: "Team members", value: "18"    },
             { label: "Integrations", value: "3"     },
             { label: "On plan",      value: "Growth" },
           ].map((s) => (
-            <div key={s.label} className="bg-ink px-4 py-3">
-              <p className="text-white font-black text-xl">{s.value}</p>
-              <p className="text-white/35 text-xs mt-0.5">{s.label}</p>
+            <div key={s.label} className="bg-[var(--bg-soft)] px-4 py-3">
+              <p className="text-[var(--fg)] font-black text-xl">{s.value}</p>
+              <p className="text-[var(--fg-muted)] text-xs mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
@@ -67,9 +67,9 @@ export default function CompanyPage() {
 
       {/* Team members */}
       <div>
-        <h3 className="text-white font-semibold mb-4">Team Members</h3>
-        <div className="rounded-2xl border border-white/8 overflow-hidden">
-          <div className="grid grid-cols-12 px-5 py-3 bg-white/3 border-b border-white/8 text-white/30 text-xs uppercase tracking-wide">
+        <h3 className="text-[var(--fg)] font-semibold mb-4">Team Members</h3>
+        <div className="rounded-2xl border border-[var(--border)] overflow-hidden">
+          <div className="grid grid-cols-12 px-5 py-3 bg-[var(--bg-soft)] border-b border-[var(--border)] text-[var(--fg-muted)] text-xs uppercase tracking-wide">
             <div className="col-span-5">Member</div>
             <div className="col-span-3">Role</div>
             <div className="col-span-3">Company</div>
@@ -81,16 +81,16 @@ export default function CompanyPage() {
             role: "Employee", company: "TechVentures RW", avatar: "EH", country: "Rwanda", password: "",
           }].map((user, i, arr) => (
             <div key={user.id}
-              className={`grid grid-cols-12 px-5 py-4 items-center hover:bg-white/3 transition-all ${
-                i < arr.length - 1 ? "border-b border-white/5" : ""
+              className={`grid grid-cols-12 px-5 py-4 items-center hover:bg-[var(--surface-hover)] transition-all ${
+                i < arr.length - 1 ? "border-b border-[var(--border)]" : ""
               }`}>
               <div className="col-span-5 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 font-bold text-sm">
+                <div className="w-9 h-9 rounded-full bg-[var(--bg-muted)] flex items-center justify-center text-[var(--fg-muted)] font-bold text-sm">
                   {user.avatar}
                 </div>
                 <div>
-                  <p className="text-white/80 text-sm font-medium">{user.name}</p>
-                  <p className="text-white/30 text-xs">{user.email}</p>
+                  <p className="text-[var(--fg)] text-sm font-medium">{user.name}</p>
+                  <p className="text-[var(--fg-muted)] text-xs">{user.email}</p>
                 </div>
               </div>
               <div className="col-span-3">
@@ -98,9 +98,9 @@ export default function CompanyPage() {
                   {user.role}
                 </span>
               </div>
-              <div className="col-span-3 text-white/40 text-sm">{user.company}</div>
+              <div className="col-span-3 text-[var(--fg-muted)] text-sm">{user.company}</div>
               <div className="col-span-1 flex justify-end">
-                <button className="p-1.5 rounded-lg hover:bg-white/10 text-white/25 hover:text-white transition-all">
+                <button className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-all" title="More options">
                   <MoreHorizontal size={14} />
                 </button>
               </div>

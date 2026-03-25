@@ -45,10 +45,10 @@ export default function DocumentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Documents</h1>
-          <p className="text-white/40 text-sm mt-0.5">{DOCUMENTS.length} documents · 95% processed</p>
+          <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Documents</h1>
+          <p className="text-[var(--fg-muted)] text-sm mt-0.5">{DOCUMENTS.length} documents · 95% processed</p>
         </div>
-        <Button variant="primary" size="sm">
+        <Button variant="primary" size="sm" className="hover:scale-105 transition-transform duration-300">
           <Upload size={14} /> Upload documents
         </Button>
       </div>
@@ -58,31 +58,31 @@ export default function DocumentsPage() {
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); }}
-        className={`mb-6 border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
-          dragging ? "border-violet-500/60 bg-violet-500/8" : "border-white/10 bg-white/2 hover:border-violet-500/30 hover:bg-violet-500/4"
+        className={`mb-6 border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
+          dragging ? "border-violet-500/60 bg-violet-500/8 scale-105" : "border-[var(--border)] bg-[var(--surface)] hover:border-violet-500/30 hover:bg-violet-500/4 hover:scale-[1.02]"
         }`}
       >
-        <Upload size={24} className={`mx-auto mb-3 transition-colors ${dragging ? "text-violet-400" : "text-white/30"}`} />
-        <p className="text-white/50 text-sm font-medium">Drag &amp; drop documents here</p>
-        <p className="text-white/25 text-xs mt-1">PDF, Word, Excel, TXT — up to 50 MB each</p>
+        <Upload size={24} className={`mx-auto mb-3 transition-colors duration-300 ${dragging ? "text-violet-400 scale-110" : "text-[var(--fg-muted)]"}`} />
+        <p className="text-[var(--fg-soft)] text-sm font-medium">Drag &amp; drop documents here</p>
+        <p className="text-[var(--fg-muted)] text-xs mt-1">PDF, Word, Excel, TXT — up to 50 MB each</p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-5">
         <div className="relative flex-1 max-w-sm">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--fg-muted)]" />
           <input
             type="text" value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search documents…"
-            className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white/80 placeholder-white/25 text-sm focus:outline-none focus:border-white/25 transition-all"
+            className="w-full pl-9 pr-4 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--fg)] placeholder-[var(--fg-muted)] text-sm focus:outline-none focus:border-violet-500/50 focus:bg-violet-500/5 transition-all duration-300"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter size={14} className="text-white/30" />
+          <Filter size={14} className="text-[var(--fg-muted)]" />
           {["all","contract","invoice","tax_document","compliance","hr_document"].map((t) => (
             <button key={t} onClick={() => setType(t)}
-              className={`px-3 py-1.5 rounded-full text-xs transition-all ${
-                typeFilter === t ? "bg-white text-black font-semibold" : "bg-white/5 border border-white/10 text-white/40 hover:text-white hover:border-white/25"
+              className={`px-3 py-1.5 rounded-full text-xs transition-all duration-300 hover:scale-105 ${
+                typeFilter === t ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/30" : "bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/30"
               }`}>
               {t === "all" ? "All" : t.replace("_", " ")}
             </button>
@@ -91,9 +91,9 @@ export default function DocumentsPage() {
       </div>
 
       {/* Document table */}
-      <div className="rounded-2xl border border-white/8 overflow-hidden">
+      <div className="rounded-2xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
         {/* Table header */}
-        <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-white/3 border-b border-white/8 text-white/35 text-xs uppercase tracking-wide">
+        <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-[var(--bg-muted)] border-b border-[var(--border)] text-[var(--fg-muted)] text-xs uppercase tracking-wide font-semibold">
           <div className="col-span-5">Name</div>
           <div className="col-span-2">Type</div>
           <div className="col-span-1">Risk</div>
@@ -104,46 +104,46 @@ export default function DocumentsPage() {
 
         {filtered.map((doc, i) => (
           <div key={doc.id}
-            className={`grid grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-white/3 transition-all cursor-pointer group ${
-              i < filtered.length - 1 ? "border-b border-white/5" : ""
+            className={`grid grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-[var(--bg-soft)] transition-all duration-300 cursor-pointer group hover:scale-[1.01] ${
+              i < filtered.length - 1 ? "border-b border-[var(--border)]" : ""
             }`}>
             {/* Name */}
             <div className="col-span-5 flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-white/6 flex items-center justify-center flex-shrink-0">
-                <FileText size={14} className="text-white/50" />
+              <div className="w-8 h-8 rounded-lg bg-[var(--surface-hover)] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <FileText size={14} className="text-[var(--fg-muted)] group-hover:text-violet-500 transition-colors" />
               </div>
               <div className="min-w-0">
-                <p className="text-white/80 text-sm font-medium truncate">{doc.name}</p>
-                <p className="text-white/25 text-[11px] mt-0.5">{doc.uploadedAt} · {doc.uploadedBy}</p>
+                <p className="text-[var(--fg-soft)] text-sm font-medium truncate">{doc.name}</p>
+                <p className="text-[var(--fg-muted)] text-[11px] mt-0.5">{doc.uploadedAt} · {doc.uploadedBy}</p>
               </div>
             </div>
 
             {/* Type */}
             <div className="col-span-2">
-              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${typeColors[doc.type] || "text-white/40 bg-white/4"}`}>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105 ${typeColors[doc.type] || "text-[var(--fg-muted)] bg-[var(--surface)]"}`}>
                 {doc.type.replace("_", " ")}
               </span>
             </div>
 
             {/* Risk */}
             <div className="col-span-1">
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${riskColors[doc.risk]}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-all duration-300 hover:scale-105 ${riskColors[doc.risk]}`}>
                 {doc.risk}
               </span>
             </div>
 
             {/* Status */}
-            <div className="col-span-2 flex items-center gap-1.5 text-white/50 text-xs">
-              {statusIcon[doc.status]}
-              <span className="capitalize">{doc.status}</span>
+            <div className="col-span-2 flex items-center gap-1.5 text-[var(--fg-muted)] text-xs">
+              <div className="transition-transform duration-300 group-hover:scale-110">{statusIcon[doc.status]}</div>
+              <span className="capitalize group-hover:text-[var(--fg-soft)] transition-colors">{doc.status}</span>
             </div>
 
             {/* Size */}
-            <div className="col-span-1 text-white/30 text-xs">{doc.size}</div>
+            <div className="col-span-1 text-[var(--fg-muted)] text-xs group-hover:text-[var(--fg-soft)] transition-colors">{doc.size}</div>
 
             {/* Actions */}
-            <div className="col-span-1 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-              <button className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-all">
+            <div className="col-span-1 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <button className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-all duration-300 hover:scale-110" title="More options">
                 <MoreHorizontal size={14} />
               </button>
             </div>
@@ -151,7 +151,7 @@ export default function DocumentsPage() {
         ))}
 
         {filtered.length === 0 && (
-          <div className="py-16 text-center text-white/25 text-sm">
+          <div className="py-16 text-center text-[var(--fg-muted)] text-sm">
             No documents match your search.
           </div>
         )}

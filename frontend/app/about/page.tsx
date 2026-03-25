@@ -63,12 +63,12 @@ export default function AboutPage() {
       {/* Values */}
       <section className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--fg)] text-center mb-12">What we stand for</h2>
+          <h2 className="text-3xl font-black text-[var(--fg)] text-center mb-12 tracking-tight">What we stand for</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {values.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="p-6 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)] hover:border-violet-500/30 transition-all">
-                <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4">
-                  <Icon size={18} className="text-violet-500" />
+              <div key={title} className="p-6 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)] hover:border-violet-500/30 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
+                <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Icon size={18} className="text-violet-500 group-hover:rotate-12 transition-transform" />
                 </div>
                 <h3 className="text-[var(--fg)] font-semibold mb-2">{title}</h3>
                 <p className="text-[var(--fg-muted)] text-sm leading-relaxed">{desc}</p>
@@ -81,16 +81,16 @@ export default function AboutPage() {
       {/* Team */}
       <section className="py-24 px-6 bg-[var(--bg-soft)] border-t border-[var(--border)]">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-[var(--fg)] mb-4">Meet the team</h2>
+          <h2 className="text-3xl font-black text-[var(--fg)] mb-4 tracking-tight">Meet the team</h2>
           <p className="text-[var(--fg-muted)] mb-12">A small team of builders obsessed with making compliance painless.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {team.map((m) => (
-              <div key={m.name} className="flex flex-col items-center gap-3">
-                <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center font-black text-xl ${m.color}`}>
+              <div key={m.name} className="flex flex-col items-center gap-3 group">
+                <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center font-black text-xl ${m.color} group-hover:scale-110 transition-transform duration-300`}>
                   {m.avatar}
                 </div>
                 <div>
-                  <p className="text-[var(--fg)] font-semibold text-sm">{m.name}</p>
+                  <p className="text-[var(--fg)] font-semibold text-sm group-hover:text-violet-500 transition-colors">{m.name}</p>
                   <p className="text-[var(--fg-muted)] text-xs mt-0.5">{m.role}</p>
                 </div>
               </div>

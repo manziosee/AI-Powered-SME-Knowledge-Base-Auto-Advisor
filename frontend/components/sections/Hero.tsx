@@ -58,31 +58,25 @@ export default function Hero() {
           transition={{ duration: 0.6 }}
           className="group"
         >
-          <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-cyan-500/10 backdrop-blur-sm text-violet-300 text-xs font-bold tracking-wide shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] hover:scale-105 transition-all duration-300">
-            <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-            <Sparkles size={12} className="text-violet-300 group-hover:rotate-12 transition-transform" />
-            <span className="bg-gradient-to-r from-violet-300 to-cyan-300 bg-clip-text text-transparent">Powered by Groq · LangChain · pgvector</span>
+          <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-violet-500/35 bg-violet-500/8 backdrop-blur-sm text-xs font-bold tracking-wide shadow-[0_0_20px_rgba(124,58,237,0.18)] hover:shadow-[0_0_30px_rgba(124,58,237,0.35)] hover:scale-105 transition-all duration-300">
+            <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+            <Sparkles size={12} className="text-violet-500 group-hover:rotate-12 transition-transform" />
+            <span className="text-violet-700 dark:text-violet-300">Powered by Groq · LangChain · pgvector</span>
           </div>
         </motion.div>
 
-        {/* Headline — Enhanced PayView inspired layout */}
+        {/* Headline */}
         <motion.div
           initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1 }}
           className="flex flex-col items-center"
         >
-          <div className="relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-violet-600/20 to-cyan-600/20 rounded-3xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity" />
-            <span className="relative text-xl md:text-2xl font-bold mb-3 tracking-wide bg-gradient-to-r from-violet-300 to-cyan-300 bg-clip-text text-transparent block">
-              Payview, a Versatile and Cutting Edge
-            </span>
-          </div>
           <h1 className="text-6xl sm:text-7xl md:text-[6.5rem] font-black leading-[1.0] tracking-tight text-balance">
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-cyan-400 drop-shadow-2xl mb-2">
-              Featured SaaS Built
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-purple-500 to-cyan-600 dark:from-violet-400 dark:via-purple-400 dark:to-cyan-400 drop-shadow-2xl mb-2">
+              Your Business,
             </span>
-            <span className="block text-[var(--fg)] hover:text-violet-400 transition-colors duration-300">for Task Management</span>
+            <span className="block text-[var(--fg)]">Always Compliant.</span>
           </h1>
           <div className="mt-4 flex items-center gap-2 text-sm text-[var(--fg-muted)]">
             <div className="flex -space-x-1">

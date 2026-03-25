@@ -8,22 +8,23 @@
 :root {
   --font-inter: 'Inter', system-ui, sans-serif;
 
-  /* Light mode - Very soft, eye-friendly colors */
-  --bg:           #f5f5f0;  /* Much softer, darker cream */
-  --bg-soft:      #f0f0ea;  /* Even softer */
-  --bg-muted:     #f2f2ec;  /* Warm muted background */
-  --fg:           #3d3d3d;  /* Softer, darker text */
-  --fg-soft:      #4d4d4d;  /* Comfortable secondary text */
-  --fg-muted:     #7a7a7a;  /* Muted text */
-  --border:       #ddd8d3;  /* Softer borders */
-  --border-soft:  #e8e8e3;  /* Soft borders */
-  --surface:      #f8f8f3;  /* Warm surface */
-  --surface-hover:#f0f0ea;  /* Warm hover state */
-  --scrollbar-bg: #f2f2ec;
-  --scrollbar-thumb: #c1c7cd;
-  --dot-color: rgba(0,0,0,0.04);
-  --grid-color: rgba(0,0,0,0.03);
-  --hero-glow: rgba(124,58,237,0.05);
+  /* Light mode — warm amber/parchment, easy on the eyes */
+  --bg:           #ede7da;  /* warm parchment — like afternoon sun on paper     */
+  --bg-soft:      #e6dfd2;  /* slightly deeper warm sand                        */
+  --bg-muted:     #e9e3d7;  /* warm muted background                            */
+  --fg:           #1a1714;  /* deep warm charcoal — strong but not harsh black  */
+  --fg-bold:      #100e0b;  /* near-black for bold headings                     */
+  --fg-soft:      #2e2b24;  /* warm dark secondary text                         */
+  --fg-muted:     #7a7060;  /* warm muted brown-grey                            */
+  --border:       #cdc5b4;  /* warm tan border                                  */
+  --border-soft:  #d8d0c2;  /* softer warm border                               */
+  --surface:      #f2ece2;  /* warm card surface — lighter than bg              */
+  --surface-hover:#ebe5da;  /* warm hover state                                 */
+  --scrollbar-bg: #e6dfd2;
+  --scrollbar-thumb: #b8b0a0;
+  --dot-color: rgba(60,45,20,0.06);
+  --grid-color: rgba(60,45,20,0.04);
+  --hero-glow: rgba(124,58,237,0.06);
 }
 
 .dark {
@@ -63,6 +64,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.25s ease, color 0.2s ease;
 }
+
+/* ── Light mode: bold text is visibly heavier ────────────────── */
+/* Against warm parchment, bump weights so bold text punches through */
+:root:not(.dark) .font-semibold  { font-weight: 700; }
+:root:not(.dark) .font-bold      { font-weight: 800; }
+:root:not(.dark) .font-extrabold { font-weight: 800; }
+:root:not(.dark) .font-black     { font-weight: 900; }
+:root:not(.dark) strong,
+:root:not(.dark) b               { font-weight: 800; }
+
+/* Headings in light mode: use the deep warm charcoal by default     */
+/* (overridden whenever a text-color class is present on the element) */
+:root:not(.dark) h1:not([class*="text-"]),
+:root:not(.dark) h2:not([class*="text-"]),
+:root:not(.dark) h3:not([class*="text-"]),
+:root:not(.dark) h4:not([class*="text-"]) { color: var(--fg-bold); }
 
 /* ── Scrollbar ────────────────────────────────────────────────── */
 ::-webkit-scrollbar              { width: 6px; height: 6px; }

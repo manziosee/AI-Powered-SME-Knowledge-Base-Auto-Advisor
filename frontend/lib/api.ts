@@ -1,0 +1,314 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// AdvisorAI API client — wraps the FastAPI backend at /api/v1
+// Falls back gracefully when the backend is not reachable.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API  = `${BASE}/api/v1`;
+
+// ── Auth token helpers ────────────────────────────────────────────────────────
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("access_token");
+}
+
+function saveToken(token: string) {
+  localStorage.setItem("access_token", token);
+}
+
+function clearToken() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("auth_user");
+}
+
+// ── Core fetch wrapper ────────────────────────────────────────────────────────
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  isFormData = false,
+): Promise<{ data: T | null; error: string | null }> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+
+  if (!isFormData) headers["Content-Type"] = "application/json";
+  if (token)       headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(`${API}${path}`, {
+      ...options,
+      headers: { ...headers, ...(options.headers as Record<string, string> ?? {}) },
+    });
+
+    if (res.status === 401) {
+      clearToken();
+      return { data: null, error: "Unauthorized — please log in again." };
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { data: null, error: body?.detail ?? `HTTP ${res.status}` };
+    }
+
+    const data: T = await res.json();
+    return { data, error: null };
+  } catch {
+    return { data: null, error: "Cannot reach server — is the backend running?" };
+  }
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+export const auth = {
+  async login(email: string, password: string) {
+    const form = new URLSearchParams({ username: email, password });
+    const res = await request<{ access_token: string; token_type: string }>(
+      "/auth/login",
+      { method: "POST", body: form.toString(), headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+    );
+    if (res.data?.access_token) saveToken(res.data.access_token);
+    return res;
+  },
+
+  async register(payload: {
+    email: string; password: string; full_name: string;
+    company_name?: string; country?: string;
+  }) {
+    return request<{ id: string; email: string; full_name: string }>(
+      "/auth/register",
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  },
+
+  async me() {
+    return request<{ id: string; email: string; full_name: string; role: string; company?: { name: string } }>(
+      "/auth/me",
+    );
+  },
+
+  async updateMe(payload: { full_name?: string; email?: string }) {
+    return request<{ id: string; email: string; full_name: string }>(
+      "/auth/me",
+      { method: "PATCH", body: JSON.stringify(payload) },
+    );
+  },
+
+  async changePassword(current: string, next: string) {
+    return request<{ message: string }>(
+      "/auth/change-password",
+      { method: "POST", body: JSON.stringify({ current_password: current, new_password: next }) },
+    );
+  },
+
+  logout() {
+    clearToken();
+  },
+};
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+export interface ApiDocument {
+  id: string;
+  name: string;
+  type: string;
+  risk_level: string;
+  status: string;
+  file_size: number;
+  created_at: string;
+  uploaded_by?: string;
+}
+
+export const documents = {
+  async list(params?: { search?: string; type?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set("search", params.search);
+    if (params?.type && params.type !== "all") qs.set("type", params.type);
+    return request<ApiDocument[]>(`/documents/?${qs}`);
+  },
+
+  async upload(file: File, onProgress?: (pct: number) => void) {
+    const form = new FormData();
+    form.append("file", file);
+    // Use XMLHttpRequest so we can track upload progress
+    return new Promise<{ data: ApiDocument | null; error: string | null }>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      const token = getToken();
+      xhr.open("POST", `${API}/documents/upload`);
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ data: JSON.parse(xhr.responseText) as ApiDocument, error: null });
+        } else {
+          const body = JSON.parse(xhr.responseText || "{}") as { detail?: string };
+          resolve({ data: null, error: body.detail ?? `Upload failed (${xhr.status})` });
+        }
+      };
+      xhr.onerror = () => resolve({ data: null, error: "Network error during upload" });
+      xhr.send(form);
+    });
+  },
+
+  async getDownloadUrl(id: string) {
+    return request<{ url: string }>(`/documents/${id}/download`);
+  },
+
+  async delete(id: string) {
+    return request<{ message: string }>(`/documents/${id}`, { method: "DELETE" });
+  },
+};
+
+// ── Advisor (RAG chat) ────────────────────────────────────────────────────────
+export interface AskResponse {
+  answer: string;
+  sources?: Array<{ document_name: string; chunk: string; score: number }>;
+  session_id?: string;
+}
+
+export const advisor = {
+  async ask(question: string, sessionId?: string) {
+    return request<AskResponse>("/advisor/ask", {
+      method: "POST",
+      body: JSON.stringify({ question, session_id: sessionId }),
+    });
+  },
+};
+
+// ── Chatbot sessions ──────────────────────────────────────────────────────────
+export interface ChatSession { id: string; title: string; updated_at: string }
+export interface ChatMessage { role: "user" | "assistant"; content: string; created_at?: string }
+
+export const chatbot = {
+  async sessions() {
+    return request<ChatSession[]>("/chatbot/sessions");
+  },
+
+  async createSession(title?: string) {
+    return request<ChatSession>("/chatbot/sessions", {
+      method: "POST",
+      body: JSON.stringify({ title: title ?? "New chat" }),
+    });
+  },
+
+  async getSession(id: string) {
+    return request<{ id: string; messages: ChatMessage[] }>(`/chatbot/sessions/${id}`);
+  },
+
+  async sendMessage(sessionId: string, content: string) {
+    return request<{ message: ChatMessage; session_id: string }>(
+      `/chatbot/sessions/${sessionId}/messages`,
+      { method: "POST", body: JSON.stringify({ content }) },
+    );
+  },
+
+  async deleteSession(id: string) {
+    return request<{ message: string }>(`/chatbot/sessions/${id}`, { method: "DELETE" });
+  },
+};
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+export const analytics = {
+  async overview() {
+    return request<{
+      total_documents: number;
+      compliance_score: number;
+      total_risks: number;
+      ai_queries_today: number;
+    }>("/analytics/overview");
+  },
+
+  async exportReport(format: "pdf" | "excel") {
+    return request<{ url: string }>("/analytics/export", {
+      method: "POST",
+      body: JSON.stringify({ format }),
+    });
+  },
+};
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+export const notifications = {
+  async list() {
+    return request<Array<{ id: string; title: string; message: string; type: string; read: boolean; created_at: string }>>(
+      "/notifications/",
+    );
+  },
+
+  async markRead(id: string) {
+    return request<{ message: string }>(`/notifications/${id}/read`, { method: "PATCH" });
+  },
+
+  async markAllRead() {
+    return request<{ message: string }>("/notifications/read-all", { method: "POST" });
+  },
+};
+
+// ── Company ───────────────────────────────────────────────────────────────────
+export const company = {
+  async get() {
+    return request<{ id: string; name: string; country: string; industry?: string; employee_count?: number }>(
+      "/companies/me",
+    );
+  },
+
+  async update(payload: { name?: string; country?: string; industry?: string }) {
+    return request<{ id: string; name: string }>("/companies/me", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async users() {
+    return request<Array<{ id: string; full_name: string; email: string; role: string }>>(
+      "/companies/me/users",
+    );
+  },
+
+  async inviteUser(email: string, role: string) {
+    return request<{ message: string }>("/companies/me/invite", {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+  },
+
+  async removeUser(userId: string) {
+    return request<{ message: string }>(`/companies/me/users/${userId}`, { method: "DELETE" });
+  },
+};
+
+// ── Admin — ML Training ───────────────────────────────────────────────────────
+export interface TrainingStatus {
+  status: "idle" | "training" | "completed" | "failed";
+  model_type?: string;
+  started_at?: string;
+  completed_at?: string;
+  accuracy?: number;
+  error?: string;
+  version?: string;
+}
+
+export const admin = {
+  async mlStatus() {
+    return request<TrainingStatus>("/admin/ml/status");
+  },
+
+  async trainRiskScorer() {
+    return request<{ message: string; task_id?: string }>("/admin/ml/train-risk-scorer", {
+      method: "POST",
+    });
+  },
+
+  async predictRisk(text: string) {
+    return request<{ risk_level: string; confidence: number }>("/admin/ml/predict-risk", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+  },
+
+  async stats() {
+    return request<{
+      total_users: number;
+      total_documents: number;
+      total_companies: number;
+      ai_queries_total: number;
+    }>("/admin/stats");
+  },
+};

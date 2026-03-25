@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ReferenceLine, ComposedChart,
+  ReferenceLine, ComposedChart, RadialBarChart, RadialBar,
 } from "recharts";
 import {
   FileText, Brain, ShieldCheck, AlertTriangle,
   Activity, TrendingUp, TrendingDown, Settings2, ChevronRight,
-  Bell, Search,
+  Bell, Calendar, Clock, ArrowUpRight, Heart,
 } from "lucide-react";
 import {
   KPI_STATS, DOCUMENT_ACTIVITY, COMPLIANCE_CANDLES,
@@ -180,12 +180,55 @@ const uploadSpark = DOCUMENT_ACTIVITY.slice(-8).map((d) => ({ v: d.uploaded }));
 const riskSpark   = COMPLIANCE_CANDLES.slice(-8).map((d) => ({ v: d.close }));
 const qSpark      = QUERY_VOLUME.slice(-8).map((d) => ({ v: d.rag }));
 
+// ── Health score data types ───────────────────────────────────
+interface HealthComponent { label: string; score: number; max: number; status: string; detail: string; }
+interface HealthData {
+  score: number; grade: string; trend: string; trend_direction: string;
+  components: HealthComponent[]; recommendations: { priority: string; action: string }[];
+}
+interface ExpiryDoc {
+  id: string; filename: string; document_type: string;
+  expiry_date: string; days_until: number; overdue: boolean; status: string;
+}
+
+// Demo fallbacks
+const DEMO_HEALTH: HealthData = {
+  score: 78, grade: "C", trend: "+3", trend_direction: "up",
+  components: [
+    { label: "Document Coverage", score: 82, max: 100, status: "good",    detail: "41 documents indexed"   },
+    { label: "Processing Rate",   score: 95, max: 100, status: "good",    detail: "40/41 processed"        },
+    { label: "Document Freshness",score: 70, max: 100, status: "warning", detail: "3 documents over 1 year"},
+    { label: "Compliance Posture",score: 88, max: 100, status: "good",    detail: "2 gaps identified"      },
+  ],
+  recommendations: [
+    { priority: "medium", action: "Review 3 documents older than 1 year for renewal" },
+    { priority: "low",    action: "Upload more HR policy documents to improve coverage" },
+  ],
+};
+
+const DEMO_EXPIRY: ExpiryDoc[] = [
+  { id: "1", filename: "Service_Agreement_2024.pdf",     document_type: "contract",   expiry_date: "2026-04-10", days_until: 16,  overdue: false, status: "warning" },
+  { id: "2", filename: "Privacy_Policy_v2.docx",         document_type: "policy",     expiry_date: "2026-03-28", days_until: 3,   overdue: false, status: "urgent"  },
+  { id: "3", filename: "Compliance_Framework_2023.pdf",  document_type: "compliance", expiry_date: "2026-03-20", days_until: -5,  overdue: true,  status: "overdue" },
+  { id: "4", filename: "Employee_Handbook_2024.pdf",     document_type: "hr_document",expiry_date: "2026-06-01", days_until: 68,  overdue: false, status: "upcoming"},
+  { id: "5", filename: "Vendor_Contract_TechPro.pdf",    document_type: "contract",   expiry_date: "2026-05-15", days_until: 51,  overdue: false, status: "upcoming"},
+];
+
 /* ── Page ─────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [chartRange, setChartRange] = useState<"7d" | "14d" | "30d">("14d");
   const [showWidgetMenu, setShowWidgetMenu] = useState(false);
+  const [health, setHealth] = useState<HealthData>(DEMO_HEALTH);
+  const [expiring, setExpiring] = useState<ExpiryDoc[]>(DEMO_EXPIRY);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token") ?? "";
+    const headers = { Authorization: `Bearer ${token}` };
+    fetch("/api/v1/insights/health",  { headers }).then(r => r.json()).then(d => { if (d.score) setHealth(d); }).catch(() => {});
+    fetch("/api/v1/insights/expiry?days_ahead=90", { headers }).then(r => r.json()).then(d => { if (d.documents?.length) setExpiring(d.documents); }).catch(() => {});
+  }, []);
 
   const tickColor   = dark ? "rgba(255,255,255,0.3)"  : "rgba(0,0,0,0.45)";
   const gridColor   = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)";
@@ -280,6 +323,118 @@ export default function DashboardPage() {
           accentColor="#60a5fa" borderColor="border-blue-500/15"
           sparkData={qSpark}
         />
+      </div>
+
+      {/* ── Row: Business Health Score + Document Expiry ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+        {/* Business Health Score */}
+        <div className="p-5 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Heart size={14} className="text-rose-400" />
+              <h2 className="text-[var(--fg)] font-semibold text-sm">Business Health Score</h2>
+            </div>
+            <a href="/dashboard/analytics" className="text-[var(--fg-muted)] text-xs hover:text-violet-500 transition-colors flex items-center gap-0.5">
+              Details <ArrowUpRight size={11} />
+            </a>
+          </div>
+
+          <div className="flex items-center gap-5 mb-4">
+            {/* Radial gauge */}
+            <div className="relative w-24 h-24 flex-shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="90%"
+                  startAngle={225} endAngle={-45} data={[{ value: health.score, fill: health.score >= 80 ? "#34d399" : health.score >= 60 ? "#fbbf24" : "#fb7185" }]}>
+                  <RadialBar dataKey="value" cornerRadius={6} background={{ fill: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }} />
+                </RadialBarChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-black text-[var(--fg)] leading-none">{health.score}</span>
+                <span className="text-[10px] text-[var(--fg-muted)] font-bold">{health.grade}</span>
+              </div>
+            </div>
+
+            {/* Components */}
+            <div className="flex-1 flex flex-col gap-2">
+              {health.components.slice(0, 3).map((c) => {
+                const barW = (score: number) => {
+                  const p = Math.round(score / 5) * 5;
+                  const m: Record<number,string> = {0:"w-0",5:"w-[5%]",10:"w-[10%]",15:"w-[15%]",20:"w-1/5",25:"w-1/4",30:"w-[30%]",35:"w-[35%]",40:"w-2/5",45:"w-[45%]",50:"w-1/2",55:"w-[55%]",60:"w-3/5",65:"w-[65%]",70:"w-[70%]",75:"w-3/4",80:"w-4/5",85:"w-[85%]",90:"w-[90%]",95:"w-[95%]",100:"w-full"};
+                  return m[p] ?? "w-1/2";
+                };
+                const barBg = c.status === "good" ? "bg-emerald-400" : c.status === "warning" ? "bg-amber-400" : "bg-rose-400";
+                return (
+                  <div key={c.label}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] text-[var(--fg-muted)]">{c.label}</span>
+                      <span className="text-[10px] font-semibold text-[var(--fg)]">{c.score}</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-[var(--surface)]">
+                      <div className={`h-full rounded-full transition-all duration-700 ${barW(c.score)} ${barBg}`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          {health.recommendations.slice(0, 2).map((rec, i) => (
+            <div key={i} className={`flex items-start gap-2 p-2.5 rounded-xl text-xs mb-1.5 ${rec.priority === "high" ? "bg-rose-500/8 border border-rose-500/20" : "bg-amber-500/8 border border-amber-500/20"}`}>
+              <AlertTriangle size={11} className={rec.priority === "high" ? "text-rose-400 flex-shrink-0 mt-0.5" : "text-amber-400 flex-shrink-0 mt-0.5"} />
+              <span className="text-[var(--fg-soft)]">{rec.action}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Document Expiry Tracker */}
+        <div className="p-5 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-amber-400" />
+              <h2 className="text-[var(--fg)] font-semibold text-sm">Document Expiry Tracker</h2>
+            </div>
+            <a href="/dashboard/documents" className="text-[var(--fg-muted)] text-xs hover:text-violet-500 transition-colors flex items-center gap-0.5">
+              View all <ArrowUpRight size={11} />
+            </a>
+          </div>
+
+          <div className="flex gap-3 mb-3">
+            {[
+              { label: "Overdue",  count: expiring.filter(d => d.overdue).length,              textCls: "text-rose-400"  },
+              { label: "Urgent",   count: expiring.filter(d => d.status === "urgent").length,   textCls: "text-amber-400" },
+              { label: "Upcoming", count: expiring.filter(d => d.status === "upcoming").length, textCls: "text-blue-400"  },
+            ].map(({ label, count, textCls }) => (
+              <div key={label} className="flex-1 p-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-center">
+                <p className={`text-lg font-black ${textCls}`}>{count}</p>
+                <p className="text-[10px] text-[var(--fg-muted)]">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[168px]">
+            {expiring.slice(0, 5).map((doc) => {
+              const dotCls  = doc.overdue ? "bg-rose-400" : doc.status === "urgent" ? "bg-amber-400" : doc.status === "warning" ? "bg-orange-400" : "bg-blue-400";
+              const textCls = doc.overdue ? "text-rose-400" : doc.status === "urgent" ? "text-amber-400" : doc.status === "warning" ? "text-orange-400" : "text-blue-400";
+              return (
+                <div key={doc.id} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-all">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotCls}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-[var(--fg-soft)] font-medium truncate">{doc.filename}</p>
+                    <p className="text-[10px] text-[var(--fg-muted)]">{doc.document_type.replace("_", " ")}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-[10px] font-bold ${textCls}`}>
+                      {doc.overdue ? `${Math.abs(doc.days_until)}d ago` : `${doc.days_until}d`}
+                    </p>
+                    <p className="text-[9px] text-[var(--fg-muted)]">{doc.expiry_date}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* ── Row 1: activity + compliance candlestick ── */}

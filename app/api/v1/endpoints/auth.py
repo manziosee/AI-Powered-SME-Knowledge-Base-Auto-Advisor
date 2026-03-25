@@ -37,9 +37,15 @@ from app.schemas.user import UserCreate, UserResponse, Token
 
 router = APIRouter()
 
-RESET_TOKEN_TTL = 3600          # 1 hour
+RESET_TOKEN_TTL = 3600           # 1 hour
 REFRESH_BLACKLIST_PREFIX = "blacklist:refresh:"
 RESET_TOKEN_PREFIX = "reset:"
+
+# Account lockout after N consecutive failed logins
+LOGIN_FAIL_PREFIX = "login_fail:"
+LOGIN_LOCK_PREFIX = "login_lock:"
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_SECONDS = 15 * 60       # 15 minutes
 
 
 # ---------------------------------------------------------------------------
@@ -103,10 +109,33 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+    redis = await get_redis()
+
+    # Check account lockout before touching the DB
+    if redis:
+        lock_key = f"{LOGIN_LOCK_PREFIX}{payload.email}"
+        locked = await redis.get(lock_key)
+        if locked:
+            ttl = await redis.ttl(lock_key)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Account temporarily locked due to too many failed attempts. "
+                       f"Try again in {ttl // 60 + 1} minute(s).",
+                headers={"Retry-After": str(ttl)},
+            )
+
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(payload.password, user.hashed_password):
+        # Increment failure counter in Redis
+        if redis and user:
+            fail_key = f"{LOGIN_FAIL_PREFIX}{payload.email}"
+            count = await redis.incr(fail_key)
+            await redis.expire(fail_key, LOCKOUT_SECONDS)
+            if count >= MAX_LOGIN_ATTEMPTS:
+                await redis.setex(f"{LOGIN_LOCK_PREFIX}{payload.email}", LOCKOUT_SECONDS, "1")
+                await redis.delete(fail_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -114,6 +143,10 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Account is deactivated")
+
+    # Successful login — clear any failure counter
+    if redis:
+        await redis.delete(f"{LOGIN_FAIL_PREFIX}{payload.email}")
 
     user.last_login = datetime.utcnow()
     await db.commit()

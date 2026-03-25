@@ -1,14 +1,16 @@
 """
 Application middleware stack.
 
-1. RequestIDMiddleware   — attaches X-Request-ID to every request/response
-2. GlobalErrorHandler    — catches unhandled exceptions, returns JSON (never stack traces)
-3. RateLimitMiddleware   — sliding-window rate limiting backed by Redis
-4. SecurityHeadersMiddleware — adds security-focused HTTP response headers
+1. RequestIDMiddleware        — attaches X-Request-ID to every request/response
+2. GlobalErrorHandler         — catches unhandled exceptions, returns JSON (never stack traces)
+3. RateLimitMiddleware        — sliding-window rate limiting backed by Redis
+4. SecurityHeadersMiddleware  — adds security-focused HTTP response headers
+                                (HSTS in production, CSP with nonces, etc.)
 """
 
 import time
 import uuid
+import secrets
 import logging
 import traceback
 from typing import Callable, Optional
@@ -131,18 +133,53 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 # ---------------------------------------------------------------------------
 # 4.  Security headers  (defence-in-depth)
+#     - HSTS enabled automatically in production
+#     - Content-Security-Policy with per-request nonce
+#     - Permissions-Policy restricts dangerous browser APIs
 # ---------------------------------------------------------------------------
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        from app.core.config import settings
+
+        # Generate a fresh nonce for inline scripts/styles (CSP)
+        nonce = secrets.token_urlsafe(16)
+        request.state.csp_nonce = nonce
+
         response = await call_next(request)
-        response.headers.update({
-            "X-Content-Type-Options": "nosniff",
-            "X-Frame-Options": "DENY",
-            "X-XSS-Protection": "1; mode=block",
-            "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-            # Only add HSTS on production (HTTPS only)
-            # "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-        })
+
+        is_production = settings.ENVIRONMENT == "production"
+
+        headers: dict = {
+            "X-Content-Type-Options":  "nosniff",
+            "X-Frame-Options":         "DENY",
+            "X-XSS-Protection":        "1; mode=block",
+            "Referrer-Policy":         "strict-origin-when-cross-origin",
+            "Permissions-Policy":      (
+                "accelerometer=(), camera=(), geolocation=(), "
+                "gyroscope=(), magnetometer=(), microphone=(), "
+                "payment=(), usb=()"
+            ),
+            "Content-Security-Policy": (
+                f"default-src 'self'; "
+                f"script-src 'self' 'nonce-{nonce}'; "
+                f"style-src 'self' 'nonce-{nonce}' 'unsafe-inline'; "
+                f"img-src 'self' data: blob: https:; "
+                f"font-src 'self' data:; "
+                f"connect-src 'self' https://api.groq.com; "
+                f"frame-ancestors 'none'; "
+                f"base-uri 'self'; "
+                f"form-action 'self';"
+            ),
+            "Cross-Origin-Opener-Policy":   "same-origin",
+            "Cross-Origin-Resource-Policy": "same-origin",
+        }
+
+        # HSTS — only safe on HTTPS (i.e., production)
+        if is_production:
+            headers["Strict-Transport-Security"] = (
+                "max-age=63072000; includeSubDomains; preload"
+            )
+
+        response.headers.update(headers)
         return response

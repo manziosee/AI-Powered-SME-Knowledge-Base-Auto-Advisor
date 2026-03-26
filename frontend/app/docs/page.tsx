@@ -518,7 +518,7 @@ function EndpointCard({ ep }: { ep: Endpoint }) {
 
 // ── Main page ─────────────────────────────────────────────────────
 export default function DocsPage() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggle: toggleTheme } = useTheme();
   const dark = theme === "dark";
   const [search,      setSearch]      = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);

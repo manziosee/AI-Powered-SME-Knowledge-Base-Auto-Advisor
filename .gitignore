@@ -69,7 +69,7 @@ temp/
 ssl/
 
 # ── Trained ML model artifacts ─────────────────────────────────
-models/
+/models/
 *.pkl
 *.joblib
 *.h5

@@ -76,7 +76,7 @@ async def _process(document_id: str, file_content: bytes, mime_type: str):
             extracted_text = await extract_text(file_content, mime_type)
             if not extracted_text or len(extracted_text.strip()) < 20:
                 document.status = DocumentStatus.FAILED
-                document.metadata = {"error": "Could not extract text from document"}
+                document.doc_metadata = {"error": "Could not extract text from document"}
                 await db.commit()
                 return
 
@@ -248,7 +248,7 @@ async def _process(document_id: str, file_content: bytes, mime_type: str):
                 document.document_type.value,
                 *[e["label"].lower() for e in ner_entities[:5]],
             })
-            document.metadata = {
+            document.doc_metadata = {
                 "chunk_count": len(chunks),
                 "ner_entities": len(ner_entities),
                 "knowledge_entries": (
@@ -266,7 +266,7 @@ async def _process(document_id: str, file_content: bytes, mime_type: str):
             if document.uploaded_by:
                 uploader = await db.get(from_app_user(User), document.uploaded_by)
                 if uploader and uploader.email:
-                    total_ke = document.metadata["knowledge_entries"]
+                    total_ke = document.doc_metadata["knowledge_entries"]
                     await send_document_processed_email(
                         user_email=uploader.email,
                         user_name=uploader.full_name,
@@ -279,7 +279,7 @@ async def _process(document_id: str, file_content: bytes, mime_type: str):
         except Exception as exc:
             logger.exception("Document processing failed for %s: %s", document_id, exc)
             document.status = DocumentStatus.FAILED
-            document.metadata = {"error": str(exc)}
+            document.doc_metadata = {"error": str(exc)}
             await db.commit()
 
 

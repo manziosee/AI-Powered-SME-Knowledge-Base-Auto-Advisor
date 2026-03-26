@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.api.dependencies import get_current_active_user
-from app.core.cache import cache_result
 from app.core.database import get_db
 from app.models.document import Document, DocumentStatus
 from app.models.user import User
@@ -60,7 +59,7 @@ async def get_health_score(
     expiring_q = await db.execute(
         select(func.count(Document.id)).where(
             Document.company_id == company_id,
-            Document.metadata["expiry_date"].astext.cast(type_=None).isnot(None),
+            Document.doc_metadata["expiry_date"].astext.cast(type_=None).isnot(None),
         )
     )
     # Simplified: count docs uploaded > 1 year ago as "at risk"
@@ -297,7 +296,7 @@ async def get_expiring_documents(
 
     expiring = []
     for doc in all_docs:
-        meta = doc.metadata or {}
+        meta = doc.doc_metadata or {}
         expiry_str = meta.get("expiry_date")
         expiry_date = None
 

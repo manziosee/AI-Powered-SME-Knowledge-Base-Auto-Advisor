@@ -31,8 +31,8 @@ primary_region = "iad"   # Washington DC  (good latency for Africa + Europe)
 # ── Processes ────────────────────────────────────────────────────────────────
 # Two process groups — web (API) and worker (Celery)
 [processes]
-  web    = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --loop uvloop"
-  worker = "celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2 -Q default,documents,notifications"
+  web    = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+  worker = "celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q default,documents,notifications"
 
 # ── HTTP service (web process only) ──────────────────────────────────────────
 [http_service]

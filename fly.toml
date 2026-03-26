@@ -2,7 +2,7 @@
 # Docs: https://fly.io/docs/reference/configuration/
 
 app = "advisorai-backend"
-primary_region = "iad"   # Washington DC  (good latency for Africa + Europe)
+primary_region = "jnb"   # Johannesburg, South Africa (closest to your users)
 
 # ── Build ────────────────────────────────────────────────────────────────────
 [build]

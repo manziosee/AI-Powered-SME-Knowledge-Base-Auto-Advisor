@@ -43,6 +43,7 @@ flower==2.0.1
 # ── AI / LLM — Groq FREE tier (14,400 req/day) ───────────────
 groq>=0.4.0
 langchain>=0.1.4
+langchain-text-splitters>=0.3.0
 langchain-groq>=0.1.0
 
 # ── Embeddings — 100% LOCAL, zero API cost ───────────────────

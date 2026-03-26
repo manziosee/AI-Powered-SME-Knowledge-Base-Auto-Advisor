@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     insights,
     integrations,
     notifications,
+    search,
 )
 
 api_router = APIRouter()
@@ -25,3 +26,4 @@ api_router.include_router(companies.router,     prefix="/companies",     tags=["
 api_router.include_router(integrations.router,  prefix="/integrations",  tags=["Integrations"])
 api_router.include_router(admin.router,         prefix="/admin",         tags=["Admin"])
 api_router.include_router(insights.router,      prefix="/insights",      tags=["Business Insights"])
+api_router.include_router(search.router,        prefix="/search",        tags=["Search"])

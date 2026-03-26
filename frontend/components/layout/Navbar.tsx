@@ -9,10 +9,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_SECTIONS = [
-  { label: "Features",     anchor: "features"     },
-  { label: "How it works", anchor: "how-it-works"  },
-  { label: "Use Cases",    anchor: "use-cases"     },
-  { label: "Pricing",      anchor: "pricing"       },
+  { label: "Features",     anchor: "features"    },
+  { label: "How it works", anchor: "how-it-works" },
+  { label: "Use Cases",    anchor: "use-cases"    },
+  { label: "Pricing",      anchor: "pricing"      },
 ];
 
 export default function Navbar() {
@@ -22,7 +22,6 @@ export default function Navbar() {
   const pathname = usePathname();
   const isHome = pathname === "/";
 
-  // Build href: on home page use "#anchor", elsewhere use "/#anchor"
   const navLinks = NAV_SECTIONS.map(({ label, anchor }) => ({
     label,
     href: isHome ? `#${anchor}` : `/#${anchor}`,
@@ -45,30 +44,37 @@ export default function Navbar() {
         <nav className="flex items-center justify-between px-5 py-3">
           <Logo size="sm" />
 
-          {/* Desktop links */}
+          {/* Desktop links — section anchors + Docs together */}
           <ul className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <li key={link.href}>
                 <a
                   href={link.href}
-                  className="px-4 py-2 text-sm font-medium text-[var(--fg-soft)] hover:text-[var(--fg)] transition-colors rounded-xl hover:bg-[var(--surface-hover)]"
+                  className="px-3.5 py-2 text-sm font-medium text-[var(--fg-soft)] hover:text-[var(--fg)] transition-colors rounded-xl hover:bg-[var(--surface-hover)]"
                 >
                   {link.label}
                 </a>
               </li>
             ))}
+            {/* Docs — sits right next to other nav items, visually separated by a subtle divider */}
+            <li className="flex items-center">
+              <span className="w-px h-4 bg-[var(--border)] mx-1" />
+              <Link
+                href="/docs"
+                className={cn(
+                  "px-3.5 py-2 text-sm font-medium rounded-xl transition-colors",
+                  pathname === "/docs" || pathname?.startsWith("/docs/")
+                    ? "text-violet-500 bg-violet-500/8"
+                    : "text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]"
+                )}
+              >
+                Docs
+              </Link>
+            </li>
           </ul>
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-2">
-            {/* Docs link */}
-            <Link
-              href="/docs"
-              className="px-3 py-2 text-sm font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors rounded-xl hover:bg-[var(--surface-hover)] flex items-center gap-1.5"
-            >
-              <span>Docs</span>
-            </Link>
-
             <button
               type="button"
               onClick={toggle}
@@ -133,10 +139,11 @@ export default function Navbar() {
             ))}
             <Link
               href="/docs"
-              className="px-4 py-2.5 text-sm text-[var(--fg-soft)] hover:text-[var(--fg)] rounded-xl hover:bg-[var(--surface-hover)] transition-colors"
+              className="px-4 py-2.5 text-sm font-medium text-[var(--fg-soft)] hover:text-violet-500 rounded-xl hover:bg-violet-500/5 transition-colors flex items-center gap-2"
               onClick={() => setOpen(false)}
             >
-              API Docs
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+              Docs
             </Link>
             <hr className="border-[var(--border)] my-1" />
             <Link

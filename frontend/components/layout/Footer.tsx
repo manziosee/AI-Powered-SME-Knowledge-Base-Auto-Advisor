@@ -8,18 +8,20 @@ const links = {
     { label: "How it works", href: "/#how-it-works" },
     { label: "Use cases",    href: "/#use-cases"    },
     { label: "Pricing",      href: "/#pricing"      },
+    { label: "Changelog",    href: "/changelog"     },
   ],
-  Resources: [
-    { label: "About us",     href: "/about"         },
-    { label: "Contact",      href: "/contact"       },
-    { label: "Privacy Policy", href: "/privacy"     },
-    { label: "Terms of Service", href: "/terms"     },
+  Developers: [
+    { label: "Documentation",  href: "/docs"             },
+    { label: "API Reference",  href: "/docs#auth"        },
+    { label: "Quick Start",    href: "/docs#quickstart"  },
+    { label: "Webhooks",       href: "/docs#webhooks"    },
+    { label: "SDKs & Examples",href: "/docs"             },
   ],
   Company: [
-    { label: "About",   href: "/about"   },
-    { label: "Contact", href: "/contact" },
-    { label: "Privacy", href: "/privacy" },
-    { label: "Terms",   href: "/terms"   },
+    { label: "About us",        href: "/about"   },
+    { label: "Contact",         href: "/contact" },
+    { label: "Privacy Policy",  href: "/privacy" },
+    { label: "Terms of Service",href: "/terms"   },
   ],
 };
 
@@ -33,10 +35,10 @@ export default function Footer() {
   return (
     <footer className="border-t border-[var(--border)] pt-16 pb-8 px-6 bg-[var(--bg-soft)]">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-10 mb-14">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-10 mb-14">
 
           {/* Brand */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <Logo size="md" href="/" className="mb-5" />
             <p className="text-[var(--fg-muted)] text-sm leading-relaxed max-w-xs">
               AI-powered knowledge base and compliance advisor for small and

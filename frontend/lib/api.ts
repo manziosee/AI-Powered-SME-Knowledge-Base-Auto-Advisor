@@ -274,6 +274,26 @@ export const company = {
   },
 };
 
+// ── Search ────────────────────────────────────────────────────────────────────
+export interface SearchResult {
+  id: string;
+  type: "document" | "knowledge";
+  title: string;
+  filename?: string;
+  excerpt?: string;
+  document_type?: string;
+  status?: string;
+  created_at?: string;
+}
+
+export const search = {
+  async query(q: string, limit = 10) {
+    return request<{ query: string; results: SearchResult[]; total: number }>(
+      `/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+    );
+  },
+};
+
 // ── Admin — ML Training ───────────────────────────────────────────────────────
 export interface TrainingStatus {
   status: "idle" | "training" | "completed" | "failed";

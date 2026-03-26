@@ -90,11 +90,12 @@ export default function ComplianceCalendarPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/v1/insights/calendar?months_ahead=6", {
+    const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    fetch(`${BASE}/api/v1/insights/calendar?months_ahead=6`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}` },
     })
-      .then((r) => r.json())
-      .then((data) => { if (data.events?.length) setEvents(data.events); })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.events?.length) setEvents(data.events); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

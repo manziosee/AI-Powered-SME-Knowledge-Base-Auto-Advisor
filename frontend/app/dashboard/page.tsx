@@ -12,9 +12,10 @@ import {
   Bell, Calendar, Clock, ArrowUpRight, Heart,
 } from "lucide-react";
 import {
-  KPI_STATS, DOCUMENT_ACTIVITY, COMPLIANCE_CANDLES,
-  RISK_DISTRIBUTION, QUERY_VOLUME, NOTIFICATIONS,
+  DOCUMENT_ACTIVITY, COMPLIANCE_CANDLES,
+  RISK_DISTRIBUTION, QUERY_VOLUME,
 } from "@/lib/mock-data";
+import { analytics, notifications as notifApi, insights } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
 
 /* ── Colours ─────────────────────────────────────────────────── */
@@ -222,12 +223,33 @@ export default function DashboardPage() {
   const [showWidgetMenu, setShowWidgetMenu] = useState(false);
   const [health, setHealth] = useState<HealthData>(DEMO_HEALTH);
   const [expiring, setExpiring] = useState<ExpiryDoc[]>(DEMO_EXPIRY);
+  const [kpi, setKpi] = useState({ totalDocuments: 0, processedDocs: 0, processingRate: 0, complianceScore: 0, criticalRisks: 0, upcomingDeadlines: 0, aiQueries: 0, knowledgeEntries: 0 });
+  const [recentNotifs, setRecentNotifs] = useState<Array<{ id: string; title: string; message: string; notification_type: string; is_read: boolean; created_at: string }>>([]);
+  const [user, setUser] = useState<{ name: string; avatar: string; company: string } | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token") ?? "";
-    const headers = { Authorization: `Bearer ${token}` };
-    fetch("/api/v1/insights/health",  { headers }).then(r => r.json()).then(d => { if (d.score) setHealth(d); }).catch(() => {});
-    fetch("/api/v1/insights/expiry?days_ahead=90", { headers }).then(r => r.json()).then(d => { if (d.documents?.length) setExpiring(d.documents); }).catch(() => {});
+    const stored = localStorage.getItem("auth_user");
+    if (stored) setUser(JSON.parse(stored));
+
+    insights.health().then(({ data }) => { if (data?.score) setHealth(data as HealthData); });
+    insights.expiry(90).then(({ data }) => { if (data?.documents?.length) setExpiring(data.documents); });
+    analytics.overview().then(({ data }) => {
+      if (data) {
+        setKpi({
+          totalDocuments:    data.documents.total,
+          processedDocs:     data.documents.processed,
+          processingRate:    data.documents.processing_rate_pct,
+          complianceScore:   0,
+          criticalRisks:     data.alerts.critical_risks,
+          upcomingDeadlines: data.alerts.upcoming_deadlines_30d,
+          aiQueries:         0,
+          knowledgeEntries:  data.knowledge_entries.total,
+        });
+      }
+    });
+    notifApi.list(true, 4).then(({ data }) => {
+      if (data?.items) setRecentNotifs(data.items);
+    });
   }, []);
 
   const tickColor   = dark ? "rgba(255,255,255,0.3)"  : "rgba(0,0,0,0.45)";
@@ -240,15 +262,6 @@ export default function DashboardPage() {
     chartRange === "14d" ? DOCUMENT_ACTIVITY.slice(-10) :
     DOCUMENT_ACTIVITY;
 
-  const recentNotifs = NOTIFICATIONS.filter((n) => !n.read).slice(0, 4);
-
-  const notifDot: Record<string, string> = {
-    critical: "#fb7185",
-    high:     "#fbbf24",
-    medium:   "#60a5fa",
-    info:     "#a78bfa",
-  };
-
   const tooltip = <ChartTooltip dark={dark} />;
 
   return (
@@ -258,7 +271,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-xl font-bold text-[var(--fg)] tracking-tight">Dashboard</h1>
-          <p className="text-[var(--fg-muted)] text-xs mt-0.5">March 25, 2026 · TechVentures RW</p>
+          <p className="text-[var(--fg-muted)] text-xs mt-0.5">{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}{user?.company ? ` · ${user.company}` : ""}</p>
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
@@ -292,7 +305,7 @@ export default function DashboardPage() {
 
           {/* User avatar */}
           <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/35 flex items-center justify-center text-violet-400 font-bold text-xs">
-            AU
+            {user?.avatar ?? "U"}
           </div>
         </div>
       </div>
@@ -300,26 +313,26 @@ export default function DashboardPage() {
       {/* ── KPI grid — URBN-style with sparklines ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <KpiCard
-          title="Total Documents"  value="1,248"  sub="95% processed"
-          icon={FileText}      trend="up"   trendLabel="+38 today"
+          title="Total Documents"  value={kpi.totalDocuments.toLocaleString()}  sub={`${kpi.processingRate}% processed`}
+          icon={FileText}      trend="up"   trendLabel={`${kpi.processedDocs} done`}
           accentColor="#22d3ee" borderColor="border-cyan-500/15"
           sparkData={uploadSpark}
         />
         <KpiCard
-          title="Compliance Score" value="94%"    sub="2 gaps detected"
-          icon={ShieldCheck}   trend="up"   trendLabel="+2 pts"
+          title="Compliance Score" value={kpi.complianceScore ? `${kpi.complianceScore}%` : "—"}  sub="AI-powered analysis"
+          icon={ShieldCheck}   trend="up"   trendLabel="Live"
           accentColor="#a78bfa" borderColor="border-violet-500/15"
           sparkData={riskSpark}
         />
         <KpiCard
-          title="Critical Risks"   value="2"      sub="8 high priority"
-          icon={AlertTriangle} trend="down" trendLabel="−1 today"
+          title="Critical Risks"   value={kpi.criticalRisks}  sub={`${kpi.upcomingDeadlines} upcoming deadlines`}
+          icon={AlertTriangle} trend="down" trendLabel="Active"
           accentColor="#fb7185" borderColor="border-rose-500/15"
           sparkData={COMPLIANCE_CANDLES.slice(-8).map((d) => ({ v: 10 - d.close % 8 }))}
         />
         <KpiCard
-          title="AI Queries"       value="876"    sub="This month"
-          icon={Brain}         trend="up"   trendLabel="+124%"
+          title="Knowledge Entries" value={kpi.knowledgeEntries.toLocaleString()}  sub="Indexed from documents"
+          icon={Brain}         trend="up"   trendLabel="Live"
           accentColor="#60a5fa" borderColor="border-blue-500/15"
           sparkData={qSpark}
         />
@@ -578,22 +591,25 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-col gap-2 flex-1">
+            {recentNotifs.length === 0 && (
+              <p className="text-[var(--fg-muted)] text-xs text-center py-6">No unread alerts</p>
+            )}
             {recentNotifs.map((n) => {
-              const dotColor = notifDot[n.severity] || "#888";
-              const severityBg: Record<string, string> = {
-                critical: "border-rose-500/20 bg-rose-500/4",
-                high:     "border-amber-500/20 bg-amber-500/4",
-                medium:   "border-blue-500/20 bg-blue-500/4",
-                info:     "border-violet-500/20 bg-violet-500/4",
+              const typeColor: Record<string, string> = { deadline: "#fbbf24", compliance: "#a78bfa", document: "#60a5fa" };
+              const dotColor = typeColor[n.notification_type] || "#888";
+              const typeBg: Record<string, string> = {
+                deadline:   "border-amber-500/20 bg-amber-500/4",
+                compliance: "border-violet-500/20 bg-violet-500/4",
+                document:   "border-blue-500/20 bg-blue-500/4",
               };
               return (
                 <div key={n.id}
-                  className={`flex items-start gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] cursor-default hover:shadow-md ${severityBg[n.severity] ?? "border-[var(--border)]"}`}>
+                  className={`flex items-start gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] cursor-default hover:shadow-md ${typeBg[n.notification_type] ?? "border-[var(--border)]"}`}>
                   <div className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0 animate-pulse-slow"
                     style={{ background: dotColor, boxShadow: `0 0 6px ${dotColor}70` }} />
                   <div className="min-w-0">
                     <p className="text-[var(--fg-soft)] text-xs font-medium leading-snug hover:text-[var(--fg)] transition-colors">{n.title}</p>
-                    <p className="text-[var(--fg-muted)] text-[10px] mt-0.5 line-clamp-1 hover:text-[var(--fg-soft)] transition-colors">{n.body}</p>
+                    <p className="text-[var(--fg-muted)] text-[10px] mt-0.5 line-clamp-1 hover:text-[var(--fg-soft)] transition-colors">{n.message}</p>
                   </div>
                 </div>
               );

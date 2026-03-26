@@ -11,7 +11,7 @@ import {
 import Logo from "@/components/ui/Logo";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import { NOTIFICATIONS } from "@/lib/mock-data";
+import { notifications as notifApi } from "@/lib/api";
 
 const NAV = [
   { label: "Dashboard",     href: "/dashboard",               icon: LayoutDashboard },
@@ -30,8 +30,6 @@ const BOTTOM_NAV = [
   { label: "Help & Support", href: "/dashboard/help",         icon: HelpCircle },
 ];
 
-const unreadCount = NOTIFICATIONS.filter((n) => !n.read).length;
-
 interface DashboardSidebarProps {
   onSearchOpen?: () => void;
 }
@@ -41,10 +39,14 @@ export default function DashboardSidebar({ onSearchOpen }: DashboardSidebarProps
   const { theme, toggle } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string; avatar: string; company: string } | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const stored = localStorage.getItem("auth_user");
     if (stored) setUser(JSON.parse(stored));
+    notifApi.unreadCount().then(({ data }) => {
+      if (data) setUnreadCount(data.unread_count);
+    });
   }, []);
 
   return (

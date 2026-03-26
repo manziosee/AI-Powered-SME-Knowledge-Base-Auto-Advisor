@@ -33,9 +33,9 @@ class Report(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    report_type = Column(SQLEnum(ReportType), nullable=False)
-    report_format = Column(SQLEnum(ReportFormat), nullable=False)
-    status = Column(SQLEnum(ReportStatus), default=ReportStatus.PENDING)
+    report_type = Column(SQLEnum(ReportType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    report_format = Column(SQLEnum(ReportFormat, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    status = Column(SQLEnum(ReportStatus, values_callable=lambda x: [e.value for e in x]), default=ReportStatus.PENDING)
     file_path = Column(String, nullable=True)           # S3 key after generation
     filters = Column(JSON, default={})                  # date range, doc types, etc.
     row_count = Column(Integer, nullable=True)

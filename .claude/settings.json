@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flyctl status:*)",
+      "Bash(flyctl machine:*)",
+      "Bash(flyctl volumes:*)",
+      "Bash(flyctl ssh:*)",
+      "Bash(flyctl machines:*)",
+      "Bash(flyctl logs:*)",
+      "Bash(head -60 /home/manzi/Documents/projects/AI-Powered-SME-Knowledge-Base-Auto-Advisor/alembic/versions/*.py)",
+      "Bash(flyctl -a advisorai-pg machines list)",
+      "Bash(flyctl -a advisorai-db machines list)"
+    ]
+  }
+}

@@ -7,6 +7,7 @@ import {
   Brain, ShieldCheck, FileText, Zap, Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { auth as authApi } from "@/lib/api";
 
 const COUNTRIES = [
   "Rwanda", "Kenya", "Nigeria", "South Africa",
@@ -48,17 +49,40 @@ export default function RegisterPage() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  const [regError, setRegError] = React.useState("");
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRegError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    localStorage.setItem("auth_user", JSON.stringify({
-      id: "new", name: form.name, email: form.email,
-      role: "Admin", company: form.company,
-      avatar: form.name.slice(0, 2).toUpperCase(),
-      country: form.country,
-    }));
-    router.push("/dashboard");
+    const { data, error } = await authApi.register({
+      email: form.email,
+      password: form.password,
+      full_name: form.name,
+      company_name: form.company || undefined,
+      country: form.country || undefined,
+      industry: form.industry || undefined,
+    });
+    if (data) {
+      const loginRes = await authApi.login(form.email, form.password);
+      if (loginRes.data?.access_token) {
+        const meRes = await authApi.me();
+        const u = meRes.data;
+        const initials = form.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+        localStorage.setItem("auth_user", JSON.stringify({
+          id: u?.id ?? data.id,
+          name: form.name,
+          email: form.email,
+          role: u?.role ?? "admin",
+          company: form.company,
+          avatar: initials,
+        }));
+        router.push("/dashboard");
+        return;
+      }
+    }
+    setRegError(error ?? "Registration failed. Please try again.");
+    setLoading(false);
   };
 
   return (
@@ -190,6 +214,14 @@ export default function RegisterPage() {
                 : "Help us configure the right compliance rules for you."}
             </p>
           </div>
+
+          {/* Error banner */}
+          {regError && (
+            <div className="flex items-start gap-2.5 p-4 mb-5 rounded-xl bg-rose-500/8 border border-rose-500/25 text-rose-500 text-sm">
+              <span className="mt-0.5 flex-shrink-0">⚠</span>
+              <span>{regError}</span>
+            </div>
+          )}
 
           {/* Step indicator */}
           <div className="flex items-center gap-2 mb-7">

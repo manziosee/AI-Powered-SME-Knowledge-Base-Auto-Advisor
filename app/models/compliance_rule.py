@@ -29,8 +29,8 @@ class ComplianceRule(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     country_code = Column(String(10), nullable=False, index=True)  # ISO 3166-1 alpha-2
     language_code = Column(String(10), default="en")
-    category = Column(SQLEnum(RuleCategory), nullable=False, index=True)
-    severity = Column(SQLEnum(RuleSeverity), default=RuleSeverity.WARNING)
+    category = Column(SQLEnum(RuleCategory, values_callable=lambda x: [e.value for e in x]), nullable=False, index=True)
+    severity = Column(SQLEnum(RuleSeverity, values_callable=lambda x: [e.value for e in x]), default=RuleSeverity.WARNING)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     legal_reference = Column(String, nullable=True)

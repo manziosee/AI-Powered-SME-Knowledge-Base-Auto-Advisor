@@ -1,33 +1,85 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   PieChart, Pie, Cell, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Download, TrendingUp } from "lucide-react";
-import {
-  DOCUMENT_ACTIVITY, QUERY_VOLUME, DOC_TYPE_BREAKDOWN,
-  RISK_DISTRIBUTION, COMPLIANCE_CANDLES, KPI_STATS,
-} from "@/lib/mock-data";
+import { Download, TrendingUp, RefreshCw } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { useTheme } from "@/contexts/ThemeContext";
+import { analytics } from "@/lib/api";
 
-const radarData = [
-  { subject: "Tax",         score: 88 },
-  { subject: "HR",          score: 95 },
-  { subject: "GDPR",        score: 82 },
-  { subject: "Licensing",   score: 90 },
-  { subject: "AML/KYC",     score: 78 },
-  { subject: "Safety",      score: 96 },
-];
+const PIE_COLORS = ["#a78bfa","#22d3ee","#34d399","#fbbf24","#fb7185","#60a5fa","#f472b6"];
 
 export default function AnalyticsPage() {
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [period, setPeriod] = useState<"7d"|"30d"|"90d">("30d");
+  const [exporting, setExporting] = useState(false);
+
+  const [kpi, setKpi] = useState({ totalDocuments: 0, complianceScore: 0, aiQueries: 0, risksResolved: 0 });
+  const [riskDist, setRiskDist] = useState<Record<string, number>>({});
+  const [docTypes, setDocTypes] = useState<{ name: string; value: number }[]>([]);
+  const [radarData, setRadarData] = useState<{ subject: string; score: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      analytics.overview(),
+      analytics.riskDistribution(),
+      analytics.documentTypes(),
+      analytics.complianceScore(),
+    ]).then(([overviewRes, riskRes, docTypesRes, complianceRes]) => {
+      if (overviewRes.data) {
+        const d = overviewRes.data;
+        setKpi({
+          totalDocuments: d.documents.total,
+          complianceScore: 0,
+          aiQueries: 0,
+          risksResolved: d.alerts.critical_risks,
+        });
+      }
+      if (riskRes.data?.distribution) {
+        setRiskDist(riskRes.data.distribution);
+      }
+      if (docTypesRes.data?.breakdown) {
+        const breakdown = docTypesRes.data.breakdown;
+        setDocTypes(Object.entries(breakdown).map(([name, value]) => ({ name, value: value as number })));
+      }
+      if (complianceRes.data) {
+        const d = complianceRes.data;
+        setKpi(prev => ({ ...prev, complianceScore: Math.round(d.compliance_score) }));
+        // Build radar from gap_rules categories
+        const catMap: Record<string, { covered: number; total: number }> = {};
+        d.gap_rules.forEach(r => {
+          if (!catMap[r.category]) catMap[r.category] = { covered: 0, total: 0 };
+          catMap[r.category].total++;
+        });
+        const radar = Object.entries(catMap).slice(0, 6).map(([subject, v]) => ({
+          subject,
+          score: v.total > 0 ? Math.round((1 - v.covered / v.total) * 100) : 80,
+        }));
+        if (radar.length) setRadarData(radar);
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  const handleExport = async (reportFormat: "pdf" | "excel") => {
+    setExporting(true);
+    const { data } = await analytics.exportReport("compliance", reportFormat);
+    if (data?.url) {
+      const a = document.createElement("a");
+      a.href = data.url;
+      a.download = `compliance-report.${reportFormat === "pdf" ? "pdf" : "xlsx"}`;
+      a.click();
+    }
+    setExporting(false);
+  };
 
   const tickColor  = dark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.45)";
   const gridColor  = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)";
@@ -51,6 +103,9 @@ export default function AnalyticsPage() {
     );
   };
 
+  // Build risk bar data from distribution
+  const riskBarData = [{ month: "Current", ...riskDist }];
+
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
       {/* Header */}
@@ -65,153 +120,156 @@ export default function AnalyticsPage() {
               <button key={p} type="button" onClick={() => setPeriod(p)}
                 className={`px-3 py-1.5 rounded-md text-xs transition-all duration-300 ${
                   period === p
-                    ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40"
+                    ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/30"
                     : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]"
                 }`}>{p}</button>
             ))}
           </div>
-          <Button variant="outline" size="sm" className="hover:scale-105 transition-transform duration-300">
-            <Download size={13} /> Export PDF
+          <Button variant="outline" size="sm" onClick={() => handleExport("pdf")} className="hover:scale-105 transition-transform duration-300">
+            {exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />} Export PDF
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => handleExport("excel")} className="hover:scale-105 transition-transform duration-300">
+            <Download size={13} /> Excel
           </Button>
         </div>
       </div>
 
-      {/* Summary KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Total Documents", value: "1,248", delta: "+38",        accent: "text-cyan-500",    border: "hover:border-cyan-500/30",    bg: "hover:bg-cyan-500/5"    },
-          { label: "Compliance Score", value: "94%",  delta: "+2pt",       accent: "text-emerald-500", border: "hover:border-emerald-500/30", bg: "hover:bg-emerald-500/5" },
-          { label: "AI Queries",       value: "876",  delta: "+124%",      accent: "text-violet-500",  border: "hover:border-violet-500/30",  bg: "hover:bg-violet-500/5"  },
-          { label: "Risks Resolved",   value: "14",   delta: "this month", accent: "text-blue-500",    border: "hover:border-blue-500/30",    bg: "hover:bg-blue-500/5"    },
-        ].map((s) => (
-          <div key={s.label} className={`p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer ${s.border} ${s.bg}`}>
-            <p className="text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-2 font-semibold">{s.label}</p>
-            <p className="text-3xl font-black text-[var(--fg)] tracking-tight">{s.value}</p>
-            <div className={`flex items-center gap-1 mt-2 text-xs ${s.accent} font-medium`}>
-              <TrendingUp size={11} className="animate-pulse" /> {s.delta}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* Query volume */}
-        <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:shadow-lg transition-all duration-300">
-          <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">AI Query Volume</h3>
-          <p className="text-[var(--fg-muted)] text-xs mb-4">RAG · Agent · Stream — last 30 days</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={QUERY_VOLUME} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis dataKey="day" tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false}
-                tickFormatter={(v) => v.replace("Day ", "")} />
-              <YAxis tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<Tooltip_ />} />
-              <Line type="monotone" dataKey="rag"    stroke="#a78bfa" strokeWidth={2}   dot={false} />
-              <Line type="monotone" dataKey="agent"  stroke="#22d3ee" strokeWidth={1.5} dot={false} />
-              <Line type="monotone" dataKey="stream" stroke="#34d399" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-            </LineChart>
-          </ResponsiveContainer>
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--border)]">
-            {[{ color: "#a78bfa", label: "RAG" }, { color: "#22d3ee", label: "Agent" }, { color: "#34d399", label: "Stream" }].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-1.5 text-[var(--fg-muted)] text-xs hover:text-[var(--fg)] transition-colors cursor-pointer">
-                <div className="w-3 h-0.5 rounded" style={{ background: color }} /> {label}
-              </div>
-            ))}
-          </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-20 gap-2 text-[var(--fg-muted)]">
+          <RefreshCw size={16} className="animate-spin" />
+          <span className="text-sm">Loading analytics…</span>
         </div>
-
-        {/* Document type pie */}
-        <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:shadow-lg transition-all duration-300">
-          <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Document Type Breakdown</h3>
-          <p className="text-[var(--fg-muted)] text-xs mb-4">Distribution across {KPI_STATS.totalDocuments} documents</p>
-          <div className="flex items-center gap-4">
-            <ResponsiveContainer width={160} height={160}>
-              <PieChart>
-                <Pie data={DOC_TYPE_BREAKDOWN} cx="50%" cy="50%" innerRadius={45} outerRadius={75}
-                  paddingAngle={2} dataKey="value">
-                  {DOC_TYPE_BREAKDOWN.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} stroke={pieStroke} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v: any, n: any) => [v, n]} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-col gap-1.5 flex-1">
-              {DOC_TYPE_BREAKDOWN.map((d) => (
-                <div key={d.name} className="flex items-center justify-between text-xs hover:bg-[var(--surface-hover)] px-2 py-1 rounded cursor-pointer transition-colors">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: d.color }} />
-                    <span className="text-[var(--fg-muted)]">{d.name}</span>
-                  </div>
-                  <span className="text-[var(--fg-soft)] font-semibold">{d.value}</span>
+      ) : (
+        <>
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: "Total Documents", value: kpi.totalDocuments.toLocaleString(), delta: "from DB",    accent: "text-cyan-500",    border: "hover:border-cyan-500/30",    bg: "hover:bg-cyan-500/5"    },
+              { label: "Compliance Score", value: kpi.complianceScore ? `${kpi.complianceScore}%` : "—", delta: "live",       accent: "text-emerald-500", border: "hover:border-emerald-500/30", bg: "hover:bg-emerald-500/5" },
+              { label: "Critical Risks",   value: kpi.risksResolved,  delta: "active",     accent: "text-rose-500",    border: "hover:border-rose-500/30",    bg: "hover:bg-rose-500/5"    },
+              { label: "Doc Types",        value: docTypes.length,    delta: "categories", accent: "text-violet-500",  border: "hover:border-violet-500/30",  bg: "hover:bg-violet-500/5"  },
+            ].map((s) => (
+              <div key={s.label} className={`p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer ${s.border} ${s.bg}`}>
+                <p className="text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-2 font-semibold">{s.label}</p>
+                <p className="text-3xl font-black text-[var(--fg)] tracking-tight">{s.value}</p>
+                <div className={`flex items-center gap-1 mt-2 text-xs ${s.accent} font-medium`}>
+                  <TrendingUp size={11} className="animate-pulse" /> {s.delta}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Compliance radar */}
-        <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
-          <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Compliance by Category</h3>
-          <p className="text-[var(--fg-muted)] text-xs mb-3">Radar — 6 domains</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-              <PolarGrid stroke={radarGrid} />
-              <PolarAngleAxis dataKey="subject" tick={{ fill: radarTick, fontSize: 10 }} />
-              <Radar dataKey="score" stroke="#22d3ee" fill="rgba(34,211,238,0.12)" strokeWidth={2} />
-              <Tooltip content={<Tooltip_ />} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Monthly compliance trend */}
-        <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
-          <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Compliance Trend</h3>
-          <p className="text-[var(--fg-muted)] text-xs mb-3">Score over 12 weeks</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={COMPLIANCE_CANDLES} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <defs>
-                <linearGradient id="compGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#34d399" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#34d399" stopOpacity={0}    />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis dataKey="date" tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[60, 100]} tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<Tooltip_ />} />
-              <Area type="monotone" dataKey="close" stroke="#34d399" strokeWidth={2} fill="url(#compGrad)" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Risk by month */}
-        <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
-          <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Risk Items by Month</h3>
-          <p className="text-[var(--fg-muted)] text-xs mb-3">Critical + High risks identified</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={RISK_DISTRIBUTION} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="month" tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<Tooltip_ />} />
-              <Bar dataKey="critical" fill="#fb7185" radius={[2,2,0,0]} />
-              <Bar dataKey="high"     fill="#fbbf24" />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--border)]">
-            {[{ color: "#fb7185", label: "Critical" }, { color: "#fbbf24", label: "High" }].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-1.5 text-[var(--fg-muted)] text-xs">
-                <div className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} /> {label}
               </div>
             ))}
           </div>
-        </div>
-      </div>
+
+          {/* Row 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            {/* Risk distribution */}
+            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:shadow-lg transition-all duration-300">
+              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Risk Distribution</h3>
+              <p className="text-[var(--fg-muted)] text-xs mb-4">Current knowledge base risk levels</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={riskBarData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                  <XAxis dataKey="month" tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: tickColor, fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<Tooltip_ />} />
+                  <Bar dataKey="critical" fill="#fb7185" radius={[2,2,0,0]} />
+                  <Bar dataKey="high"     fill="#fbbf24" />
+                  <Bar dataKey="medium"   fill="#60a5fa" />
+                  <Bar dataKey="low"      fill="#34d399" />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--border)]">
+                {[{ color: "#fb7185", label: "Critical" }, { color: "#fbbf24", label: "High" }, { color: "#60a5fa", label: "Medium" }, { color: "#34d399", label: "Low" }].map(({ color, label }) => (
+                  <div key={label} className="flex items-center gap-1.5 text-[var(--fg-muted)] text-xs">
+                    <div className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} /> {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Document type pie */}
+            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:shadow-lg transition-all duration-300">
+              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Document Type Breakdown</h3>
+              <p className="text-[var(--fg-muted)] text-xs mb-4">Distribution across {kpi.totalDocuments} documents</p>
+              {docTypes.length > 0 ? (
+                <div className="flex items-center gap-4">
+                  <ResponsiveContainer width={160} height={160}>
+                    <PieChart>
+                      <Pie data={docTypes} cx="50%" cy="50%" innerRadius={45} outerRadius={75}
+                        paddingAngle={2} dataKey="value">
+                        {docTypes.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke={pieStroke} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: any, n: any) => [v, n]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    {docTypes.map((d, i) => (
+                      <div key={d.name} className="flex items-center justify-between text-xs hover:bg-[var(--surface-hover)] px-2 py-1 rounded cursor-pointer transition-colors">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                          <span className="text-[var(--fg-muted)] capitalize">{d.name.replace("_", " ")}</span>
+                        </div>
+                        <span className="text-[var(--fg-soft)] font-semibold">{d.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-40 text-[var(--fg-muted)] text-sm">No documents yet</div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Compliance radar */}
+            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
+              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Compliance by Category</h3>
+              <p className="text-[var(--fg-muted)] text-xs mb-3">Gap analysis radar</p>
+              {radarData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+                    <PolarGrid stroke={radarGrid} />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: radarTick, fontSize: 10 }} />
+                    <Radar dataKey="score" stroke="#22d3ee" fill="rgba(34,211,238,0.12)" strokeWidth={2} />
+                    <Tooltip content={<Tooltip_ />} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-40 text-[var(--fg-muted)] text-sm">Upload documents to see compliance radar</div>
+              )}
+            </div>
+
+            {/* Risk counts summary */}
+            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
+              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Risk Summary</h3>
+              <p className="text-[var(--fg-muted)] text-xs mb-4">Knowledge base risk breakdown</p>
+              <div className="flex flex-col gap-3">
+                {Object.entries(riskDist).map(([level, count]) => {
+                  const colors: Record<string, string> = { critical: "#fb7185", high: "#fbbf24", medium: "#60a5fa", low: "#34d399" };
+                  const total = Object.values(riskDist).reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <div key={level}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-[var(--fg-muted)] capitalize">{level}</span>
+                        <span className="text-xs font-semibold text-[var(--fg)]">{count} ({pct}%)</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-[var(--surface-hover)]">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: colors[level] ?? "#888" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                {Object.keys(riskDist).length === 0 && (
+                  <p className="text-[var(--fg-muted)] text-sm text-center py-8">No risk data yet — upload documents first</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

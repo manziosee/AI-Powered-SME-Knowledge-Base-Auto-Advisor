@@ -91,7 +91,11 @@ def _get_limit(path: str):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        redis = await get_redis()
+        try:
+            redis = await get_redis()
+        except Exception:
+            redis = None
+
         if not redis:
             # Redis unavailable — skip rate limiting rather than block all traffic
             return await call_next(request)
@@ -104,14 +108,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = int(time.time())
         window_start = now - window
 
-        pipe = redis.pipeline()
-        pipe.zremrangebyscore(key, 0, window_start)
-        pipe.zadd(key, {str(now) + str(uuid.uuid4()): now})
-        pipe.zcard(key)
-        pipe.expire(key, window)
-        results = await pipe.execute()
-
-        request_count = results[2]
+        try:
+            pipe = redis.pipeline()
+            pipe.zremrangebyscore(key, 0, window_start)
+            pipe.zadd(key, {str(now) + str(uuid.uuid4()): now})
+            pipe.zcard(key)
+            pipe.expire(key, window)
+            results = await pipe.execute()
+            request_count = results[2]
+        except Exception:
+            # Redis pipeline failed — skip rate limiting
+            return await call_next(request)
 
         if request_count > max_requests:
             retry_after = window

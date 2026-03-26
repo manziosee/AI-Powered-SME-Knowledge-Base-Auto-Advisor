@@ -1,8 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { ShieldCheck, AlertTriangle, Clock, CheckCircle, ChevronRight, Globe } from "lucide-react";
-import { COMPLIANCE_RULES } from "@/lib/mock-data";
+import React, { useState, useEffect } from "react";
+import { ShieldCheck, AlertTriangle, Clock, CheckCircle, ChevronRight, Globe, RefreshCw } from "lucide-react";
+import { analytics } from "@/lib/api";
+
+type ComplianceRule = {
+  id: string; title: string; category: string; severity: string;
+  deadline?: string; action_required?: string; description?: string;
+  status: string; jurisdiction?: string;
+};
 
 const severityConfig: Record<string, { dot: string; badge: string; label: string }> = {
   critical: { dot: "bg-rose-400 animate-pulse shadow-[0_0_6px_#fb7185]", badge: "border-rose-500/40 bg-rose-500/10 text-rose-500",        label: "Critical"  },
@@ -17,17 +23,48 @@ const statusConfig: Record<string, { icon: React.ReactNode; text: string; color:
   on_track: { icon: <CheckCircle size={13} />,   text: "On Track", color: "text-emerald-500" },
 };
 
+function deriveStatus(deadline?: string): string {
+  if (!deadline) return "on_track";
+  const days = Math.floor((new Date(deadline).getTime() - Date.now()) / 86400000);
+  if (days < 0) return "overdue";
+  if (days <= 30) return "upcoming";
+  return "on_track";
+}
+
 export default function CompliancePage() {
   const [activeCategory, setCategory] = useState("all");
-  const categories = ["all", ...Array.from(new Set(COMPLIANCE_RULES.map((r) => r.category)))];
+  const [rules, setRules] = useState<ComplianceRule[]>([]);
+  const [score, setScore] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = activeCategory === "all"
-    ? COMPLIANCE_RULES
-    : COMPLIANCE_RULES.filter((r) => r.category === activeCategory);
+  useEffect(() => {
+    setLoading(true);
+    analytics.complianceScore().then(({ data }) => {
+      if (data) {
+        setScore(data.compliance_score);
+        const mapped: ComplianceRule[] = data.gap_rules.map((r) => ({
+          id: r.id,
+          title: r.title,
+          category: r.category,
+          severity: r.severity,
+          deadline: r.deadline,
+          action_required: r.action_required,
+          description: r.description,
+          status: deriveStatus(r.deadline),
+          jurisdiction: "—",
+        }));
+        setRules(mapped);
+      }
+      setLoading(false);
+    });
+  }, []);
 
-  const overdueCount  = COMPLIANCE_RULES.filter((r) => r.status === "overdue").length;
-  const upcomingCount = COMPLIANCE_RULES.filter((r) => r.status === "upcoming").length;
-  const onTrackCount  = COMPLIANCE_RULES.filter((r) => r.status === "on_track").length;
+  const categories = ["all", ...Array.from(new Set(rules.map((r) => r.category)))];
+  const filtered = activeCategory === "all" ? rules : rules.filter((r) => r.category === activeCategory);
+
+  const overdueCount  = rules.filter((r) => r.status === "overdue").length;
+  const upcomingCount = rules.filter((r) => r.status === "upcoming").length;
+  const onTrackCount  = rules.filter((r) => r.status === "on_track").length;
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
@@ -39,7 +76,7 @@ export default function CompliancePage() {
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/25 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300">
           <ShieldCheck size={16} className="text-emerald-500 animate-pulse" />
-          <span className="text-emerald-500 font-black text-lg">94%</span>
+          <span className="text-emerald-500 font-black text-lg">{score !== null ? `${Math.round(score)}%` : "—"}</span>
           <span className="text-[var(--fg-muted)] text-sm">compliance score</span>
         </div>
       </div>
@@ -67,8 +104,8 @@ export default function CompliancePage() {
           <button key={c} type="button" onClick={() => setCategory(c)}
             className={`px-3 py-1.5 rounded-full text-xs transition-all duration-300 hover:scale-105 ${
               activeCategory === c
-                ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/40"
-                : "bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/30 hover:bg-[var(--surface-hover)]"
+                ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/25"
+                : "bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/30"
             }`}>
             {c === "all" ? "All rules" : c}
           </button>
@@ -76,64 +113,78 @@ export default function CompliancePage() {
       </div>
 
       {/* Rules list */}
-      <div className="flex flex-col gap-3">
-        {filtered.map((rule) => {
-          const sev = severityConfig[rule.severity] || severityConfig.low;
-          const st  = statusConfig[rule.status]     || statusConfig.on_track;
+      {loading ? (
+        <div className="flex items-center justify-center py-20 gap-2 text-[var(--fg-muted)]">
+          <RefreshCw size={16} className="animate-spin" />
+          <span className="text-sm">Loading compliance data…</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-20 text-center">
+          <ShieldCheck size={40} className="text-emerald-500 opacity-30 mx-auto mb-3" />
+          <p className="text-[var(--fg-muted)] text-sm">No compliance gaps found.</p>
+          <p className="text-[var(--fg-muted)] text-xs mt-1">Upload more documents to improve analysis coverage.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {filtered.map((rule) => {
+            const sev = severityConfig[rule.severity] || severityConfig.low;
+            const st  = statusConfig[rule.status]     || statusConfig.on_track;
+            const daysUntil = rule.deadline
+              ? Math.floor((new Date(rule.deadline).getTime() - Date.now()) / 86400000)
+              : null;
 
-          const daysUntil = Math.floor(
-            (new Date(rule.deadline).getTime() - Date.now()) / 86400000
-          );
-
-          return (
-            <div key={rule.id}
-              className="p-5 rounded-2xl border border-[var(--border)] hover:border-violet-500/25 bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-all duration-300 group cursor-pointer hover:shadow-lg hover:scale-[1.02]">
-              <div className="flex items-start justify-between gap-4">
-                {/* Left */}
-                <div className="flex items-start gap-4 min-w-0">
-                  <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${sev.dot}`} />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="text-[var(--fg-soft)] font-semibold text-sm">{rule.title}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sev.badge}`}>
-                        {sev.label}
-                      </span>
-                    </div>
-                    <p className="text-[var(--fg-muted)] text-xs leading-relaxed">{rule.description}</p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs hover:text-[var(--fg-soft)] transition-colors">
-                        <Globe size={11} /> {rule.jurisdiction}
+            return (
+              <div key={rule.id}
+                className="p-5 rounded-2xl border border-[var(--border)] hover:border-violet-500/25 bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-all duration-300 group cursor-pointer hover:shadow-lg hover:scale-[1.02]">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${sev.dot}`} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="text-[var(--fg-soft)] font-semibold text-sm">{rule.title}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sev.badge}`}>
+                          {sev.label}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs">
-                        <span className="w-1 h-1 rounded-full bg-[var(--fg-muted)] opacity-40" />
-                        {rule.category}
+                      <p className="text-[var(--fg-muted)] text-xs leading-relaxed">
+                        {rule.action_required || rule.description || "Action required"}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs">
+                          <Globe size={11} /> {rule.jurisdiction || "—"}
+                        </div>
+                        <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs">
+                          <span className="w-1 h-1 rounded-full bg-[var(--fg-muted)] opacity-40" />
+                          {rule.category}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Right */}
-                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  <div className={`flex items-center gap-1.5 text-xs ${st.color}`}>
-                    {st.icon} {st.text}
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <div className={`flex items-center gap-1.5 text-xs ${st.color}`}>
+                      {st.icon} {st.text}
+                    </div>
+                    {rule.deadline && (
+                      <div className="text-right">
+                        <p className="text-[var(--fg-soft)] text-xs font-medium">{rule.deadline}</p>
+                        {daysUntil !== null && (
+                          <p className={`text-[10px] mt-0.5 ${
+                            daysUntil < 0 ? "text-rose-500" : daysUntil < 14 ? "text-amber-500" : "text-emerald-500 opacity-70"
+                          }`}>
+                            {daysUntil < 0 ? `${Math.abs(daysUntil)}d overdue` : `in ${daysUntil}d`}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <ChevronRight size={14} className="text-[var(--fg-muted)] group-hover:translate-x-1 transition-all duration-300" />
                   </div>
-                  <div className="text-right">
-                    <p className="text-[var(--fg-soft)] text-xs font-medium">
-                      {rule.deadline}
-                    </p>
-                    <p className={`text-[10px] mt-0.5 ${
-                      daysUntil < 0 ? "text-rose-500" : daysUntil < 14 ? "text-amber-500" : "text-emerald-500 opacity-70"
-                    }`}>
-                      {daysUntil < 0 ? `${Math.abs(daysUntil)}d overdue` : `in ${daysUntil}d`}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} className="text-[var(--fg-muted)] group-hover:text-[var(--fg-soft)] group-hover:translate-x-1 transition-all duration-300" />
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

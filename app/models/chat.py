@@ -32,7 +32,7 @@ class ChatMessage(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
-    role = Column(SQLEnum(MessageRole), nullable=False)
+    role = Column(SQLEnum(MessageRole, values_callable=lambda x: [e.value for e in x]), nullable=False)
     content = Column(Text, nullable=False)
     sources = Column(Text, nullable=True)  # JSON string of source knowledge entries
     token_count = Column(Integer, nullable=True)

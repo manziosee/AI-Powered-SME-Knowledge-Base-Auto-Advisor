@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { DEMO_USERS } from "@/lib/mock-data";
+import { auth as authApi } from "@/lib/api";
 
 const INPUT = "w-full px-4 py-3.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] placeholder-[var(--fg-muted)] focus:outline-none focus:border-violet-500/60 focus:bg-violet-500/5 transition-all text-sm hover:border-violet-500/30";
 
@@ -37,13 +38,22 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const user = DEMO_USERS.find((u) => u.email === email && u.password === password);
-    if (user) {
-      localStorage.setItem("auth_user", JSON.stringify(user));
+    const { data, error } = await authApi.login(email, password);
+    if (data?.access_token) {
+      // Fetch user profile and store
+      const meRes = await authApi.me();
+      if (meRes.data) {
+        const u = meRes.data;
+        const initials = u.full_name?.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) ?? "U";
+        localStorage.setItem("auth_user", JSON.stringify({
+          id: u.id, name: u.full_name, email: u.email,
+          role: u.role, company: u.company?.name ?? "",
+          avatar: initials,
+        }));
+      }
       router.push("/dashboard");
     } else {
-      setError("Invalid email or password. Try a demo account below.");
+      setError(error ?? "Invalid email or password.");
       setLoading(false);
     }
   };

@@ -16,6 +16,9 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     company_id: Optional[UUID4] = None
+    company_name: Optional[str] = None
+    country: Optional[str] = None
+    industry: Optional[str] = None
 
 
 class UserUpdate(BaseModel):

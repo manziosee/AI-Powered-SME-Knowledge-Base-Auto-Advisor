@@ -52,7 +52,8 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          python -m spacy download en_core_web_sm
+          # Use direct versioned URL — avoids malformed URL bug in spaCy 3.7.x download command
+          pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
       - name: Run tests
         env:

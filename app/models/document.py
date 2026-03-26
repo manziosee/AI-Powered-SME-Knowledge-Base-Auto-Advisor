@@ -42,7 +42,7 @@ class Document(Base):
     parent_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
     extracted_text = Column(Text, nullable=True)
     summary = Column(Text, nullable=True)
-    metadata = Column(JSON, default={})
+    doc_metadata = Column("metadata", JSON, default={})
     tags = Column(JSON, default=[])
     embedding = Column(Vector(384), nullable=True)   # all-MiniLM-L6-v2 = 384-dim
     uploaded_by = Column(UUID(as_uuid=True), nullable=True)

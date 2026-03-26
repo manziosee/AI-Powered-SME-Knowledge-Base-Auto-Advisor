@@ -35,7 +35,7 @@ class KnowledgeEntry(Base):
     content = Column(Text, nullable=False)
     risk_level = Column(SQLEnum(RiskLevel), nullable=True)
     deadline = Column(DateTime, nullable=True)
-    metadata = Column(JSON, default={})
+    entry_metadata = Column("metadata", JSON, default={})
     tags = Column(JSON, default=[])
     embedding = Column(Vector(384), nullable=True)   # all-MiniLM-L6-v2 = 384-dim
     is_active = Column(Boolean, default=True)

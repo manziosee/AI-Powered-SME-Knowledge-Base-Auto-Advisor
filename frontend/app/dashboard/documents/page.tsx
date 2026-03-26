@@ -158,7 +158,6 @@ export default function DocumentsPage() {
       const entry = { name: file.name, pct: 0, done: false };
       setUploads((prev) => [...prev, entry]);
 
-      const idx = -1; // will use name as key below
       const { data, error } = await docsApi.upload(file, (pct) => {
         setUploads((prev) =>
           prev.map((u) => u.name === file.name ? { ...u, pct } : u)
@@ -206,7 +205,6 @@ export default function DocumentsPage() {
         setUploads((prev) => prev.filter((u) => u.name !== file.name));
       }, 3000);
     }
-    void idx;
   }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -281,7 +279,7 @@ export default function DocumentsPage() {
                 {!u.done && <ProgressBar pct={u.pct} />}
               </div>
               {u.done && !u.error && <Check size={14} className="text-emerald-500 flex-shrink-0" />}
-              {u.done && u.error  && <X    size={14} className="text-amber-500 flex-shrink-0" title={u.error} />}
+              {u.done && u.error  && <X    size={14} className="text-amber-500 flex-shrink-0" aria-label={u.error} />}
               {!u.done && <span className="text-[10px] text-[var(--fg-muted)] flex-shrink-0">{u.pct}%</span>}
             </div>
           ))}

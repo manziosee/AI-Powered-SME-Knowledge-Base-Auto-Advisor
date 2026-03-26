@@ -65,8 +65,8 @@ def check_expiring_contracts():
             contracts = result.scalars().all()
             
             for contract in contracts:
-                if contract.metadata.get("expiry_date"):
-                    expiry = datetime.fromisoformat(contract.metadata["expiry_date"])
+                if contract.doc_metadata.get("expiry_date"):
+                    expiry = datetime.fromisoformat(contract.doc_metadata["expiry_date"])
                     if expiry <= datetime.utcnow() + timedelta(days=30):
                         users_result = await db.execute(
                             select(User).where(User.company_id == contract.company_id)

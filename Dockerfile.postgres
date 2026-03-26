@@ -1,0 +1,15 @@
+FROM pgvector/pgvector:pg16
+
+# Set PGDATA to a SUBDIRECTORY of the Fly volume mount point.
+# Fly mounts volumes at /var/lib/postgresql/data which may contain
+# a lost+found directory from the ext4 filesystem.  Postgres refuses
+# to initialise a non-empty directory, so we point PGDATA one level
+# deeper so that Postgres gets a clean empty directory to work with.
+ENV PGDATA=/var/lib/postgresql/data/pgdata
+
+# Copy a wrapper entry-point that fixes ownership BEFORE Postgres starts.
+COPY scripts/pg-entrypoint.sh /usr/local/bin/pg-entrypoint.sh
+RUN chmod +x /usr/local/bin/pg-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/pg-entrypoint.sh"]
+CMD ["postgres"]

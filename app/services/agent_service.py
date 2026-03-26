@@ -23,10 +23,10 @@ import math
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.prompts import PromptTemplate
-from langchain.tools import Tool, StructuredTool
+from langgraph.prebuilt import create_react_agent
+from langchain_core.tools import Tool, StructuredTool
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import HumanMessage
 
 from app.core.config import settings
 
@@ -277,32 +277,13 @@ def _make_date_tool():
 # ReAct prompt
 # ---------------------------------------------------------------------------
 
-REACT_PROMPT = PromptTemplate.from_template("""You are an AI business advisor for SMEs.
-You have access to the following tools:
-
-{tools}
-
-Use the following format strictly:
-
-Question: the input question you must answer
-Thought: think about what to do
-Action: the action to take, must be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat up to 5 times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original question
-
-Important rules:
-- Always use a tool before answering if the question requires real data
-- Never guess dates, deadlines, or numbers — use tools
-- Keep answers concise and actionable
-- Flag critical risks or deadlines prominently
-
-Begin!
-
-Question: {input}
-Thought: {agent_scratchpad}""")
+SYSTEM_PROMPT = (
+    "You are an AI business advisor for SMEs. "
+    "Always use the available tools to retrieve real data before answering. "
+    "Never guess dates, deadlines, or numbers — use tools. "
+    "Keep answers concise and actionable. "
+    "Flag critical risks or deadlines prominently."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -315,9 +296,9 @@ def build_sme_agent(
     country_code: str = "US",
     industry: Optional[str] = None,
     verbose: bool = False,
-) -> AgentExecutor:
+):
     """
-    Build and return a fully configured SME advisor agent.
+    Build and return a fully configured SME advisor agent (LangGraph CompiledGraph).
 
     Args:
         company_id:         UUID of the company
@@ -337,16 +318,7 @@ def build_sme_agent(
         _make_date_tool(),
     ]
 
-    agent = create_react_agent(llm=llm, tools=tools, prompt=REACT_PROMPT)
-
-    return AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=verbose,
-        max_iterations=6,
-        handle_parsing_errors=True,
-        return_intermediate_steps=True,
-    )
+    return create_react_agent(model=llm, tools=tools, prompt=SYSTEM_PROMPT)
 
 
 async def run_agent(
@@ -374,15 +346,22 @@ async def run_agent(
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
-            lambda: executor.invoke({"input": query}),
+            lambda: executor.invoke({"messages": [HumanMessage(content=query)]}),
         )
-        steps = result.get("intermediate_steps", [])
-        tools_used = [step[0].tool for step in steps if hasattr(step[0], "tool")]
+        messages = result.get("messages", [])
+        # Final answer is the last AIMessage content
+        answer = ""
+        tools_used = []
+        for msg in messages:
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                tools_used.extend(tc["name"] for tc in msg.tool_calls if "name" in tc)
+            if hasattr(msg, "content") and msg.content and not getattr(msg, "tool_calls", None):
+                answer = msg.content
 
         return {
-            "answer": result.get("output", ""),
+            "answer": answer,
             "tools_used": tools_used,
-            "steps": len(steps),
+            "steps": len(messages),
             "mode": "agent",
         }
     except Exception as exc:

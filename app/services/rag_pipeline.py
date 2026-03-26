@@ -15,8 +15,8 @@ import logging
 import math
 from typing import Any, Dict, List, Optional
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document as LCDocument
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document as LCDocument
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 

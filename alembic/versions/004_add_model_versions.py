@@ -30,37 +30,17 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # ── Enum types ────────────────────────────────────────────────────────────
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'modeltype') THEN
-                CREATE TYPE modeltype AS ENUM ('document_classifier', 'risk_scorer');
-            END IF;
-        END$$
-    """)
-    op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'trainingstatus') THEN
-                CREATE TYPE trainingstatus AS ENUM ('queued', 'running', 'completed', 'failed');
-            END IF;
-        END$$
-    """)
-
     # ── model_versions table ──────────────────────────────────────────────────
+    # Use String for model_type and status to avoid PostgreSQL enum conflicts
+    # across migration runs.  Application-level validation enforces valid values.
     op.create_table(
         "model_versions",
         sa.Column("id",             UUID(as_uuid=True), primary_key=True,
                   server_default=sa.text("gen_random_uuid()")),
 
-        sa.Column("model_type",     sa.Enum("document_classifier", "risk_scorer",
-                                            name="modeltype", create_type=False),
-                  nullable=False),
+        sa.Column("model_type",     sa.String(50),  nullable=False),
         sa.Column("version",        sa.String(20),  nullable=False),
-        sa.Column("status",         sa.Enum("queued", "running", "completed", "failed",
-                                            name="trainingstatus", create_type=False),
-                  server_default="queued", nullable=False),
+        sa.Column("status",         sa.String(20),  server_default="queued", nullable=False),
         sa.Column("is_active",      sa.Boolean, server_default="false", nullable=False),
 
         # Training metadata
@@ -118,5 +98,4 @@ def downgrade() -> None:
     op.drop_index("ix_model_versions_active",       table_name="model_versions")
     op.drop_index("ix_model_versions_type_company", table_name="model_versions")
     op.drop_table("model_versions")
-    op.execute("DROP TYPE IF EXISTS trainingstatus")
-    op.execute("DROP TYPE IF EXISTS modeltype")
+    # enum types removed from this migration (now using String columns)

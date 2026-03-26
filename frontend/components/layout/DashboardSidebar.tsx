@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, MessageSquare, BarChart3,
   ShieldCheck, Bell, Settings, Building2, LogOut,
-  ChevronLeft, ChevronRight, Sun, Moon, HelpCircle, Brain, Calendar,
+  ChevronLeft, ChevronRight, Sun, Moon, HelpCircle, Brain, Calendar, Search,
 } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -32,7 +32,11 @@ const BOTTOM_NAV = [
 
 const unreadCount = NOTIFICATIONS.filter((n) => !n.read).length;
 
-export default function DashboardSidebar() {
+interface DashboardSidebarProps {
+  onSearchOpen?: () => void;
+}
+
+export default function DashboardSidebar({ onSearchOpen }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
@@ -75,6 +79,26 @@ export default function DashboardSidebar() {
             Main menu
           </p>
         )}
+
+        {/* Search button */}
+        <button
+          type="button"
+          onClick={onSearchOpen}
+          title={collapsed ? "Search (⌘K)" : undefined}
+          className={cn(
+            "flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-sm transition-all duration-300 group w-full mb-1",
+            "text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] hover:scale-[1.02] hover:shadow-md",
+            collapsed && "justify-center px-2"
+          )}
+        >
+          <Search size={16} className="flex-shrink-0 group-hover:text-violet-500 transition-colors" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left text-sm">Search</span>
+              <kbd className="text-[10px] font-mono text-[var(--fg-muted)] bg-[var(--surface)] border border-[var(--border)] px-1.5 py-0.5 rounded">⌘K</kbd>
+            </>
+          )}
+        </button>
 
         {NAV.map(({ label, href, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");

@@ -61,6 +61,14 @@ export default function Navbar() {
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-2">
+            {/* Docs link */}
+            <Link
+              href="/docs"
+              className="px-3 py-2 text-sm font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors rounded-xl hover:bg-[var(--surface-hover)] flex items-center gap-1.5"
+            >
+              <span>Docs</span>
+            </Link>
+
             <button
               type="button"
               onClick={toggle}
@@ -123,6 +131,13 @@ export default function Navbar() {
                 {link.label}
               </a>
             ))}
+            <Link
+              href="/docs"
+              className="px-4 py-2.5 text-sm text-[var(--fg-soft)] hover:text-[var(--fg)] rounded-xl hover:bg-[var(--surface-hover)] transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              API Docs
+            </Link>
             <hr className="border-[var(--border)] my-1" />
             <Link
               href="/login"

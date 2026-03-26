@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Bell, AlertTriangle, FileText, ShieldCheck,
-  CheckCheck, Trash2, Clock, BellOff,
+  CheckCheck, Trash2, Clock, BellOff, RefreshCw,
 } from "lucide-react";
-import { NOTIFICATIONS } from "@/lib/mock-data";
+import { notifications as notifApi, type ApiNotification } from "@/lib/api";
 
 /* ── Config maps ─────────────────────────────────────────────── */
 const typeIcon: Record<string, React.ReactNode> = {
@@ -56,24 +56,43 @@ const FILTERS: { id: Filter; label: string; icon: React.ReactNode }[] = [
   { id: "document",   label: "Documents",  icon: <FileText size={11} />    },
 ];
 
+type Notif = ApiNotification & { severity?: string };
+
 export default function NotificationsPage() {
-  const [notifs, setNotifs]   = useState(NOTIFICATIONS);
-  const [filter, setFilter]   = useState<Filter>("all");
+  const [notifs,  setNotifs]  = useState<Notif[]>([]);
+  const [filter,  setFilter]  = useState<Filter>("all");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    notifApi.list(false, 100).then(({ data }) => {
+      if (data?.items) setNotifs(data.items as Notif[]);
+      setLoading(false);
+    });
+  }, []);
 
   const filtered = notifs.filter((n) => {
-    if (filter === "unread")   return !n.read;
+    if (filter === "unread")   return !n.is_read;
     if (filter === "deadline" || filter === "compliance" || filter === "document")
-      return n.type === filter;
+      return n.notification_type === filter;
     return true;
   });
 
-  const unread   = notifs.filter((n) => !n.read).length;
+  const unread   = notifs.filter((n) => !n.is_read).length;
   const critical = notifs.filter((n) => n.severity === "critical").length;
   const high     = notifs.filter((n) => n.severity === "high").length;
 
-  const markRead    = (id: string) => setNotifs((p) => p.map((n) => n.id === id ? { ...n, read: true } : n));
-  const markAllRead = ()           => setNotifs((p) => p.map((n) => ({ ...n, read: true })));
-  const deleteNotif = (id: string) => setNotifs((p) => p.filter((n) => n.id !== id));
+  const markRead = async (id: string) => {
+    await notifApi.markRead(id);
+    setNotifs((p) => p.map((n) => n.id === id ? { ...n, is_read: true } : n));
+  };
+  const markAllRead = async () => {
+    await notifApi.markAllRead();
+    setNotifs((p) => p.map((n) => ({ ...n, is_read: true })));
+  };
+  const deleteNotif = async (id: string) => {
+    await notifApi.delete(id);
+    setNotifs((p) => p.filter((n) => n.id !== id));
+  };
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -120,55 +139,49 @@ export default function NotificationsPage() {
       </div>
 
       {/* ── Notification list ────────────────────────────────────── */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20 gap-2 text-[var(--fg-muted)]">
+          <RefreshCw size={16} className="animate-spin" />
+          <span className="text-sm">Loading notifications…</span>
+        </div>
+      ) : (
       <div className="flex flex-col gap-2.5">
         {filtered.map((n) => (
           <div
             key={n.id}
             onClick={() => markRead(n.id)}
             className={`group relative flex items-start gap-0 rounded-2xl border overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.01] ${
-              !n.read ? "opacity-100" : "opacity-55 hover:opacity-80"
+              !n.is_read ? "opacity-100" : "opacity-55 hover:opacity-80"
             } ${
               n.severity === "critical" ? "border-rose-500/25   bg-rose-500/4"   :
-              n.severity === "high"     ? "border-amber-500/20  bg-amber-500/3"  :
-              n.severity === "medium"   ? "border-blue-500/15   bg-blue-500/3"   :
+              n.notification_type === "deadline" ? "border-amber-500/20  bg-amber-500/3"  :
+              n.notification_type === "compliance" ? "border-blue-500/15   bg-blue-500/3"   :
                                           "border-[var(--border)] bg-[var(--surface)]"
             }`}
           >
-            {/* Left accent strip */}
-            <div className={`w-1 self-stretch flex-shrink-0 ${accentBar[n.severity] ?? "bg-[var(--border)]"}`} />
-
-            {/* Icon */}
-            <div className={`m-3.5 w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${typeIconBg[n.type] ?? "bg-[var(--surface)] border-[var(--border)]"}`}>
-              {typeIcon[n.type] ?? <Bell size={14} className="text-[var(--fg-muted)]" />}
+            <div className={`w-1 self-stretch flex-shrink-0 ${accentBar[n.severity ?? n.notification_type] ?? "bg-[var(--border)]"}`} />
+            <div className={`m-3.5 w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${typeIconBg[n.notification_type] ?? "bg-[var(--surface)] border-[var(--border)]"}`}>
+              {typeIcon[n.notification_type] ?? <Bell size={14} className="text-[var(--fg-muted)]" />}
             </div>
-
-            {/* Content */}
             <div className="flex-1 min-w-0 py-3.5 pr-10">
               <div className="flex items-center gap-2 mb-0.5">
-                <p className={`text-sm font-semibold ${!n.read ? "text-[var(--fg)]" : "text-[var(--fg-muted)]"}`}>
+                <p className={`text-sm font-semibold ${!n.is_read ? "text-[var(--fg)]" : "text-[var(--fg-muted)]"}`}>
                   {n.title}
                 </p>
-                {!n.read && (
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotGlow[n.severity]}`} />
+                {!n.is_read && (
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotGlow[n.severity ?? "info"]}`} />
                 )}
               </div>
-              <p className="text-[var(--fg-muted)] text-xs leading-relaxed line-clamp-2">{n.body}</p>
+              <p className="text-[var(--fg-muted)] text-xs leading-relaxed line-clamp-2">{n.message}</p>
               <div className="flex items-center gap-3 mt-1.5">
                 <span className="text-[var(--fg-muted)] text-[10px] opacity-60">
-                  {new Date(n.createdAt).toLocaleString()}
+                  {new Date(n.created_at).toLocaleString()}
                 </span>
-                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                  n.severity === "critical" ? "bg-rose-500/10   text-rose-500"   :
-                  n.severity === "high"     ? "bg-amber-500/10  text-amber-500"  :
-                  n.severity === "medium"   ? "bg-blue-500/10   text-blue-500"   :
-                                              "bg-violet-500/10 text-violet-500"
-                }`}>
-                  {n.severity}
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-500">
+                  {n.notification_type}
                 </span>
               </div>
             </div>
-
-            {/* Delete button */}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); deleteNotif(n.id); }}
@@ -188,6 +201,7 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

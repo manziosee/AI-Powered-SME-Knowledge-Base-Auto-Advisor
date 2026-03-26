@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { User, Bell, Shield, Globe, Key, Save, Eye, EyeOff, Check, Copy, AlertCircle } from "lucide-react";
-import { CURRENT_USER } from "@/lib/mock-data";
 import { auth as authApi } from "@/lib/api";
 
 const tabs = [
@@ -20,8 +19,35 @@ export default function SettingsPage() {
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [saveErr,  setSaveErr]  = useState<string | null>(null);
-  const [name,     setName]     = useState(CURRENT_USER.name);
-  const [email,    setEmail]    = useState(CURRENT_USER.email);
+  const [name,     setName]     = useState("");
+  const [email,    setEmail]    = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [userCompany, setUserCompany] = useState("");
+  const [userAvatar, setUserAvatar] = useState("U");
+
+  useEffect(() => {
+    authApi.me().then(({ data }) => {
+      if (data) {
+        setName(data.full_name);
+        setEmail(data.email);
+        setUserRole(data.role);
+        setUserCompany(data.company?.name ?? "");
+        const initials = data.full_name?.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) ?? "U";
+        setUserAvatar(initials);
+      } else {
+        // fallback from localStorage
+        const stored = localStorage.getItem("auth_user");
+        if (stored) {
+          const u = JSON.parse(stored);
+          setName(u.name ?? "");
+          setEmail(u.email ?? "");
+          setUserRole(u.role ?? "");
+          setUserCompany(u.company ?? "");
+          setUserAvatar(u.avatar ?? "U");
+        }
+      }
+    });
+  }, []);
 
   // Notification toggles — interactive state
   const [notifs, setNotifs] = useState<Record<string, boolean>>({
@@ -104,11 +130,11 @@ export default function SettingsPage() {
 
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-500 font-black text-xl">
-                    {CURRENT_USER.avatar}
+                    {userAvatar}
                   </div>
                   <div>
-                    <p className="text-[var(--fg-soft)] text-sm font-medium">{CURRENT_USER.name}</p>
-                    <p className="text-[var(--fg-muted)] text-xs">{CURRENT_USER.role} · {CURRENT_USER.company}</p>
+                    <p className="text-[var(--fg-soft)] text-sm font-medium">{name}</p>
+                    <p className="text-[var(--fg-muted)] text-xs capitalize">{userRole} · {userCompany}</p>
                     <button type="button" className="text-violet-500 hover:text-violet-400 text-xs mt-1 transition-colors">
                       Change avatar
                     </button>
@@ -129,11 +155,11 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">Role</label>
-                    <div className="px-3 py-2.5 bg-[var(--bg-muted)] border border-[var(--border)] rounded-xl text-[var(--fg-muted)] text-sm">{CURRENT_USER.role}</div>
+                    <div className="px-3 py-2.5 bg-[var(--bg-muted)] border border-[var(--border)] rounded-xl text-[var(--fg-muted)] text-sm capitalize">{userRole}</div>
                   </div>
                   <div>
-                    <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">Country</label>
-                    <div className="px-3 py-2.5 bg-[var(--bg-muted)] border border-[var(--border)] rounded-xl text-[var(--fg-muted)] text-sm">{CURRENT_USER.country}</div>
+                    <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">Company</label>
+                    <div className="px-3 py-2.5 bg-[var(--bg-muted)] border border-[var(--border)] rounded-xl text-[var(--fg-muted)] text-sm">{userCompany}</div>
                   </div>
                 </div>
 

@@ -27,6 +27,7 @@ primary_region = "jnb"   # Johannesburg, South Africa (closest to your users)
   HUGGINGFACE_MODEL    = "sentence-transformers/all-MiniLM-L6-v2"
   EMBEDDING_DIMENSION  = "384"
   GROQ_MODEL           = "llama-3.1-70b-versatile"
+  CORS_ORIGINS         = "http://localhost:3000,https://ai-powered-sme-knowledge-base-auto.vercel.app"
 
 # ── Processes ────────────────────────────────────────────────────────────────
 # Two process groups — web (API) and worker (Celery)

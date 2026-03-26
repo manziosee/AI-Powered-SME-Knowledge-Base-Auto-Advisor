@@ -70,7 +70,7 @@ export const auth = {
 
   async register(payload: {
     email: string; password: string; full_name: string;
-    company_name?: string; country?: string;
+    company_name?: string; country?: string; industry?: string;
   }) {
     return request<{ id: string; email: string; full_name: string }>(
       "/auth/register",
@@ -87,14 +87,14 @@ export const auth = {
   async updateMe(payload: { full_name?: string; email?: string }) {
     return request<{ id: string; email: string; full_name: string }>(
       "/auth/me",
-      { method: "PATCH", body: JSON.stringify(payload) },
+      { method: "PUT", body: JSON.stringify(payload) },
     );
   },
 
   async changePassword(current: string, next: string) {
     return request<{ message: string }>(
-      "/auth/change-password",
-      { method: "POST", body: JSON.stringify({ current_password: current, new_password: next }) },
+      "/auth/me/password",
+      { method: "PUT", body: JSON.stringify({ current_password: current, new_password: next }) },
     );
   },
 
@@ -113,14 +113,17 @@ export interface ApiDocument {
   file_size: number;
   created_at: string;
   uploaded_by?: string;
+  original_filename?: string;
+  document_type?: string;
 }
 
 export const documents = {
   async list(params?: { search?: string; type?: string }) {
     const qs = new URLSearchParams();
     if (params?.search) qs.set("search", params.search);
-    if (params?.type && params.type !== "all") qs.set("type", params.type);
-    return request<ApiDocument[]>(`/documents/?${qs}`);
+    if (params?.type && params.type !== "all") qs.set("doc_type", params.type);
+    const qStr = qs.toString();
+    return request<ApiDocument[]>(`/documents/${qStr ? `?${qStr}` : ""}`);
   },
 
   async upload(file: File, onProgress?: (pct: number) => void) {
@@ -209,35 +212,82 @@ export const chatbot = {
 export const analytics = {
   async overview() {
     return request<{
-      total_documents: number;
-      compliance_score: number;
-      total_risks: number;
-      ai_queries_today: number;
+      documents: { total: number; processed: number; processing: number; uploaded: number; failed: number; processing_rate_pct: number };
+      knowledge_entries: { total: number; by_type: Record<string, number> };
+      alerts: { unread_notifications: number; upcoming_deadlines_30d: number; critical_risks: number };
+      generated_at: string;
     }>("/analytics/overview");
   },
 
-  async exportReport(format: "pdf" | "excel") {
-    return request<{ url: string }>("/analytics/export", {
+  async complianceScore(category?: string) {
+    const qs = category ? `?category=${encodeURIComponent(category)}` : "";
+    return request<{
+      compliance_score: number;
+      country: string;
+      total_rules: number;
+      covered_rules: number;
+      coverage_percentage: number;
+      gap_rules: Array<{ id: string; title: string; category: string; severity: string; deadline?: string; action_required?: string; description?: string }>;
+    }>(`/analytics/compliance-score${qs}`);
+  },
+
+  async riskDistribution() {
+    return request<{
+      distribution: Record<string, number>;
+      percentages: Record<string, number>;
+      total: number;
+    }>("/analytics/risk-distribution");
+  },
+
+  async documentTypes() {
+    return request<{ breakdown: Record<string, number> }>("/analytics/document-types");
+  },
+
+  async exportReport(reportType: string, reportFormat: "pdf" | "excel") {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    const url = `${API}/analytics/export?report_type=${encodeURIComponent(reportType)}&report_format=${encodeURIComponent(reportFormat)}`;
+    const res = await fetch(url, {
       method: "POST",
-      body: JSON.stringify({ format }),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+    if (!res.ok) return { data: null, error: `Export failed (${res.status})` };
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    return { data: { url: objectUrl }, error: null };
   },
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────
+export interface ApiNotification {
+  id: string;
+  title: string;
+  message: string;
+  notification_type: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export const notifications = {
-  async list() {
-    return request<Array<{ id: string; title: string; message: string; type: string; read: boolean; created_at: string }>>(
-      "/notifications/",
+  async list(unreadOnly = false, limit = 50) {
+    return request<{ items: ApiNotification[]; total: number; limit: number; offset: number }>(
+      `/notifications/?unread_only=${unreadOnly}&limit=${limit}`,
     );
   },
 
+  async unreadCount() {
+    return request<{ unread_count: number }>("/notifications/unread-count");
+  },
+
   async markRead(id: string) {
-    return request<{ message: string }>(`/notifications/${id}/read`, { method: "PATCH" });
+    return request<{ status: string; id: string }>(`/notifications/${id}/read`, { method: "PATCH" });
   },
 
   async markAllRead() {
-    return request<{ message: string }>("/notifications/read-all", { method: "POST" });
+    return request<{ status: string }>("/notifications/read-all", { method: "POST" });
+  },
+
+  async delete(id: string) {
+    return request<{ status: string }>(`/notifications/${id}`, { method: "DELETE" });
   },
 };
 
@@ -256,8 +306,15 @@ export const company = {
     });
   },
 
+  async create(payload: { name: string; country: string; industry?: string }) {
+    return request<{ id: string; name: string; country: string }>("/companies/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   async users() {
-    return request<Array<{ id: string; full_name: string; email: string; role: string }>>(
+    return request<{ items: Array<{ id: string; full_name: string; email: string; role: string }>; total: number }>(
       "/companies/me/users",
     );
   },
@@ -305,6 +362,38 @@ export interface TrainingStatus {
   version?: string;
 }
 
+// ── Insights ──────────────────────────────────────────────────────────────────
+export interface CalendarEvent {
+  id: string; title: string; category: string; color: string;
+  priority: "critical" | "high" | "medium" | "low";
+  description: string; due_date: string; due_month: string;
+  days_until: number; overdue: boolean; urgent: boolean;
+}
+
+export const insights = {
+  async health() {
+    return request<{
+      score: number; grade: string; trend: string; trend_direction: string;
+      components: Array<{ label: string; score: number; max: number; status: string; detail: string }>;
+      recommendations: Array<{ priority: string; action: string }>;
+    }>("/insights/health");
+  },
+
+  async calendar(monthsAhead = 3) {
+    return request<{ events: CalendarEvent[]; total: number; generated_at: string }>(
+      `/insights/calendar?months_ahead=${monthsAhead}`,
+    );
+  },
+
+  async expiry(daysAhead = 90) {
+    return request<{
+      documents: Array<{ id: string; filename: string; document_type: string; expiry_date: string; days_until: number; overdue: boolean; status: string }>;
+      total: number; overdue: number; urgent: number;
+    }>(`/insights/expiry?days_ahead=${daysAhead}`);
+  },
+};
+
+// ── Admin — ML Training ───────────────────────────────────────────────────────
 export const admin = {
   async mlStatus() {
     return request<TrainingStatus>("/admin/ml/status");

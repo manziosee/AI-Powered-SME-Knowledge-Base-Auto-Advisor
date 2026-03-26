@@ -28,26 +28,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Download spaCy model (baked into image — direct wheel to avoid 3.7.x URL bug)
+# Download spaCy model (baked into image — cached layer, rarely changes)
 RUN pip install --no-cache-dir \
     https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
-# Pre-cache SentenceTransformer model (no API cost, runs locally)
-# Avoids slow first-request model download in production
+# Pre-cache SentenceTransformer model (cached layer, rarely changes)
 RUN python -c "\
 from sentence_transformers import SentenceTransformer; \
 SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); \
 print('SentenceTransformer model cached.')"
 
-# Application code
-COPY . .
-
-# Create required directories
+# Create required directories before copying code
 RUN mkdir -p /app/uploads /app/models /app/logs
 
-# Non-root user for security
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
-    && chown -R appuser:appgroup /app
+# Non-root user (before COPY so ownership is set correctly)
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
+# Application code — LAST so code changes only rebuild this thin layer
+COPY --chown=appuser:appgroup . .
+
 USER appuser
 
 EXPOSE 8000

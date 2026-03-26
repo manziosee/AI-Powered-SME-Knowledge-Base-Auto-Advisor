@@ -78,6 +78,7 @@ class ChangePasswordRequest(BaseModel):
 class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     language: Optional[str] = None
+    email: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -90,12 +91,25 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # Determine company_id — create new company if company_name provided
+    company_id = user_data.company_id
+    if not company_id and user_data.company_name:
+        from app.models.company import Company
+        company = Company(
+            name=user_data.company_name,
+            country=user_data.country or "US",
+            industry=user_data.industry,
+        )
+        db.add(company)
+        await db.flush()  # get the ID without committing
+        company_id = company.id
+
     user = User(
         email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
         full_name=user_data.full_name,
         role=user_data.role,
-        company_id=user_data.company_id,
+        company_id=company_id,
     )
     db.add(user)
     await db.commit()
@@ -109,20 +123,29 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    redis = await get_redis()
+    redis = None
+    try:
+        redis = await get_redis()
+    except Exception:
+        pass
 
     # Check account lockout before touching the DB
     if redis:
-        lock_key = f"{LOGIN_LOCK_PREFIX}{payload.email}"
-        locked = await redis.get(lock_key)
-        if locked:
-            ttl = await redis.ttl(lock_key)
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Account temporarily locked due to too many failed attempts. "
-                       f"Try again in {ttl // 60 + 1} minute(s).",
-                headers={"Retry-After": str(ttl)},
-            )
+        try:
+            lock_key = f"{LOGIN_LOCK_PREFIX}{payload.email}"
+            locked = await redis.get(lock_key)
+            if locked:
+                ttl = await redis.ttl(lock_key)
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Account temporarily locked due to too many failed attempts. "
+                           f"Try again in {ttl // 60 + 1} minute(s).",
+                    headers={"Retry-After": str(ttl)},
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            redis = None  # Redis unavailable — skip lockout check
 
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
@@ -280,8 +303,27 @@ async def reset_password(
 # ---------------------------------------------------------------------------
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_active_user)):
-    return current_user
+async def get_me(current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
+    # Attach company name for frontend use
+    company_name = None
+    if current_user.company_id:
+        from app.models.company import Company
+        result = await db.execute(select(Company).where(Company.id == current_user.company_id))
+        company = result.scalar_one_or_none()
+        company_name = company.name if company else None
+    # Return as dict so we can add company field not in schema
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "is_verified": current_user.is_verified,
+        "company_id": str(current_user.company_id) if current_user.company_id else None,
+        "company": {"name": company_name} if company_name else None,
+        "created_at": current_user.created_at,
+        "last_login": current_user.last_login,
+    }
 
 
 @router.put("/me")
@@ -290,8 +332,15 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    for field, value in payload.model_dump(exclude_none=True).items():
-        setattr(current_user, field, value)
+    if payload.full_name is not None:
+        current_user.full_name = payload.full_name
+    if payload.email is not None:
+        # Check email not taken by another user
+        existing = await db.execute(select(User).where(User.email == payload.email))
+        other = existing.scalar_one_or_none()
+        if other and str(other.id) != str(current_user.id):
+            raise HTTPException(status_code=400, detail="Email already in use")
+        current_user.email = payload.email
     await db.commit()
     await db.refresh(current_user)
     return {

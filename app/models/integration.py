@@ -28,8 +28,8 @@ class Integration(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
-    integration_type = Column(SQLEnum(IntegrationType), nullable=False)
-    status = Column(SQLEnum(IntegrationStatus), default=IntegrationStatus.PENDING)
+    integration_type = Column(SQLEnum(IntegrationType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    status = Column(SQLEnum(IntegrationStatus, values_callable=lambda x: [e.value for e in x]), default=IntegrationStatus.PENDING)
     endpoint_url = Column(String, nullable=True)        # webhook URL or API base URL
     api_key_encrypted = Column(Text, nullable=True)     # stored encrypted
     headers = Column(JSON, default={})

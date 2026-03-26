@@ -1,10 +1,20 @@
+import re
 from celery import Celery
 from app.core.config import settings
 
+
+def _fix_redis_url(url: str) -> str:
+    """Upstash Redis only supports DB 0. Strip any /N suffix and force /0."""
+    return re.sub(r"/\d+$", "/0", url)
+
+
+_broker_url  = _fix_redis_url(settings.CELERY_BROKER_URL)
+_backend_url = _fix_redis_url(settings.CELERY_RESULT_BACKEND)
+
 celery_app = Celery(
     "sme_kb_worker",
-    broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND,
+    broker=_broker_url,
+    backend=_backend_url,
     include=[
         "app.tasks.document_tasks",
         "app.tasks.notification_tasks",

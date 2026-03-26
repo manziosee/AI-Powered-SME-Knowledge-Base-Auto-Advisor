@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Search, Upload, FileText, AlertTriangle, Clock, CheckCircle,
   Filter, MoreHorizontal, Download, Trash2, X, Check,
 } from "lucide-react";
-import { DOCUMENTS } from "@/lib/mock-data";
 import { documents as docsApi } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Doc = typeof DOCUMENTS[0] & { uploading?: boolean; progress?: number };
+type Doc = {
+  id: string; name: string; type: string; risk: string;
+  status: string; size: string; uploadedAt: string; uploadedBy: string;
+  uploading?: boolean; progress?: number;
+};
 
 const typeColors: Record<string, string> = {
   contract:     "text-violet-600 dark:text-violet-300 bg-violet-500/10",
@@ -141,12 +144,32 @@ function DocMenu({ doc, onDelete }: { doc: Doc; onDelete: (id: string) => void }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function DocumentsPage() {
-  const [docs,       setDocs]      = useState<Doc[]>(DOCUMENTS as Doc[]);
+  const [docs,       setDocs]      = useState<Doc[]>([]);
   const [search,     setSearch]    = useState("");
   const [typeFilter, setType]      = useState("all");
   const [dragging,   setDragging]  = useState(false);
   const [uploads,    setUploads]   = useState<Array<{ name: string; pct: number; done: boolean; error?: string }>>([]);
+  const [loading,    setLoading]   = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load documents from API
+  useEffect(() => {
+    docsApi.list().then(({ data }) => {
+      if (data) {
+        setDocs(data.map(d => ({
+          id: d.id,
+          name: d.original_filename ?? d.name ?? d.id,
+          type: d.document_type ?? d.type ?? "other",
+          risk: d.risk_level ?? "low",
+          status: d.status ?? "uploaded",
+          size: d.file_size ? `${Math.round(d.file_size / 1024)} KB` : "—",
+          uploadedAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : "—",
+          uploadedBy: d.uploaded_by ?? "—",
+        })));
+      }
+      setLoading(false);
+    });
+  }, []);
 
   const handleDelete = useCallback((id: string) => {
     setDocs((prev) => prev.filter((d) => d.id !== id));
@@ -322,7 +345,12 @@ export default function DocumentsPage() {
           <div className="col-span-1" />
         </div>
 
-        {filtered.map((doc, i) => (
+        {loading ? (
+          <div className="flex items-center justify-center py-16 gap-2 text-[var(--fg-muted)]">
+            <Clock size={16} className="animate-spin" />
+            <span className="text-sm">Loading documents…</span>
+          </div>
+        ) : filtered.map((doc, i) => (
           <div key={doc.id}
             className={`grid grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-[var(--bg-soft)] transition-all cursor-pointer group ${
               i < filtered.length - 1 ? "border-b border-[var(--border)]" : ""
@@ -363,7 +391,7 @@ export default function DocumentsPage() {
           </div>
         ))}
 
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="py-16 text-center text-[var(--fg-muted)] text-sm">
             {search ? `No documents match "${search}".` : "No documents yet — upload your first one above."}
           </div>

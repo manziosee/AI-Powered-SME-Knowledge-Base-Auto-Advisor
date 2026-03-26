@@ -32,9 +32,9 @@ class ModelVersion(Base):
     __tablename__ = "model_versions"
 
     id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    model_type       = Column(SQLEnum(ModelType),      nullable=False, index=True)
-    version          = Column(String(20),              nullable=False)  # e.g. "1.0.0"
-    status           = Column(SQLEnum(TrainingStatus), default=TrainingStatus.QUEUED)
+    model_type       = Column(SQLEnum(ModelType,      values_callable=lambda x: [e.value for e in x]), nullable=False, index=True)
+    version          = Column(String(20),              nullable=False)
+    status           = Column(SQLEnum(TrainingStatus,  values_callable=lambda x: [e.value for e in x]), default=TrainingStatus.QUEUED)
     is_active        = Column(Boolean, default=False)  # currently used by the system
 
     # Training metadata

@@ -1,0 +1,78 @@
+# fly.toml — AdvisorAI Backend on Fly.io
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "advisorai-backend"
+primary_region = "iad"   # Washington DC  (good latency for Africa + Europe)
+
+# ── Build ────────────────────────────────────────────────────────────────────
+[build]
+  dockerfile = "Dockerfile"
+
+# ── Static env (non-secret) ──────────────────────────────────────────────────
+[env]
+  ENVIRONMENT          = "production"
+  DEBUG                = "false"
+  PORT                 = "8000"
+  DATABASE_POOL_SIZE   = "5"
+  DATABASE_MAX_OVERFLOW = "10"
+  REDIS_CACHE_TTL      = "3600"
+  ENABLE_RATE_LIMITING = "true"
+  ENABLE_AUDIT_LOG     = "true"
+  RAG_CHUNK_SIZE       = "800"
+  RAG_CHUNK_OVERLAP    = "150"
+  RAG_TOP_K            = "8"
+  RAG_RERANK_TOP_N     = "4"
+  MAX_UPLOAD_SIZE_MB   = "50"
+  ALLOWED_EXTENSIONS   = ".pdf,.docx,.xlsx,.doc,.xls,.txt"
+  HUGGINGFACE_MODEL    = "sentence-transformers/all-MiniLM-L6-v2"
+  EMBEDDING_DIMENSION  = "384"
+  GROQ_MODEL           = "llama-3.1-70b-versatile"
+
+# ── Processes ────────────────────────────────────────────────────────────────
+# Two process groups — web (API) and worker (Celery)
+[processes]
+  web    = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+  worker = "celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q default,documents,notifications"
+
+# ── HTTP service (web process only) ──────────────────────────────────────────
+[http_service]
+  internal_port       = 8000
+  force_https         = true
+  auto_stop_machines  = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes           = ["web"]
+
+  [http_service.concurrency]
+    type       = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+# ── Health check ─────────────────────────────────────────────────────────────
+[[http_service.checks]]
+  grace_period = "30s"
+  interval     = "30s"
+  method       = "GET"
+  path         = "/health"
+  timeout      = "15s"
+
+# ── Machine sizes ─────────────────────────────────────────────────────────────
+# Web: 1GB RAM (SentenceTransformer + spaCy need ~500 MB)
+[[vm]]
+  memory   = "1gb"
+  cpu_kind = "shared"
+  cpus     = 1
+  processes = ["web"]
+
+# Worker: 1GB RAM (same ML models loaded for document processing)
+[[vm]]
+  memory   = "1gb"
+  cpu_kind = "shared"
+  cpus     = 1
+  processes = ["worker"]
+
+# ── Mounts (for uploaded files before S3 upload) ─────────────────────────────
+[[mounts]]
+  source      = "advisorai_uploads"
+  destination = "/app/uploads"
+  processes   = ["web", "worker"]

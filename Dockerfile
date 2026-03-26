@@ -28,8 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Download spaCy model (baked into image — no runtime download)
-RUN python -m spacy download en_core_web_sm
+# Download spaCy model (baked into image — direct wheel to avoid 3.7.x URL bug)
+RUN pip install --no-cache-dir \
+    https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
 # Pre-cache SentenceTransformer model (no API cost, runs locally)
 # Avoids slow first-request model download in production

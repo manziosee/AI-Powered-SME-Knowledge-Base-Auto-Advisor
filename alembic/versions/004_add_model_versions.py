@@ -48,8 +48,8 @@ def upgrade() -> None:
         sa.Column("sample_count",   sa.Integer,  nullable=True),
         sa.Column("accuracy",       sa.Float,    nullable=True),
         sa.Column("cv_accuracy",    sa.Float,    nullable=True),
-        sa.Column("training_stats", sa.JSON,     server_default="'{}'"),
-        sa.Column("classes",        sa.JSON,     server_default="'[]'"),
+        sa.Column("training_stats", sa.JSON,     nullable=True),
+        sa.Column("classes",        sa.JSON,     nullable=True),
 
         # File location
         sa.Column("file_path",      sa.String,   nullable=True),

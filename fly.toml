@@ -8,6 +8,10 @@ primary_region = "jnb"   # Johannesburg, South Africa (closest to your users)
 [build]
   dockerfile = "Dockerfile"
 
+# ── Release command — runs before new machines replace old ones ───────────────
+[deploy]
+  release_command = "alembic upgrade head"
+
 # ── Static env (non-secret) ──────────────────────────────────────────────────
 [env]
   ENVIRONMENT          = "production"

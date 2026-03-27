@@ -54,14 +54,6 @@ async def get_health_score(
     )
     processed_docs = processed_q.scalar() or 0
 
-    # Expiring in 30 days
-    expiry_window = now + timedelta(days=30)
-    expiring_q = await db.execute(
-        select(func.count(Document.id)).where(
-            Document.company_id == company_id,
-            Document.doc_metadata["expiry_date"].astext.cast(type_=None).isnot(None),
-        )
-    )
     # Simplified: count docs uploaded > 1 year ago as "at risk"
     old_docs_q = await db.execute(
         select(func.count(Document.id)).where(

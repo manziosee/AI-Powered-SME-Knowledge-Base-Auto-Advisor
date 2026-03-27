@@ -126,7 +126,7 @@ export default function CompliancePage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {filtered.map((rule) => {
+          {filtered.map((rule, ruleIdx) => {
             const sev = severityConfig[rule.severity] || severityConfig.low;
             const st  = statusConfig[rule.status]     || statusConfig.on_track;
             const daysUntil = rule.deadline
@@ -134,7 +134,7 @@ export default function CompliancePage() {
               : null;
 
             return (
-              <div key={rule.id}
+              <div key={rule.id ?? ruleIdx}
                 className="p-5 rounded-2xl border border-[var(--border)] hover:border-violet-500/25 bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-all duration-300 group cursor-pointer hover:shadow-lg hover:scale-[1.02]">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 min-w-0">

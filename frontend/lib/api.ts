@@ -46,7 +46,14 @@ async function request<T>(
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      return { data: null, error: body?.detail ?? `HTTP ${res.status}` };
+      let err: any = body?.detail ?? `HTTP ${res.status}`;
+      if (Array.isArray(err)) {
+        // FastAPI validation errors come as an array of objects
+        err = err.map((e) => e?.msg ?? JSON.stringify(e)).join("; ");
+      } else if (typeof err === "object" && err !== null) {
+        err = err.msg ?? err.error ?? JSON.stringify(err);
+      }
+      return { data: null, error: String(err) };
     }
 
     const data: T = await res.json();
@@ -59,10 +66,9 @@ async function request<T>(
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const auth = {
   async login(email: string, password: string) {
-    const form = new URLSearchParams({ username: email, password });
     const res = await request<{ access_token: string; token_type: string }>(
       "/auth/login",
-      { method: "POST", body: form.toString(), headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+      { method: "POST", body: JSON.stringify({ email, password }) },
     );
     if (res.data?.access_token) saveToken(res.data.access_token);
     return res;

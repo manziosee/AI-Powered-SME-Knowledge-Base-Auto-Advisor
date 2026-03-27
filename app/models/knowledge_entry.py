@@ -30,10 +30,16 @@ class KnowledgeEntry(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=True)
-    knowledge_type = Column(SQLEnum(KnowledgeType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    knowledge_type = Column(
+        SQLEnum(KnowledgeType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    risk_level = Column(SQLEnum(RiskLevel, values_callable=lambda x: [e.value for e in x]), nullable=True)
+    risk_level = Column(
+        SQLEnum(RiskLevel, values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
     deadline = Column(DateTime, nullable=True)
     entry_metadata = Column("metadata", JSON, default={})
     tags = Column(JSON, default=[])

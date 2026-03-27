@@ -91,6 +91,8 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    role_value = user_data.role.value if hasattr(user_data.role, "value") else user_data.role
+
     # Determine company_id — create new company if company_name provided
     company_id = user_data.company_id
     if not company_id and user_data.company_name:
@@ -108,13 +110,17 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
         full_name=user_data.full_name,
-        role=user_data.role,
+        role=role_value,
         company_id=company_id,
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+    try:
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return user
+    except Exception as exc:  # safety net to avoid opaque 500s in production
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Registration failed: {exc}")
 
 
 # ---------------------------------------------------------------------------

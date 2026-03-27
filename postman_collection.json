@@ -1,45 +1,53 @@
 {
   "info": {
-    "name": "AI-Powered SME Knowledge Base API",
-    "description": "Complete API collection for SME Knowledge Base & Auto Advisor with Groq AI integration",
+    "name": "AdvisorAI — SME Knowledge Base API",
+    "description": "Complete API collection for the AdvisorAI backend at https://advisorai-backend.fly.dev\n\nSet the `base_url` variable to switch between local and production.\n\nAuth flow:\n1. POST /auth/register or POST /auth/login\n2. The Login request auto-saves `access_token` via the test script\n3. All other requests use Bearer {{access_token}} automatically",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:8000/api/v1",
-      "type": "string"
+      "value": "https://advisorai-backend.fly.dev/api/v1",
+      "description": "Production backend. Change to http://localhost:8000/api/v1 for local dev."
     },
     {
       "key": "access_token",
       "value": "",
-      "type": "string"
+      "description": "Set automatically by the Login request test script."
     }
   ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
   "item": [
     {
       "name": "Authentication",
       "item": [
         {
-          "name": "Register User",
+          "name": "Register",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@test.com\",\n  \"password\": \"Test123!\",\n  \"full_name\": \"Admin User\",\n  \"role\": \"admin\"\n}"
+              "raw": "{\n  \"email\": \"admin@mycompany.com\",\n  \"password\": \"SecurePass123!\",\n  \"full_name\": \"Admin User\",\n  \"company_name\": \"My Company Ltd\",\n  \"country\": \"Rwanda\",\n  \"industry\": \"Technology\"\n}",
+              "options": { "raw": { "language": "json" } }
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
               "host": ["{{base_url}}"],
               "path": ["auth", "register"]
-            }
+            },
+            "description": "Create a new user account. Optionally supply company_name + country to auto-create a company."
           }
         },
         {
@@ -49,29 +57,144 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "var jsonData = pm.response.json();",
-                  "pm.collectionVariables.set(\"access_token\", jsonData.access_token);"
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "  pm.collectionVariables.set('access_token', json.access_token);",
+                  "  console.log('Token saved:', json.access_token.slice(0,20) + '...');",
+                  "}"
                 ]
               }
             }
           ],
           "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mycompany.com\",\n  \"password\": \"SecurePass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Returns access_token + refresh_token. Token auto-saved to collection variable."
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Updated Name\",\n  \"email\": \"new@mycompany.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"OldPass123!\",\n  \"new_password\": \"NewPass456!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/me/password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me", "password"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Exchange a refresh token for a new access + refresh token pair."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/auth/login?email=admin@test.com&password=Test123!",
+              "raw": "{{base_url}}/auth/logout",
               "host": ["{{base_url}}"],
-              "path": ["auth", "login"],
-              "query": [
-                {
-                  "key": "email",
-                  "value": "admin@test.com"
-                },
-                {
-                  "key": "password",
-                  "value": "Test123!"
-                }
-              ]
+              "path": ["auth", "logout"]
+            },
+            "description": "Revokes the current access token."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mycompany.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Sends a password-reset email. Always returns 200 to avoid user enumeration."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<reset_token_from_email>\",\n  \"new_password\": \"NewSecurePass123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
             }
           }
         }
@@ -84,52 +207,33 @@
           "name": "Upload Document",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "body": {
               "mode": "formdata",
               "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": ""
-                }
+                { "key": "file", "type": "file", "src": "", "description": "Select a PDF, DOCX, XLSX, or TXT file" }
               ]
             },
             "url": {
               "raw": "{{base_url}}/documents/upload",
               "host": ["{{base_url}}"],
               "path": ["documents", "upload"]
-            }
+            },
+            "description": "Upload a document for AI processing. Triggers async extraction and embedding."
           }
         },
         {
           "name": "List Documents",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/documents/?skip=0&limit=50",
+              "raw": "{{base_url}}/documents/?search=&doc_type=",
               "host": ["{{base_url}}"],
               "path": ["documents", ""],
               "query": [
-                {
-                  "key": "skip",
-                  "value": "0"
-                },
-                {
-                  "key": "limit",
-                  "value": "50"
-                }
+                { "key": "search", "value": "", "description": "Full-text search" },
+                { "key": "doc_type", "value": "", "description": "contract | policy | invoice | hr_document | compliance | other" }
               ]
             }
           }
@@ -138,53 +242,25 @@
           "name": "Get Document",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/documents/:document_id",
               "host": ["{{base_url}}"],
               "path": ["documents", ":document_id"],
-              "variable": [
-                {
-                  "key": "document_id",
-                  "value": "your-document-uuid"
-                }
-              ]
+              "variable": [{ "key": "document_id", "value": "your-document-uuid" }]
             }
           }
         },
         {
-          "name": "Update Document",
+          "name": "Get Download URL",
           "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"document_type\": \"contract\",\n  \"tags\": [\"legal\", \"vendor\"],\n  \"metadata\": {\n    \"department\": \"legal\",\n    \"priority\": \"high\"\n  }\n}"
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/documents/:document_id",
+              "raw": "{{base_url}}/documents/:document_id/download",
               "host": ["{{base_url}}"],
-              "path": ["documents", ":document_id"],
-              "variable": [
-                {
-                  "key": "document_id",
-                  "value": "your-document-uuid"
-                }
-              ]
+              "path": ["documents", ":document_id", "download"],
+              "variable": [{ "key": "document_id", "value": "your-document-uuid" }]
             }
           }
         },
@@ -192,292 +268,554 @@
           "name": "Delete Document",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/documents/:document_id",
               "host": ["{{base_url}}"],
               "path": ["documents", ":document_id"],
-              "variable": [
-                {
-                  "key": "document_id",
-                  "value": "your-document-uuid"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Search Documents",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"query\": \"contract terms\",\n  \"limit\": 10,\n  \"similarity_threshold\": 0.7\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/documents/search",
-              "host": ["{{base_url}}"],
-              "path": ["documents", "search"]
+              "variable": [{ "key": "document_id", "value": "your-document-uuid" }]
             }
           }
         }
       ]
     },
     {
-      "name": "AI Advisor (Groq Powered)",
+      "name": "AI Advisor (RAG)",
       "item": [
         {
           "name": "Ask Question",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"What are my compliance requirements?\",\n  \"context_limit\": 5\n}"
+              "raw": "{\n  \"question\": \"What compliance obligations do I have this quarter?\",\n  \"session_id\": null\n}",
+              "options": { "raw": { "language": "json" } }
             },
             "url": {
               "raw": "{{base_url}}/advisor/ask",
               "host": ["{{base_url}}"],
               "path": ["advisor", "ask"]
+            },
+            "description": "RAG-powered question answering over your uploaded documents."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chatbot Sessions",
+      "item": [
+        {
+          "name": "List Sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chatbot/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["chatbot", "sessions"]
             }
           }
         },
         {
-          "name": "Ask About Deadlines",
+          "name": "Create Session",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"What deadlines are coming up in the next 30 days?\",\n  \"context_limit\": 10\n}"
+              "raw": "{\n  \"title\": \"Compliance Q1 2026\"\n}",
+              "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{base_url}}/advisor/ask",
+              "raw": "{{base_url}}/chatbot/sessions",
               "host": ["{{base_url}}"],
-              "path": ["advisor", "ask"]
+              "path": ["chatbot", "sessions"]
             }
           }
         },
         {
-          "name": "Ask About Risks",
+          "name": "Get Session Messages",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"query\": \"What are the high-risk items in my contracts?\",\n  \"context_limit\": 5\n}"
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/advisor/ask",
+              "raw": "{{base_url}}/chatbot/sessions/:session_id",
               "host": ["{{base_url}}"],
-              "path": ["advisor", "ask"]
+              "path": ["chatbot", "sessions", ":session_id"],
+              "variable": [{ "key": "session_id", "value": "your-session-uuid" }]
             }
           }
         },
         {
-          "name": "Generate Summary",
+          "name": "Send Message",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"document_id\": \"your-document-uuid\",\n  \"summary_type\": \"executive\"\n}"
+              "raw": "{\n  \"content\": \"What are my key obligations for this month?\"\n}",
+              "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{base_url}}/advisor/summarize",
+              "raw": "{{base_url}}/chatbot/sessions/:session_id/messages",
               "host": ["{{base_url}}"],
-              "path": ["advisor", "summarize"]
+              "path": ["chatbot", "sessions", ":session_id", "messages"],
+              "variable": [{ "key": "session_id", "value": "your-session-uuid" }]
+            }
+          }
+        },
+        {
+          "name": "Delete Session",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chatbot/sessions/:session_id",
+              "host": ["{{base_url}}"],
+              "path": ["chatbot", "sessions", ":session_id"],
+              "variable": [{ "key": "session_id", "value": "your-session-uuid" }]
             }
           }
         }
       ]
     },
     {
-      "name": "ML Models",
+      "name": "Analytics",
       "item": [
         {
-          "name": "Train Custom Model",
+          "name": "Overview",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"model_type\": \"classifier\",\n  \"training_data\": [\n    {\"text\": \"This is a contract document\", \"label\": \"contract\"},\n    {\"text\": \"Invoice for services\", \"label\": \"invoice\"}\n  ]\n}"
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/ml/train",
+              "raw": "{{base_url}}/analytics/overview",
               "host": ["{{base_url}}"],
-              "path": ["ml", "train"]
-            }
+              "path": ["analytics", "overview"]
+            },
+            "description": "Returns document counts, knowledge entry stats, and alert totals. Requires company."
           }
         },
         {
-          "name": "Get Model Status",
+          "name": "Compliance Score",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/ml/models",
+              "raw": "{{base_url}}/analytics/compliance-score?category=",
               "host": ["{{base_url}}"],
-              "path": ["ml", "models"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Knowledge Base",
-      "item": [
-        {
-          "name": "Get Knowledge Entries",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/knowledge/?entry_type=obligation&skip=0&limit=20",
-              "host": ["{{base_url}}"],
-              "path": ["knowledge", ""],
+              "path": ["analytics", "compliance-score"],
               "query": [
-                {
-                  "key": "entry_type",
-                  "value": "obligation"
-                },
-                {
-                  "key": "skip",
-                  "value": "0"
-                },
-                {
-                  "key": "limit",
-                  "value": "20"
-                }
+                { "key": "category", "value": "", "description": "Optional: filter by rule category" }
               ]
             }
           }
         },
         {
-          "name": "Search Knowledge",
+          "name": "Risk Distribution",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/risk-distribution",
+              "host": ["{{base_url}}"],
+              "path": ["analytics", "risk-distribution"]
+            }
+          }
+        },
+        {
+          "name": "Document Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/document-types",
+              "host": ["{{base_url}}"],
+              "path": ["analytics", "document-types"]
+            }
+          }
+        },
+        {
+          "name": "Export Report",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"query\": \"compliance deadlines\",\n  \"limit\": 10,\n  \"entry_types\": [\"obligation\", \"deadline\"]\n}"
-            },
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/knowledge/search",
+              "raw": "{{base_url}}/analytics/export?report_type=compliance&report_format=pdf",
               "host": ["{{base_url}}"],
-              "path": ["knowledge", "search"]
+              "path": ["analytics", "export"],
+              "query": [
+                { "key": "report_type", "value": "compliance", "description": "compliance | documents | full" },
+                { "key": "report_format", "value": "pdf", "description": "pdf | excel" }
+              ]
+            },
+            "description": "Returns a binary file download."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/?unread_only=false&limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", ""],
+              "query": [
+                { "key": "unread_only", "value": "false" },
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/unread-count",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "unread-count"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/:notification_id/read",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", ":notification_id", "read"],
+              "variable": [{ "key": "notification_id", "value": "your-notification-uuid" }]
+            }
+          }
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/read-all",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "read-all"]
+            }
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/:notification_id",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", ":notification_id"],
+              "variable": [{ "key": "notification_id", "value": "your-notification-uuid" }]
             }
           }
         }
       ]
     },
     {
-      "name": "Health Check",
+      "name": "Insights",
       "item": [
         {
-          "name": "System Health",
+          "name": "Business Health Score",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8000/health",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8000",
-              "path": ["health"]
+              "raw": "{{base_url}}/insights/health",
+              "host": ["{{base_url}}"],
+              "path": ["insights", "health"]
             }
           }
         },
         {
-          "name": "API Info",
+          "name": "Compliance Calendar",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/info",
+              "raw": "{{base_url}}/insights/calendar?months_ahead=6",
               "host": ["{{base_url}}"],
-              "path": ["info"]
+              "path": ["insights", "calendar"],
+              "query": [{ "key": "months_ahead", "value": "6" }]
             }
+          }
+        },
+        {
+          "name": "Document Expiry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/insights/expiry?days_ahead=90",
+              "host": ["{{base_url}}"],
+              "path": ["insights", "expiry"],
+              "query": [{ "key": "days_ahead", "value": "90" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Company",
+      "item": [
+        {
+          "name": "Get My Company",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/me",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Company Ltd\",\n  \"country\": \"Rwanda\",\n  \"industry\": \"Technology\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/companies/me",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "me"]
+            }
+          }
+        },
+        {
+          "name": "Create Company",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Company Ltd\",\n  \"country\": \"Kenya\",\n  \"industry\": \"Finance & Banking\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/companies/",
+              "host": ["{{base_url}}"],
+              "path": ["companies", ""]
+            }
+          }
+        },
+        {
+          "name": "List Company Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/me/users",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "me", "users"]
+            }
+          }
+        },
+        {
+          "name": "Invite User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"colleague@mycompany.com\",\n  \"role\": \"employee\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/companies/me/invite",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "me", "invite"]
+            }
+          }
+        },
+        {
+          "name": "Remove User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/companies/me/users/:user_id",
+              "host": ["{{base_url}}"],
+              "path": ["companies", "me", "users", ":user_id"],
+              "variable": [{ "key": "user_id", "value": "your-user-uuid" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Global Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/search?q=contract&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                { "key": "q", "value": "contract", "description": "Search query" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — ML",
+      "item": [
+        {
+          "name": "ML Training Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/ml/status",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "ml", "status"]
+            }
+          }
+        },
+        {
+          "name": "Train Risk Scorer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/ml/train-risk-scorer",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "ml", "train-risk-scorer"]
+            }
+          }
+        },
+        {
+          "name": "Predict Risk",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"This contract expires on 2026-06-30 and includes automatic renewal clauses.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/ml/predict-risk",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "ml", "predict-risk"]
+            }
+          }
+        },
+        {
+          "name": "Admin Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health & Docs",
+      "item": [
+        {
+          "name": "Root",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev",
+              "protocol": "https",
+              "host": ["advisorai-backend", "fly", "dev"]
+            },
+            "description": "Returns API name, version, status, and links to docs and health."
+          }
+        },
+        {
+          "name": "System Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/health",
+              "protocol": "https",
+              "host": ["advisorai-backend", "fly", "dev"],
+              "path": ["health"]
+            },
+            "description": "Checks database and Redis connectivity. Returns 'healthy' or 'degraded'."
+          }
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/docs",
+              "protocol": "https",
+              "host": ["advisorai-backend", "fly", "dev"],
+              "path": ["docs"]
+            },
+            "description": "Interactive Swagger UI — also accessible at /swagger."
+          }
+        },
+        {
+          "name": "ReDoc",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/redoc",
+              "protocol": "https",
+              "host": ["advisorai-backend", "fly", "dev"],
+              "path": ["redoc"]
+            },
+            "description": "ReDoc documentation — clean read-only API reference."
+          }
+        },
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/openapi.json",
+              "protocol": "https",
+              "host": ["advisorai-backend", "fly", "dev"],
+              "path": ["api", "v1", "openapi.json"]
+            },
+            "description": "Raw OpenAPI 3.x spec — used by the frontend docs page to auto-populate."
           }
         }
       ]

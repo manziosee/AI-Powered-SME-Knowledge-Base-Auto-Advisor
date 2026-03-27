@@ -69,10 +69,10 @@ export default function SettingsPage() {
   // API key reveal
   const [revealed, setRevealed] = useState(false);
   const [copied,   setCopied]   = useState(false);
-  const FAKE_KEY = "sk-adv-7f3a9c2d1e8b4f6a0d5c3b2e9a7f1c4d";
+  const apiKey = typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(FAKE_KEY).catch(() => {});
+    navigator.clipboard.writeText(apiKey).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -272,7 +272,7 @@ export default function SettingsPage() {
                 <div className="p-4 rounded-xl bg-[var(--bg-muted)] border border-[var(--border)]">
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-mono text-xs text-[var(--fg-soft)] flex-1 truncate">
-                      {revealed ? FAKE_KEY : "sk-adv-••••••••••••••••••••••••••••••••"}
+                      {revealed ? apiKey : "••••••••••••••••••••••••••••••••"}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <button type="button" onClick={() => setRevealed((v) => !v)}

@@ -6,6 +6,7 @@ import {
   CheckCircle, Clock, Filter, RefreshCw, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { insights } from "@/lib/api";
 
 // ── Types ────────────────────────────────────────────────────────
 interface CalendarEvent {
@@ -22,39 +23,6 @@ interface CalendarEvent {
   urgent: boolean;
 }
 
-// ── Demo data (used when backend is unreachable) ─────────────────
-const DEMO_EVENTS: CalendarEvent[] = [
-  { id: "vat-q1", title: "VAT Return — Q1", category: "tax", color: "#fb7185", priority: "high",
-    description: "Quarterly VAT filing deadline", due_date: "2026-04-15", due_month: "April 2026",
-    days_until: 21, overdue: false, urgent: false },
-  { id: "payroll-mar", title: "Payroll Tax Filing", category: "payroll", color: "#fbbf24", priority: "high",
-    description: "Monthly PAYE / social security filing", due_date: "2026-03-28", due_month: "March 2026",
-    days_until: 3, overdue: false, urgent: true },
-  { id: "corp-tax", title: "Corporate Tax Return", category: "tax", color: "#fb7185", priority: "critical",
-    description: "Annual corporate income tax filing", due_date: "2026-03-31", due_month: "March 2026",
-    days_until: 6, overdue: false, urgent: true },
-  { id: "gdpr-rev", title: "GDPR Policy Review", category: "compliance", color: "#a78bfa", priority: "medium",
-    description: "Annual review of data protection policies", due_date: "2026-05-25", due_month: "May 2026",
-    days_until: 61, overdue: false, urgent: false },
-  { id: "audit-prep", title: "Annual Audit Preparation", category: "finance", color: "#60a5fa", priority: "high",
-    description: "Prepare financial statements for external audit", due_date: "2026-06-01", due_month: "June 2026",
-    days_until: 68, overdue: false, urgent: false },
-  { id: "payroll-apr", title: "Payroll Tax Filing", category: "payroll", color: "#fbbf24", priority: "high",
-    description: "Monthly PAYE / social security filing", due_date: "2026-04-28", due_month: "April 2026",
-    days_until: 34, overdue: false, urgent: false },
-  { id: "vat-q2", title: "VAT Return — Q2", category: "tax", color: "#fb7185", priority: "high",
-    description: "Quarterly VAT filing deadline", due_date: "2026-07-15", due_month: "July 2026",
-    days_until: 112, overdue: false, urgent: false },
-  { id: "insurance", title: "Business Insurance Renewal", category: "finance", color: "#60a5fa", priority: "high",
-    description: "Review and renew business insurance policies", due_date: "2026-06-01", due_month: "June 2026",
-    days_until: 68, overdue: false, urgent: false },
-  { id: "hr-review", title: "HR Policy Review", category: "hr", color: "#34d399", priority: "medium",
-    description: "Annual review of employment contracts", due_date: "2026-06-15", due_month: "June 2026",
-    days_until: 82, overdue: false, urgent: false },
-  { id: "payroll-may", title: "Payroll Tax Filing", category: "payroll", color: "#fbbf24", priority: "high",
-    description: "Monthly PAYE / social security filing", due_date: "2026-05-28", due_month: "May 2026",
-    days_until: 64, overdue: false, urgent: false },
-];
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -83,21 +51,16 @@ export default function ComplianceCalendarPage() {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [events,    setEvents]    = useState<CalendarEvent[]>(DEMO_EVENTS);
-  const [loading,   setLoading]   = useState(false);
+  const [events,    setEvents]    = useState<CalendarEvent[]>([]);
+  const [loading,   setLoading]   = useState(true);
   const [filter,    setFilter]    = useState<string>("all");
   const [selected,  setSelected]  = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-    fetch(`${BASE}/api/v1/insights/calendar?months_ahead=6`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.events?.length) setEvents(data.events); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    insights.calendar(6).then(({ data }) => {
+      if (data?.events) setEvents(data.events);
+    }).finally(() => setLoading(false));
   }, []);
 
   // Events for current month view
@@ -146,7 +109,7 @@ export default function ComplianceCalendarPage() {
         </div>
         <button
           type="button"
-          onClick={() => { setLoading(true); setTimeout(() => setLoading(false), 800); }}
+          onClick={() => { setLoading(true); insights.calendar(6).then(({ data }) => { if (data?.events) setEvents(data.events); }).finally(() => setLoading(false)); }}
           className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] text-xs transition-all"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
@@ -177,14 +140,14 @@ export default function ComplianceCalendarPage() {
         <div className="lg:col-span-2 p-5 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)]">
           {/* Month navigation */}
           <div className="flex items-center justify-between mb-4">
-            <button type="button" onClick={prevMonth}
+            <button type="button" onClick={prevMonth} title="Previous month" aria-label="Previous month"
               className="p-1.5 rounded-lg text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all">
               <ChevronLeft size={16} />
             </button>
             <h2 className="text-[var(--fg)] font-semibold text-sm">
               {MONTHS[viewMonth]} {viewYear}
             </h2>
-            <button type="button" onClick={nextMonth}
+            <button type="button" onClick={nextMonth} title="Next month" aria-label="Next month"
               className="p-1.5 rounded-lg text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all">
               <ChevronRight size={16} />
             </button>

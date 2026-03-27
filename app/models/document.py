@@ -36,8 +36,14 @@ class Document(Base):
     file_path = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False)
     mime_type = Column(String, nullable=False)
-    document_type = Column(SQLEnum(DocumentType, values_callable=lambda x: [e.value for e in x]), default=DocumentType.OTHER)
-    status = Column(SQLEnum(DocumentStatus, values_callable=lambda x: [e.value for e in x]), default=DocumentStatus.UPLOADED)
+    document_type = Column(
+        SQLEnum(DocumentType, values_callable=lambda x: [e.value for e in x]),
+        default=DocumentType.OTHER,
+    )
+    status = Column(
+        SQLEnum(DocumentStatus, values_callable=lambda x: [e.value for e in x]),
+        default=DocumentStatus.UPLOADED,
+    )
     version = Column(Integer, default=1)
     parent_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
     extracted_text = Column(Text, nullable=True)

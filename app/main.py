@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import RedirectResponse, JSONResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -95,6 +96,40 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+
+# ---------------------------------------------------------------------------
+# Root — friendly landing instead of 404
+# ---------------------------------------------------------------------------
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return JSONResponse({
+        "name": "AdvisorAI API",
+        "version": settings.APP_VERSION,
+        "status": "operational",
+        "docs": "/docs",
+        "health": "/health",
+    })
+
+
+# ---------------------------------------------------------------------------
+# Docs shortcuts — /docs and /swagger both redirect to the Swagger UI
+# ---------------------------------------------------------------------------
+
+@app.get("/docs", include_in_schema=False)
+async def docs_redirect():
+    return RedirectResponse(url=f"{settings.API_V1_PREFIX}/docs")
+
+
+@app.get("/swagger", include_in_schema=False)
+async def swagger_redirect():
+    return RedirectResponse(url=f"{settings.API_V1_PREFIX}/docs")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_redirect():
+    return RedirectResponse(url=f"{settings.API_V1_PREFIX}/redoc")
 
 
 # ---------------------------------------------------------------------------

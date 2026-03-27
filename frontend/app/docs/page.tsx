@@ -6,10 +6,163 @@ import {
   Search, Copy, Check, Menu, X, ChevronDown, ChevronRight,
   Zap, Lock, FileText, Brain, MessageSquare, BarChart2,
   Heart, Globe, AlertTriangle, Book, ArrowLeft, ExternalLink,
-  Terminal, Code2, Sun, Moon,
+  Terminal, Code2, Sun, Moon, RefreshCw, Bell, Building2, Settings, ShieldCheck,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+
+// ── OpenAPI parser ─────────────────────────────────────────────────
+const TAG_ICONS: Record<string, React.ElementType> = {
+  "Authentication":   Lock,
+  "Documents":        FileText,
+  "AI Advisor":       Brain,
+  "Chatbot Sessions": MessageSquare,
+  "Analytics":        BarChart2,
+  "Notifications":    Bell,
+  "Insights":         Zap,
+  "Company":          Building2,
+  "Search":           Search,
+  "Admin ML":         Settings,
+  "Compliance":       ShieldCheck,
+  "Health":           Heart,
+};
+
+function iconForTag(tag: string): React.ElementType {
+  return TAG_ICONS[tag] ?? Globe;
+}
+
+function resolveSchema(schema: any, components: any): any {
+  if (!schema) return {};
+  if (schema.$ref) {
+    const parts = schema.$ref.replace("#/", "").split("/");
+    let cur: any = { components };
+    for (const p of parts) cur = cur?.[p] ?? {};
+    return cur;
+  }
+  return schema;
+}
+
+function schemaExample(schema: any, components: any, depth = 0): any {
+  if (depth > 4) return null;
+  const s = resolveSchema(schema, components);
+  if (s.example !== undefined) return s.example;
+  if (s.default  !== undefined) return s.default;
+  switch (s.type) {
+    case "string":  return s.enum?.[0] ?? (s.format === "date-time" ? "2026-01-01T00:00:00Z" : "string");
+    case "integer": return 1;
+    case "number":  return 1.0;
+    case "boolean": return true;
+    case "array":   return [schemaExample(s.items, components, depth + 1)];
+    case "object": {
+      const obj: any = {};
+      for (const [k, v] of Object.entries(s.properties ?? {})) {
+        obj[k] = schemaExample(v, components, depth + 1);
+      }
+      return obj;
+    }
+    default: return null;
+  }
+}
+
+function parseBodyParams(requestBody: any, components: any): { name: string; type: string; required: boolean; description: string }[] {
+  if (!requestBody) return [];
+  const raw = requestBody.content?.["application/json"]?.schema ?? requestBody.content?.["multipart/form-data"]?.schema;
+  if (!raw) return [];
+  const schema = resolveSchema(raw, components);
+  const required: string[] = schema.required ?? [];
+  return Object.entries(schema.properties ?? {}).map(([name, prop]: [string, any]) => ({
+    name,
+    type: prop.type ?? prop.$ref?.split("/").pop() ?? "any",
+    required: required.includes(name),
+    description: prop.description ?? prop.title ?? "",
+  }));
+}
+
+function genCode(method: string, path: string, bodyEx: any, baseUrl: string): { curl: string; python: string; typescript: string } {
+  const url = `${baseUrl}${path}`;
+  const upper = method.toUpperCase();
+  const isWrite = ["POST", "PUT", "PATCH"].includes(upper);
+  const isForm = path.includes("upload");
+  const bodyStr = bodyEx ? JSON.stringify(bodyEx, null, 2) : null;
+
+  const curl = isForm
+    ? `curl -X ${upper} "${url}" \\\n  -H "Authorization: Bearer $TOKEN" \\\n  -F "file=@./document.pdf"`
+    : [
+        `curl -X ${upper} "${url}"`,
+        `  -H "Authorization: Bearer $TOKEN"`,
+        ...(isWrite && bodyStr ? [`  -H "Content-Type: application/json"`, `  -d '${bodyStr}'`] : []),
+      ].join(" \\\n");
+
+  const python = isForm
+    ? `import requests\n\nwith open("document.pdf", "rb") as f:\n    res = requests.post(\n        "${url}",\n        headers={"Authorization": "Bearer TOKEN"},\n        files={"file": f},\n    )\nprint(res.json())`
+    : [
+        `import requests`,
+        ``,
+        `headers = {"Authorization": "Bearer TOKEN", "Content-Type": "application/json"}`,
+        ...(isWrite && bodyStr ? [`payload = ${JSON.stringify(bodyEx, null, 4)}`, ``, `res = requests.${method.toLowerCase()}("${url}", headers=headers, json=payload)`] : [`res = requests.${method.toLowerCase()}("${url}", headers=headers)`]),
+        `print(res.json())`,
+      ].join("\n");
+
+  const typescript = [
+    `const res = await fetch("${url}", {`,
+    `  method: "${upper}",`,
+    `  headers: {`,
+    `    Authorization: \`Bearer \${token}\`,`,
+    ...(isWrite && !isForm ? [`    "Content-Type": "application/json",`] : []),
+    `  },`,
+    ...(isWrite && bodyStr && !isForm ? [`  body: JSON.stringify(${JSON.stringify(bodyEx, null, 4).replace(/\n/g, "\n  ")}),`] : []),
+    `});`,
+    `const data = await res.json();`,
+  ].join("\n");
+
+  return { curl, python, typescript };
+}
+
+function parseOpenAPI(spec: any, baseUrl: string): Section[] {
+  const components = spec.components ?? {};
+  const tagMap = new Map<string, any[]>();
+  const tagOrder: string[] = [];
+
+  for (const [path, methods] of Object.entries(spec.paths ?? {})) {
+    for (const [method, op] of Object.entries(methods as any)) {
+      if (!["get", "post", "put", "patch", "delete"].includes(method)) continue;
+      const operation = op as any;
+      const tag = operation.tags?.[0] ?? "Other";
+      if (!tagMap.has(tag)) { tagMap.set(tag, []); tagOrder.push(tag); }
+      const bodyEx = schemaExample(operation.requestBody?.content?.["application/json"]?.schema ?? operation.requestBody?.content?.["multipart/form-data"]?.schema, components);
+      const code = genCode(method, path, bodyEx, baseUrl);
+      const params = (operation.parameters ?? []).map((p: any) => ({
+        name: p.name, type: p.schema?.type ?? "string",
+        required: p.required ?? false, description: p.description ?? "",
+      }));
+      const body = parseBodyParams(operation.requestBody, components);
+      const responses = operation.responses ?? {};
+      const responseExample = JSON.stringify(
+        schemaExample(Object.values(responses)[0] as any, components) ?? { status: "ok" },
+        null, 2,
+      );
+      tagMap.get(tag)!.push({
+        id: `${method}-${path}`.replace(/[^a-zA-Z0-9]/g, "-"),
+        method: method.toUpperCase() as Method,
+        path,
+        title: operation.summary ?? path,
+        description: operation.description ?? "",
+        params,
+        body,
+        responseExample,
+        code,
+      });
+    }
+  }
+
+  return tagOrder.map(tag => ({
+    id: tag.toLowerCase().replace(/\s+/g, "-"),
+    title: tag,
+    icon: iconForTag(tag),
+    intro: `${tag} endpoints — see below for details.`,
+    endpoints: tagMap.get(tag)!,
+  }));
+}
 
 // ── Types ─────────────────────────────────────────────────────────
 type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -48,295 +201,12 @@ const STATUS: Record<number, string> = {
   500: "bg-rose-500/15 text-rose-400",
 };
 
-// ── API data ──────────────────────────────────────────────────────
-const BASE_URL = "https://api.advisorai.app";
 
-const SECTIONS: Section[] = [
-  // ── Introduction (no endpoints, rendered separately) ───────────
-  {
-    id: "introduction", title: "Introduction", icon: Book,
-    intro: "Welcome to the AdvisorAI API. Build powerful compliance and document intelligence features into any application.",
-    endpoints: [],
-  },
-  {
-    id: "quickstart", title: "Quick Start", icon: Zap,
-    intro: "Get up and running in under 5 minutes. Authenticate, upload a document, and query your AI advisor.",
-    endpoints: [],
-  },
-  // ── Authentication ──────────────────────────────────────────────
-  {
-    id: "auth", title: "Authentication", icon: Lock,
-    intro: "AdvisorAI uses JWT bearer tokens. All requests (except /auth/login and /auth/register) require an Authorization header.",
-    endpoints: [
-      {
-        id: "auth-register", method: "POST", path: "/api/v1/auth/register",
-        title: "Register",
-        description: "Create a new user account. Returns the created user object.",
-        body: [
-          { name: "email",      type: "string", required: true,  description: "Valid email address"              },
-          { name: "password",   type: "string", required: true,  description: "Minimum 8 characters"             },
-          { name: "full_name",  type: "string", required: true,  description: "User's full name"                 },
-          { name: "company_id", type: "uuid",   required: false, description: "Associate with existing company"  },
-        ],
-        responseExample: `{\n  "id": "a1b2c3d4-...",\n  "email": "alice@acme.com",\n  "full_name": "Alice Smith",\n  "role": "employee",\n  "is_active": true,\n  "created_at": "2026-03-26T10:00:00Z"\n}`,
-        code: {
-          curl: `curl -X POST ${BASE_URL}/api/v1/auth/register \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "email": "alice@acme.com",\n    "password": "securepass123",\n    "full_name": "Alice Smith"\n  }'`,
-          python: `import requests\n\nresponse = requests.post(\n    "${BASE_URL}/api/v1/auth/register",\n    json={\n        "email": "alice@acme.com",\n        "password": "securepass123",\n        "full_name": "Alice Smith",\n    }\n)\nuser = response.json()\nprint(user["id"])`,
-          typescript: `const response = await fetch("${BASE_URL}/api/v1/auth/register", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({\n    email: "alice@acme.com",\n    password: "securepass123",\n    full_name: "Alice Smith",\n  }),\n});\nconst user = await response.json();\nconsole.log(user.id);`,
-        },
-      },
-      {
-        id: "auth-login", method: "POST", path: "/api/v1/auth/login",
-        title: "Login",
-        description: "Authenticate with email and password. Returns an access token (30 min TTL) and a refresh token (7 days TTL). After 5 failed attempts the account is locked for 15 minutes.",
-        body: [
-          { name: "email",    type: "string", required: true, description: "Registered email address" },
-          { name: "password", type: "string", required: true, description: "Account password"         },
-        ],
-        responseExample: `{\n  "access_token": "eyJhbGciOiJIUzI1NiIs...",\n  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",\n  "token_type": "bearer"\n}`,
-        code: {
-          curl: `curl -X POST ${BASE_URL}/api/v1/auth/login \\\n  -H "Content-Type: application/json" \\\n  -d '{"email":"alice@acme.com","password":"securepass123"}'`,
-          python: `import requests\n\nresp = requests.post(\n    "${BASE_URL}/api/v1/auth/login",\n    json={"email": "alice@acme.com", "password": "securepass123"},\n)\ntokens = resp.json()\naccess_token = tokens["access_token"]`,
-          typescript: `const resp = await fetch("${BASE_URL}/api/v1/auth/login", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ email: "alice@acme.com", password: "securepass123" }),\n});\nconst { access_token } = await resp.json();`,
-        },
-      },
-      {
-        id: "auth-me", method: "GET", path: "/api/v1/auth/me",
-        title: "Get current user",
-        description: "Returns the authenticated user's profile. Requires a valid Bearer token.",
-        responseExample: `{\n  "id": "a1b2c3d4-...",\n  "email": "alice@acme.com",\n  "full_name": "Alice Smith",\n  "role": "admin",\n  "company_id": "c9d8e7f6-...",\n  "last_login": "2026-03-26T09:30:00Z"\n}`,
-        code: {
-          curl: `curl ${BASE_URL}/api/v1/auth/me \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `import requests\n\nheaders = {"Authorization": f"Bearer {access_token}"}\nme = requests.get("${BASE_URL}/api/v1/auth/me", headers=headers).json()\nprint(me["email"])`,
-          typescript: `const me = await fetch("${BASE_URL}/api/v1/auth/me", {\n  headers: { Authorization: \`Bearer \${accessToken}\` },\n}).then(r => r.json());\nconsole.log(me.email);`,
-        },
-      },
-      {
-        id: "auth-refresh", method: "POST", path: "/api/v1/auth/refresh",
-        title: "Refresh token",
-        description: "Exchange a valid refresh token for a new access token and refresh token pair. The old refresh token is immediately invalidated (rotation).",
-        body: [{ name: "refresh_token", type: "string", required: true, description: "Valid refresh token" }],
-        responseExample: `{\n  "access_token": "eyJhbGciOiJIUzI1NiIs...",\n  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",\n  "token_type": "bearer"\n}`,
-        code: {
-          curl: `curl -X POST ${BASE_URL}/api/v1/auth/refresh \\\n  -H "Content-Type: application/json" \\\n  -d '{"refresh_token":"<refresh_token>"}'`,
-          python: `tokens = requests.post(\n    "${BASE_URL}/api/v1/auth/refresh",\n    json={"refresh_token": refresh_token},\n).json()\naccess_token = tokens["access_token"]`,
-          typescript: `const tokens = await fetch("${BASE_URL}/api/v1/auth/refresh", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ refresh_token: refreshToken }),\n}).then(r => r.json());`,
-        },
-      },
-    ],
-  },
-  // ── Documents ───────────────────────────────────────────────────
-  {
-    id: "documents", title: "Documents", icon: FileText,
-    intro: "Upload, manage, and search your business documents. Supported formats: PDF, DOCX, XLSX, TXT (max 50 MB).",
-    endpoints: [
-      {
-        id: "docs-upload", method: "POST", path: "/api/v1/documents/upload",
-        title: "Upload document",
-        description: "Upload a file using multipart/form-data. The document is asynchronously processed — text extracted, chunked, embedded, and indexed for semantic search.",
-        body: [
-          { name: "file",          type: "File",   required: true,  description: "The document file (PDF, DOCX, XLSX, TXT)"    },
-          { name: "document_type", type: "string", required: false, description: "contract | invoice | policy | report | other" },
-          { name: "tags",          type: "string", required: false, description: "Comma-separated tags, e.g. hr,2026"           },
-        ],
-        responseExample: `{\n  "id": "d3e4f5a6-...",\n  "filename": "service-agreement.pdf",\n  "status": "processing",\n  "document_type": "contract",\n  "file_size": 204800,\n  "created_at": "2026-03-26T10:05:00Z"\n}`,
-        code: {
-          curl: `curl -X POST ${BASE_URL}/api/v1/documents/upload \\\n  -H "Authorization: Bearer <access_token>" \\\n  -F "file=@./service-agreement.pdf" \\\n  -F "document_type=contract"`,
-          python: `with open("service-agreement.pdf", "rb") as f:\n    resp = requests.post(\n        "${BASE_URL}/api/v1/documents/upload",\n        headers={"Authorization": f"Bearer {access_token}"},\n        files={"file": f},\n        data={"document_type": "contract"},\n    )\ndoc = resp.json()\nprint(doc["id"], doc["status"])`,
-          typescript: `const form = new FormData();\nform.append("file", file);          // File from <input>\nform.append("document_type", "contract");\n\nconst doc = await fetch("${BASE_URL}/api/v1/documents/upload", {\n  method: "POST",\n  headers: { Authorization: \`Bearer \${accessToken}\` },\n  body: form,\n}).then(r => r.json());`,
-        },
-      },
-      {
-        id: "docs-list", method: "GET", path: "/api/v1/documents",
-        title: "List documents",
-        description: "Returns a paginated list of all documents belonging to your company.",
-        params: [
-          { name: "page",     type: "integer", required: false, description: "Page number, default 1"       },
-          { name: "per_page", type: "integer", required: false, description: "Items per page, default 20"   },
-          { name: "status",   type: "string",  required: false, description: "Filter: processed | uploaded" },
-          { name: "type",     type: "string",  required: false, description: "Filter by document_type"      },
-        ],
-        responseExample: `{\n  "items": [\n    {\n      "id": "d3e4f5a6-...",\n      "filename": "service-agreement.pdf",\n      "document_type": "contract",\n      "status": "processed",\n      "file_size": 204800,\n      "created_at": "2026-03-26T10:05:00Z"\n    }\n  ],\n  "total": 42,\n  "page": 1,\n  "per_page": 20\n}`,
-        code: {
-          curl: `curl "${BASE_URL}/api/v1/documents?page=1&per_page=20" \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `docs = requests.get(\n    "${BASE_URL}/api/v1/documents",\n    headers={"Authorization": f"Bearer {access_token}"},\n    params={"page": 1, "per_page": 20},\n).json()\nprint(f"{docs['total']} documents found")`,
-          typescript: `const docs = await fetch(\n  "${BASE_URL}/api/v1/documents?page=1&per_page=20",\n  { headers: { Authorization: \`Bearer \${accessToken}\` } }\n).then(r => r.json());\nconsole.log(\`\${docs.total} documents\`);`,
-        },
-      },
-      {
-        id: "docs-delete", method: "DELETE", path: "/api/v1/documents/{id}",
-        title: "Delete document",
-        description: "Permanently deletes a document and all its extracted knowledge entries. This action cannot be undone.",
-        responseExample: `{\n  "status": "deleted",\n  "id": "d3e4f5a6-..."\n}`,
-        code: {
-          curl: `curl -X DELETE ${BASE_URL}/api/v1/documents/d3e4f5a6-... \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `requests.delete(\n    "${BASE_URL}/api/v1/documents/d3e4f5a6-...",\n    headers={"Authorization": f"Bearer {access_token}"},\n)`,
-          typescript: `await fetch(\`${BASE_URL}/api/v1/documents/\${docId}\`, {\n  method: "DELETE",\n  headers: { Authorization: \`Bearer \${accessToken}\` },\n});`,
-        },
-      },
-    ],
-  },
-  // ── AI Advisor ──────────────────────────────────────────────────
-  {
-    id: "advisor", title: "AI Advisor", icon: Brain,
-    intro: "Ask natural language questions about your documents. The RAG pipeline retrieves relevant chunks, re-ranks them, and generates a cited answer using Groq (Llama 3.1 70B).",
-    endpoints: [
-      {
-        id: "advisor-ask", method: "POST", path: "/api/v1/advisor/ask",
-        title: "Ask a question",
-        description: "Submit a natural language query. Returns an AI-generated answer with source citations and a risk level assessment.",
-        body: [
-          { name: "question", type: "string",  required: true,  description: "The question to ask your knowledge base"           },
-          { name: "top_k",    type: "integer", required: false, description: "Number of source chunks to retrieve (default 8)"   },
-          { name: "session_id", type: "uuid",  required: false, description: "Attach to a chatbot session for conversation context" },
-        ],
-        responseExample: `{\n  "answer": "Your data processing agreement must include...",\n  "risk_level": "medium",\n  "confidence": 0.91,\n  "sources": [\n    {\n      "document_id": "d3e4f5a6-...",\n      "filename": "gdpr-policy.pdf",\n      "page": 4,\n      "relevance": 0.95,\n      "excerpt": "Article 28 requires that processors..."\n    }\n  ],\n  "query_id": "q7r8s9t0-..."\n}`,
-        code: {
-          curl: `curl -X POST ${BASE_URL}/api/v1/advisor/ask \\\n  -H "Authorization: Bearer <access_token>" \\\n  -H "Content-Type: application/json" \\\n  -d '{"question":"What are our GDPR obligations for data processors?"}'`,
-          python: `answer = requests.post(\n    "${BASE_URL}/api/v1/advisor/ask",\n    headers={"Authorization": f"Bearer {access_token}"},\n    json={\n        "question": "What are our GDPR obligations for data processors?",\n        "top_k": 8,\n    },\n).json()\n\nprint(answer["answer"])\nfor src in answer["sources"]:\n    print(f"  Source: {src['filename']} p.{src['page']}")`,
-          typescript: `const answer = await fetch("${BASE_URL}/api/v1/advisor/ask", {\n  method: "POST",\n  headers: {\n    Authorization: \`Bearer \${accessToken}\`,\n    "Content-Type": "application/json",\n  },\n  body: JSON.stringify({\n    question: "What are our GDPR obligations for data processors?",\n  }),\n}).then(r => r.json());\n\nconsole.log(answer.answer);\nanswer.sources.forEach(s => console.log(s.filename));`,
-        },
-      },
-      {
-        id: "advisor-history", method: "GET", path: "/api/v1/advisor/history",
-        title: "Query history",
-        description: "Returns the last N questions asked by the authenticated user, with their answers and sources.",
-        params: [
-          { name: "limit", type: "integer", required: false, description: "Number of records to return (default 20, max 100)" },
-        ],
-        responseExample: `{\n  "queries": [\n    {\n      "id": "q7r8s9t0-...",\n      "question": "What are our GDPR obligations?",\n      "answer": "...",\n      "risk_level": "medium",\n      "created_at": "2026-03-26T10:10:00Z"\n    }\n  ],\n  "total": 15\n}`,
-        code: {
-          curl: `curl "${BASE_URL}/api/v1/advisor/history?limit=10" \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `history = requests.get(\n    "${BASE_URL}/api/v1/advisor/history",\n    headers={"Authorization": f"Bearer {access_token}"},\n    params={"limit": 10},\n).json()`,
-          typescript: `const history = await fetch(\n  "${BASE_URL}/api/v1/advisor/history?limit=10",\n  { headers: { Authorization: \`Bearer \${accessToken}\` } }\n).then(r => r.json());`,
-        },
-      },
-    ],
-  },
-  // ── Chatbot ─────────────────────────────────────────────────────
-  {
-    id: "chatbot", title: "Chatbot", icon: MessageSquare,
-    intro: "Multi-turn conversational AI that maintains context across messages within a session. Each company can have multiple sessions.",
-    endpoints: [
-      {
-        id: "chatbot-sessions", method: "GET", path: "/api/v1/chatbot/sessions",
-        title: "List sessions",
-        description: "Returns all chat sessions for the authenticated user.",
-        responseExample: `{\n  "sessions": [\n    {\n      "id": "s1t2u3v4-...",\n      "title": "GDPR Compliance Review",\n      "message_count": 12,\n      "created_at": "2026-03-25T09:00:00Z",\n      "last_message_at": "2026-03-26T10:15:00Z"\n    }\n  ]\n}`,
-        code: {
-          curl: `curl ${BASE_URL}/api/v1/chatbot/sessions \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `sessions = requests.get(\n    "${BASE_URL}/api/v1/chatbot/sessions",\n    headers={"Authorization": f"Bearer {access_token}"},\n).json()`,
-          typescript: `const sessions = await fetch("${BASE_URL}/api/v1/chatbot/sessions", {\n  headers: { Authorization: \`Bearer \${accessToken}\` },\n}).then(r => r.json());`,
-        },
-      },
-      {
-        id: "chatbot-message", method: "POST", path: "/api/v1/chatbot/sessions/{id}/messages",
-        title: "Send message",
-        description: "Send a message in a session and get an AI reply. Previous messages in the session are included as context.",
-        body: [
-          { name: "content", type: "string", required: true, description: "The user message text" },
-        ],
-        responseExample: `{\n  "id": "m5n6o7p8-...",\n  "role": "assistant",\n  "content": "Based on your uploaded policies, you need to...",\n  "sources": [\n    { "filename": "gdpr-policy.pdf", "page": 7 }\n  ],\n  "created_at": "2026-03-26T10:20:00Z"\n}`,
-        code: {
-          curl: `curl -X POST ${BASE_URL}/api/v1/chatbot/sessions/s1t2u3v4-.../messages \\\n  -H "Authorization: Bearer <access_token>" \\\n  -H "Content-Type: application/json" \\\n  -d '{"content":"What consent mechanisms do we need?"}'`,
-          python: `reply = requests.post(\n    "${BASE_URL}/api/v1/chatbot/sessions/{session_id}/messages",\n    headers={"Authorization": f"Bearer {access_token}"},\n    json={"content": "What consent mechanisms do we need?"},\n).json()\nprint(reply["content"])`,
-          typescript: `const reply = await fetch(\n  \`${BASE_URL}/api/v1/chatbot/sessions/\${sessionId}/messages\`,\n  {\n    method: "POST",\n    headers: {\n      Authorization: \`Bearer \${accessToken}\`,\n      "Content-Type": "application/json",\n    },\n    body: JSON.stringify({ content: "What consent mechanisms do we need?" }),\n  }\n).then(r => r.json());`,
-        },
-      },
-    ],
-  },
-  // ── Analytics ───────────────────────────────────────────────────
-  {
-    id: "analytics", title: "Analytics", icon: BarChart2,
-    intro: "Retrieve dashboard metrics and export reports in PDF or Excel format.",
-    endpoints: [
-      {
-        id: "analytics-overview", method: "GET", path: "/api/v1/analytics/overview",
-        title: "Dashboard overview",
-        description: "Returns aggregate stats: document counts, compliance score, AI query volume, and risk distribution.",
-        responseExample: `{\n  "total_documents": 248,\n  "processed_documents": 241,\n  "compliance_score": 94,\n  "total_queries": 876,\n  "critical_risks": 2,\n  "high_risks": 8,\n  "medium_risks": 14,\n  "period": "last_30_days"\n}`,
-        code: {
-          curl: `curl ${BASE_URL}/api/v1/analytics/overview \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `stats = requests.get(\n    "${BASE_URL}/api/v1/analytics/overview",\n    headers={"Authorization": f"Bearer {access_token}"},\n).json()\nprint(f"Compliance score: {stats['compliance_score']}%")`,
-          typescript: `const stats = await fetch("${BASE_URL}/api/v1/analytics/overview", {\n  headers: { Authorization: \`Bearer \${accessToken}\` },\n}).then(r => r.json());`,
-        },
-      },
-      {
-        id: "analytics-export", method: "GET", path: "/api/v1/analytics/export",
-        title: "Export report",
-        description: "Generates and returns a presigned download URL for a PDF or Excel compliance report.",
-        params: [
-          { name: "format", type: "string", required: true,  description: "pdf or excel"                           },
-          { name: "period", type: "string", required: false, description: "last_7d | last_30d | last_90d (default)" },
-        ],
-        responseExample: `{\n  "download_url": "https://storage.advisorai.app/reports/report-2026-03.pdf?sig=...",\n  "expires_at": "2026-03-27T10:00:00Z",\n  "format": "pdf"\n}`,
-        code: {
-          curl: `curl "${BASE_URL}/api/v1/analytics/export?format=pdf&period=last_30d" \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `report = requests.get(\n    "${BASE_URL}/api/v1/analytics/export",\n    headers={"Authorization": f"Bearer {access_token}"},\n    params={"format": "pdf", "period": "last_30d"},\n).json()\nprint(report["download_url"])`,
-          typescript: `const report = await fetch(\n  "${BASE_URL}/api/v1/analytics/export?format=pdf&period=last_30d",\n  { headers: { Authorization: \`Bearer \${accessToken}\` } }\n).then(r => r.json());\nwindow.open(report.download_url);`,
-        },
-      },
-    ],
-  },
-  // ── Insights ────────────────────────────────────────────────────
-  {
-    id: "insights", title: "Business Insights", icon: Heart,
-    intro: "Health scores, compliance calendars, and document expiry tracking — proactive intelligence for your business.",
-    endpoints: [
-      {
-        id: "insights-health", method: "GET", path: "/api/v1/insights/health",
-        title: "Business health score",
-        description: "Aggregate health score (0–100) based on document coverage, processing rate, document freshness, and compliance posture. Includes component breakdown and recommendations.",
-        responseExample: `{\n  "score": 78,\n  "grade": "C",\n  "trend": "+3",\n  "trend_direction": "up",\n  "components": [\n    { "label": "Document Coverage", "score": 82, "status": "good" },\n    { "label": "Processing Rate",   "score": 95, "status": "good" },\n    { "label": "Document Freshness","score": 70, "status": "warning" }\n  ],\n  "recommendations": [\n    { "priority": "medium", "action": "Review 3 documents older than 1 year" }\n  ]\n}`,
-        code: {
-          curl: `curl ${BASE_URL}/api/v1/insights/health \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `health = requests.get(\n    "${BASE_URL}/api/v1/insights/health",\n    headers={"Authorization": f"Bearer {access_token}"},\n).json()\nprint(f"Health: {health['score']}/100 ({health['grade']})")`,
-          typescript: `const health = await fetch("${BASE_URL}/api/v1/insights/health", {\n  headers: { Authorization: \`Bearer \${accessToken}\` },\n}).then(r => r.json());\nconsole.log(\`Health: \${health.score}/100\`);`,
-        },
-      },
-      {
-        id: "insights-calendar", method: "GET", path: "/api/v1/insights/calendar",
-        title: "Compliance calendar",
-        description: "Returns upcoming statutory deadlines (VAT, payroll, corporate tax, GDPR reviews, etc.) for the next N months.",
-        params: [
-          { name: "months_ahead", type: "integer", required: false, description: "1–12, default 3" },
-        ],
-        responseExample: `{\n  "events": [\n    {\n      "id": "corp-tax-20260331",\n      "title": "Corporate Tax Return",\n      "category": "tax",\n      "priority": "critical",\n      "due_date": "2026-03-31",\n      "days_until": 5,\n      "urgent": true\n    }\n  ],\n  "total": 9\n}`,
-        code: {
-          curl: `curl "${BASE_URL}/api/v1/insights/calendar?months_ahead=3" \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `calendar = requests.get(\n    "${BASE_URL}/api/v1/insights/calendar",\n    headers={"Authorization": f"Bearer {access_token}"},\n    params={"months_ahead": 3},\n).json()\nfor event in calendar["events"]:\n    print(f"{event['due_date']} — {event['title']}")`,
-          typescript: `const calendar = await fetch(\n  "${BASE_URL}/api/v1/insights/calendar?months_ahead=3",\n  { headers: { Authorization: \`Bearer \${accessToken}\` } }\n).then(r => r.json());`,
-        },
-      },
-      {
-        id: "insights-expiry", method: "GET", path: "/api/v1/insights/expiry",
-        title: "Document expiry tracker",
-        description: "Returns documents expiring within the next N days. Flags contracts and policies with no renewal record older than 2 years.",
-        params: [
-          { name: "days_ahead", type: "integer", required: false, description: "7–365, default 90" },
-        ],
-        responseExample: `{\n  "documents": [\n    {\n      "id": "d3e4f5a6-...",\n      "filename": "service-agreement.pdf",\n      "document_type": "contract",\n      "expiry_date": "2026-04-10",\n      "days_until": 15,\n      "status": "warning"\n    }\n  ],\n  "total": 3,\n  "overdue": 1,\n  "urgent": 1\n}`,
-        code: {
-          curl: `curl "${BASE_URL}/api/v1/insights/expiry?days_ahead=90" \\\n  -H "Authorization: Bearer <access_token>"`,
-          python: `expiry = requests.get(\n    "${BASE_URL}/api/v1/insights/expiry",\n    headers={"Authorization": f"Bearer {access_token}"},\n    params={"days_ahead": 90},\n).json()\nprint(f"{expiry['overdue']} overdue, {expiry['urgent']} urgent")`,
-          typescript: `const expiry = await fetch(\n  "${BASE_URL}/api/v1/insights/expiry?days_ahead=90",\n  { headers: { Authorization: \`Bearer \${accessToken}\` } }\n).then(r => r.json());`,
-        },
-      },
-    ],
-  },
-  // ── Webhooks ────────────────────────────────────────────────────
-  {
-    id: "webhooks", title: "Webhooks", icon: Globe,
-    intro: "Receive real-time event notifications via HTTP POST to your endpoint. Payloads are signed with HMAC-SHA256 for verification.",
-    endpoints: [],
-  },
-  // ── Errors ──────────────────────────────────────────────────────
-  {
-    id: "errors", title: "Errors & Rate Limits", icon: AlertTriangle,
-    intro: "All errors return consistent JSON with a machine-readable error code. Rate limits are applied per IP and per endpoint.",
-    endpoints: [],
-  },
-];
+// ── Base URL ──────────────────────────────────────────────────────
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://advisorai-backend.fly.dev";
+
+// No hardcoded sections — all sections come from the live OpenAPI spec
+
 
 // ── Copy button ───────────────────────────────────────────────────
 function CopyButton({ text }: { text: string }) {
@@ -456,7 +326,7 @@ function ParamTable({ params, title }: { params: Param[]; title: string }) {
 function EndpointCard({ ep }: { ep: Endpoint }) {
   const [tab, setTab] = useState<"request" | "response">("request");
   return (
-    <div id={ep.id} className="mb-10 scroll-mt-24">
+    <div id={ep.id} data-section={ep.id} className="mb-10 scroll-mt-24">
       <div className="flex items-center gap-3 mb-3">
         <span className={cn("text-[11px] font-black px-2.5 py-1 rounded-md font-mono tracking-wide", METHOD[ep.method])}>
           {ep.method}
@@ -522,9 +392,23 @@ export default function DocsPage() {
   const dark = theme === "dark";
   const [search,      setSearch]      = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeId,    setActiveId]    = useState("introduction");
+  const [activeId,    setActiveId]    = useState("");
   const [collapsed,   setCollapsed]   = useState<Record<string, boolean>>({});
+  const [apiSections, setApiSections] = useState<Section[]>([]);
+  const [specLoading, setSpecLoading] = useState(true);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // Fetch OpenAPI spec and parse into sections
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/v1/openapi.json`)
+      .then(r => r.json())
+      .then(spec => setApiSections(parseOpenAPI(spec, BASE_URL)))
+      .catch(() => {/* silently fail — fallback to empty */})
+      .finally(() => setSpecLoading(false));
+  }, []);
+
+  // All sections come from the live OpenAPI spec
+  const SECTIONS: Section[] = apiSections;
 
   // Active section tracking on scroll
   useEffect(() => {
@@ -532,7 +416,7 @@ export default function DocsPage() {
     if (!el) return;
     const handler = () => {
       const sections = el.querySelectorAll("[data-section]");
-      let current = "introduction";
+      let current = "";
       sections.forEach(s => {
         if (s.getBoundingClientRect().top <= 120) current = s.getAttribute("data-section") ?? current;
       });
@@ -666,6 +550,11 @@ export default function DocsPage() {
 
           {/* Nav */}
           <nav className="flex-1 p-3 space-y-0.5">
+            {specLoading && (
+              <div className="flex items-center gap-2 px-3 py-2 text-[var(--fg-muted)] text-xs">
+                <RefreshCw size={11} className="animate-spin" /> Loading API spec…
+              </div>
+            )}
             {filtered.map(section => {
               const Icon = section.icon;
               const isActive = activeId === section.id || section.endpoints.some(e => e.id === activeId);
@@ -810,7 +699,13 @@ export default function DocsPage() {
               ))}
             </div>
 
-            {/* API sections */}
+            {/* API sections — live from OpenAPI spec */}
+            {specLoading && (
+              <div className="flex items-center justify-center gap-3 py-16 text-[var(--fg-muted)]">
+                <RefreshCw size={16} className="animate-spin" />
+                <span className="text-sm">Loading API reference from backend…</span>
+              </div>
+            )}
             {SECTIONS.filter(s => s.endpoints.length > 0).map(section => (
               <div key={section.id} data-section={section.id} className="mb-16 scroll-mt-24">
                 <div className="flex items-center gap-3 mb-2">

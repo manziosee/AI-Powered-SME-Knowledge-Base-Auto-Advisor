@@ -11,10 +11,6 @@ import {
   Activity, TrendingUp, TrendingDown, Settings2, ChevronRight,
   Bell, Calendar, Clock, ArrowUpRight, Heart,
 } from "lucide-react";
-import {
-  DOCUMENT_ACTIVITY, COMPLIANCE_CANDLES,
-  RISK_DISTRIBUTION, QUERY_VOLUME,
-} from "@/lib/mock-data";
 import { analytics, notifications as notifApi, insights } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -37,8 +33,8 @@ const ChartTooltip = ({ active, payload, label, dark }: any) => {
   return (
     <div className={`${dark ? "bg-[#0f0f0f] border-white/15 text-white/50" : "bg-white border-black/10 text-black/50"} border rounded-xl px-3 py-2.5 text-xs shadow-2xl`}>
       <p className="mb-1.5 font-medium">{label}</p>
-      {payload.map((p: any) => (
-        <div key={p.dataKey} className="flex items-center gap-2 mb-0.5">
+      {payload.map((p: any, idx: number) => (
+        <div key={`${p.dataKey}-${idx}`} className="flex items-center gap-2 mb-0.5">
           <span className="w-2 h-2 rounded-full" style={{ background: p.color || "#888" }} />
           <span className="capitalize">{p.dataKey}:</span>
           <span className={`font-semibold ${dark ? "text-white" : "text-black"}`}>{p.value}</span>
@@ -175,11 +171,6 @@ function KpiCard({
   );
 }
 
-/* ── Generate simple spark data from existing series ─────────── */
-const docSpark    = DOCUMENT_ACTIVITY.slice(-8).map((d) => ({ v: d.queries }));
-const uploadSpark = DOCUMENT_ACTIVITY.slice(-8).map((d) => ({ v: d.uploaded }));
-const riskSpark   = COMPLIANCE_CANDLES.slice(-8).map((d) => ({ v: d.close }));
-const qSpark      = QUERY_VOLUME.slice(-8).map((d) => ({ v: d.rag }));
 
 // ── Health score data types ───────────────────────────────────
 interface HealthComponent { label: string; score: number; max: number; status: string; detail: string; }
@@ -192,28 +183,6 @@ interface ExpiryDoc {
   expiry_date: string; days_until: number; overdue: boolean; status: string;
 }
 
-// Demo fallbacks
-const DEMO_HEALTH: HealthData = {
-  score: 78, grade: "C", trend: "+3", trend_direction: "up",
-  components: [
-    { label: "Document Coverage", score: 82, max: 100, status: "good",    detail: "41 documents indexed"   },
-    { label: "Processing Rate",   score: 95, max: 100, status: "good",    detail: "40/41 processed"        },
-    { label: "Document Freshness",score: 70, max: 100, status: "warning", detail: "3 documents over 1 year"},
-    { label: "Compliance Posture",score: 88, max: 100, status: "good",    detail: "2 gaps identified"      },
-  ],
-  recommendations: [
-    { priority: "medium", action: "Review 3 documents older than 1 year for renewal" },
-    { priority: "low",    action: "Upload more HR policy documents to improve coverage" },
-  ],
-};
-
-const DEMO_EXPIRY: ExpiryDoc[] = [
-  { id: "1", filename: "Service_Agreement_2024.pdf",     document_type: "contract",   expiry_date: "2026-04-10", days_until: 16,  overdue: false, status: "warning" },
-  { id: "2", filename: "Privacy_Policy_v2.docx",         document_type: "policy",     expiry_date: "2026-03-28", days_until: 3,   overdue: false, status: "urgent"  },
-  { id: "3", filename: "Compliance_Framework_2023.pdf",  document_type: "compliance", expiry_date: "2026-03-20", days_until: -5,  overdue: true,  status: "overdue" },
-  { id: "4", filename: "Employee_Handbook_2024.pdf",     document_type: "hr_document",expiry_date: "2026-06-01", days_until: 68,  overdue: false, status: "upcoming"},
-  { id: "5", filename: "Vendor_Contract_TechPro.pdf",    document_type: "contract",   expiry_date: "2026-05-15", days_until: 51,  overdue: false, status: "upcoming"},
-];
 
 /* ── Page ─────────────────────────────────────────────────────── */
 export default function DashboardPage() {
@@ -221,11 +190,13 @@ export default function DashboardPage() {
   const dark = theme === "dark";
   const [chartRange, setChartRange] = useState<"7d" | "14d" | "30d">("14d");
   const [showWidgetMenu, setShowWidgetMenu] = useState(false);
-  const [health, setHealth] = useState<HealthData>(DEMO_HEALTH);
-  const [expiring, setExpiring] = useState<ExpiryDoc[]>(DEMO_EXPIRY);
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [expiring, setExpiring] = useState<ExpiryDoc[]>([]);
   const [kpi, setKpi] = useState({ totalDocuments: 0, processedDocs: 0, processingRate: 0, complianceScore: 0, criticalRisks: 0, upcomingDeadlines: 0, aiQueries: 0, knowledgeEntries: 0 });
   const [recentNotifs, setRecentNotifs] = useState<Array<{ id: string; title: string; message: string; notification_type: string; is_read: boolean; created_at: string }>>([]);
   const [user, setUser] = useState<{ name: string; avatar: string; company: string } | null>(null);
+  const [riskDistData, setRiskDistData] = useState<{ month: string; critical: number; high: number; medium: number; low: number }[]>([]);
+  const [complianceScore, setComplianceScore] = useState(0);
 
   useEffect(() => {
     const stored = localStorage.getItem("auth_user");
@@ -235,16 +206,34 @@ export default function DashboardPage() {
     insights.expiry(90).then(({ data }) => { if (data?.documents?.length) setExpiring(data.documents); });
     analytics.overview().then(({ data }) => {
       if (data) {
-        setKpi({
+        setKpi((prev) => ({
+          ...prev,
           totalDocuments:    data.documents.total,
           processedDocs:     data.documents.processed,
           processingRate:    data.documents.processing_rate_pct,
-          complianceScore:   0,
           criticalRisks:     data.alerts.critical_risks,
           upcomingDeadlines: data.alerts.upcoming_deadlines_30d,
-          aiQueries:         0,
           knowledgeEntries:  data.knowledge_entries.total,
-        });
+        }));
+      }
+    });
+    analytics.complianceScore().then(({ data }) => {
+      if (data?.compliance_score != null) {
+        const score = Math.round(data.compliance_score);
+        setComplianceScore(score);
+        setKpi((prev) => ({ ...prev, complianceScore: score }));
+      }
+    });
+    analytics.riskDistribution().then(({ data }) => {
+      if (data?.distribution) {
+        const d = data.distribution;
+        setRiskDistData([{
+          month: "Current",
+          critical: (d.critical as number) || 0,
+          high:     (d.high as number)     || 0,
+          medium:   (d.medium as number)   || 0,
+          low:      (d.low as number)      || 0,
+        }]);
       }
     });
     notifApi.list(true, 4).then(({ data }) => {
@@ -257,10 +246,12 @@ export default function DashboardPage() {
   const refColor    = dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
   const legendColor = dark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
 
-  const activityData =
-    chartRange === "7d"  ? DOCUMENT_ACTIVITY.slice(-7) :
-    chartRange === "14d" ? DOCUMENT_ACTIVITY.slice(-10) :
-    DOCUMENT_ACTIVITY;
+  const activityData = kpi.totalDocuments > 0 ? [{
+    date: "Current",
+    uploaded:  kpi.totalDocuments,
+    processed: kpi.processedDocs,
+    queries:   kpi.knowledgeEntries,
+  }] : [];
 
   const tooltip = <ChartTooltip dark={dark} />;
 
@@ -316,25 +307,21 @@ export default function DashboardPage() {
           title="Total Documents"  value={kpi.totalDocuments.toLocaleString()}  sub={`${kpi.processingRate}% processed`}
           icon={FileText}      trend="up"   trendLabel={`${kpi.processedDocs} done`}
           accentColor="#22d3ee" borderColor="border-cyan-500/15"
-          sparkData={uploadSpark}
         />
         <KpiCard
           title="Compliance Score" value={kpi.complianceScore ? `${kpi.complianceScore}%` : "—"}  sub="AI-powered analysis"
           icon={ShieldCheck}   trend="up"   trendLabel="Live"
           accentColor="#a78bfa" borderColor="border-violet-500/15"
-          sparkData={riskSpark}
         />
         <KpiCard
           title="Critical Risks"   value={kpi.criticalRisks}  sub={`${kpi.upcomingDeadlines} upcoming deadlines`}
           icon={AlertTriangle} trend="down" trendLabel="Active"
           accentColor="#fb7185" borderColor="border-rose-500/15"
-          sparkData={COMPLIANCE_CANDLES.slice(-8).map((d) => ({ v: 10 - d.close % 8 }))}
         />
         <KpiCard
           title="Knowledge Entries" value={kpi.knowledgeEntries.toLocaleString()}  sub="Indexed from documents"
           icon={Brain}         trend="up"   trendLabel="Live"
           accentColor="#60a5fa" borderColor="border-blue-500/15"
-          sparkData={qSpark}
         />
       </div>
 
@@ -353,6 +340,10 @@ export default function DashboardPage() {
             </a>
           </div>
 
+          {!health ? (
+            <div className="flex items-center justify-center py-8 text-[var(--fg-muted)] text-xs">Loading health data…</div>
+          ) : (
+          <>
           <div className="flex items-center gap-5 mb-4">
             {/* Radial gauge */}
             <div className="relative w-24 h-24 flex-shrink-0">
@@ -399,6 +390,8 @@ export default function DashboardPage() {
               <span className="text-[var(--fg-soft)]">{rec.action}</span>
             </div>
           ))}
+          </>
+          )}
         </div>
 
         {/* Document Expiry Tracker */}
@@ -518,16 +511,18 @@ export default function DashboardPage() {
             <p className="text-[var(--fg-muted)] text-xs mt-0.5">Weekly candlestick view</p>
           </div>
           <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-4xl font-black text-[var(--fg)]">94</span>
+            <span className="text-4xl font-black text-[var(--fg)]">{complianceScore || "—"}</span>
             <span className="text-[var(--fg-muted)] text-sm">/ 100</span>
-            <div className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ml-1"
-              style={{ background: "#34d39920", color: "#34d399" }}>
-              <TrendingUp size={11} /> +2 pts
-            </div>
+            {complianceScore > 0 && (
+              <div className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ml-1"
+                style={{ background: "#34d39920", color: "#34d399" }}>
+                <TrendingUp size={11} /> Live
+              </div>
+            )}
           </div>
 
           <ResponsiveContainer width="100%" height={155}>
-            <ComposedChart data={COMPLIANCE_CANDLES} margin={{ top: 5, right: 0, left: -30, bottom: 0 }}>
+            <ComposedChart data={riskDistData.length ? [{ date: "Now", close: complianceScore, open: Math.max(0, complianceScore - 5), high: Math.min(100, complianceScore + 3), low: Math.max(0, complianceScore - 8) }] : []} margin={{ top: 5, right: 0, left: -30, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis dataKey="date" tick={{ fill: tickColor, fontSize: 9 }} axisLine={false} tickLine={false} />
               <YAxis domain={[55, 100]} tick={{ fill: tickColor, fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -565,7 +560,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={175}>
-            <BarChart data={RISK_DISTRIBUTION} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <BarChart data={riskDistData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
               <XAxis dataKey="month" tick={{ fill: tickColor, fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis                 tick={{ fill: tickColor, fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -616,23 +611,12 @@ export default function DashboardPage() {
             })}
           </div>
 
-          {/* AI query sparkline — URBN style bottom widget */}
+          {/* Knowledge entries summary */}
           <div className="mt-4 pt-4 border-t border-[var(--border)]">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[var(--fg-muted)] text-xs">AI Queries — 15 day trend</p>
-              <span className="text-emerald-500 text-[10px] font-semibold">+124% ↑</span>
+            <div className="flex items-center justify-between">
+              <p className="text-[var(--fg-muted)] text-xs">Knowledge entries indexed</p>
+              <span className="text-emerald-500 text-[10px] font-semibold">{kpi.knowledgeEntries} total</span>
             </div>
-            <ResponsiveContainer width="100%" height={52}>
-              <AreaChart data={QUERY_VOLUME.slice(-15)} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={C.rag} stopOpacity={0.35} />
-                    <stop offset="95%" stopColor={C.rag} stopOpacity={0}    />
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="rag" stroke={C.rag} strokeWidth={1.5} fill="url(#sparkGrad)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
           </div>
         </div>
       </div>

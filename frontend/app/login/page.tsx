@@ -7,8 +7,8 @@ import {
   Brain, ShieldCheck, FileText, Bell, Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { DEMO_USERS } from "@/lib/mock-data";
 import { auth as authApi } from "@/lib/api";
+
 
 const INPUT = "w-full px-4 py-3.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] placeholder-[var(--fg-muted)] focus:outline-none focus:border-violet-500/60 focus:bg-violet-500/5 transition-all text-sm hover:border-violet-500/30";
 
@@ -19,12 +19,6 @@ const features = [
   { icon: Bell,        label: "Smart Alerts",      desc: "Never miss a deadline"         },
 ];
 
-const avatarColors = [
-  "bg-violet-500/20  border-violet-500/40  text-violet-500",
-  "bg-cyan-500/20    border-cyan-500/40    text-cyan-500",
-  "bg-emerald-500/20 border-emerald-500/40 text-emerald-500",
-  "bg-amber-500/20   border-amber-500/40   text-amber-500",
-];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -242,38 +236,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-[var(--fg-muted)] text-xs">or try a demo account</span>
-            <div className="flex-1 h-px bg-[var(--border)]" />
-          </div>
-
-          {/* Demo accounts */}
-          <div className="grid grid-cols-2 gap-2 mb-5">
-            {DEMO_USERS.map((u, i) => (
-              <button key={u.id} type="button"
-                onClick={() => { setEmail(u.email); setPassword(u.password); }}
-                className="flex items-center gap-2.5 p-3 rounded-xl border border-[var(--border)] hover:border-violet-500/30 hover:bg-violet-500/5 bg-[var(--surface)] transition-all text-left group active:scale-[0.97]">
-                <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs flex-shrink-0 ${avatarColors[i % avatarColors.length]}`}>
-                  {u.avatar}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[var(--fg-soft)] text-xs font-semibold truncate group-hover:text-[var(--fg)] transition-colors">
-                    {u.name.split(" ")[0]}
-                  </p>
-                  <p className="text-[var(--fg-muted)] text-[10px] truncate">{u.role}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <p className="text-center text-[var(--fg-muted)] text-xs mb-6">
-            Password for all demo accounts:{" "}
-            <code className="text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded text-[11px]">demo1234</code>
-          </p>
-
-          <p className="text-center text-[var(--fg-muted)] text-sm">
+          <p className="text-center text-[var(--fg-muted)] text-sm mt-6">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-violet-500 hover:text-violet-400 font-semibold transition-colors">
               Create one free

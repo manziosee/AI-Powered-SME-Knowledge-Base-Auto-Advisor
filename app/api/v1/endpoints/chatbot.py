@@ -9,8 +9,11 @@ POST /chatbot/sessions/{id}/messages  — send a message, get AI reply (multi-tu
 """
 
 import json
+import logging
 from datetime import datetime
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -163,7 +166,11 @@ async def send_message(
     api_history.append({"role": "user", "content": payload.content})
 
     # Call multi-turn AI
-    ai_response = await chat_with_advisor(api_history, context, language, company_name)
+    try:
+        ai_response = await chat_with_advisor(api_history, context, language, company_name)
+    except Exception as exc:
+        logger.error("LLM call failed in chatbot: %s", exc)
+        raise HTTPException(status_code=503, detail="AI service temporarily unavailable. Please try again.")
 
     # Persist user message
     user_msg = ChatMessage(

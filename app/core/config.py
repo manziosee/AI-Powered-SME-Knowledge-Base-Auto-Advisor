@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # Groq (primary LLM — fast, free tier available)
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     # Embeddings — local HuggingFace model (no API cost)
     HUGGINGFACE_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"

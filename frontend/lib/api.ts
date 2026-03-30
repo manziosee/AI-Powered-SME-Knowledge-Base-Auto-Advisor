@@ -177,7 +177,7 @@ export const advisor = {
   async ask(question: string, sessionId?: string) {
     return request<AskResponse>("/advisor/ask", {
       method: "POST",
-      body: JSON.stringify({ question, session_id: sessionId }),
+      body: JSON.stringify({ query: question }),
     });
   },
 };

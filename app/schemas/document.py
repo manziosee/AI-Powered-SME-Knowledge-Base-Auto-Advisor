@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel, UUID4, Field
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from app.models.document import DocumentType, DocumentStatus
@@ -24,10 +24,11 @@ class DocumentResponse(DocumentBase):
     status: DocumentStatus
     version: int
     summary: Optional[str]
-    tags: List[str]
-    metadata: Dict[str, Any]
+    tags: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict, validation_alias="doc_metadata")
     created_at: datetime
-    processed_at: Optional[datetime]
-    
+    processed_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
+        populate_by_name = True

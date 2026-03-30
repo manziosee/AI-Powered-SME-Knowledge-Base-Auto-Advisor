@@ -184,16 +184,17 @@ export default function AdvisorPage() {
       answer = resp?.message?.content ?? "";
     }
 
-    // If backend not available, try advisor ask endpoint
+    // If chatbot failed, fall back to advisor ask endpoint
     if (!answer) {
-      const { data: aResp } = await advisorApi.ask(q);
+      const { data: aResp, error: aErr } = await advisorApi.ask(q);
       answer = aResp?.answer ?? "";
+      if (!answer && aErr) {
+        answer = `Sorry, I couldn't process your request: ${aErr}`;
+      }
     }
 
-    // Final fallback — contextual canned response
     if (!answer) {
-      await new Promise((r) => setTimeout(r, 1000 + Math.random() * 600));
-      answer = buildFallback(q);
+      answer = "I'm having trouble connecting to the AI service. Please try again in a moment.";
     }
 
     setTyping(false);

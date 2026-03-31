@@ -197,7 +197,6 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{ name: string; avatar: string; company: string } | null>(null);
   const [riskDistData, setRiskDistData] = useState<{ month: string; critical: number; high: number; medium: number; low: number }[]>([]);
   const [complianceScore, setComplianceScore] = useState(0);
-
   useEffect(() => {
     const stored = localStorage.getItem("auth_user");
     if (stored) setUser(JSON.parse(stored));

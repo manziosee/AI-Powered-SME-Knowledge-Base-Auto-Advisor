@@ -154,12 +154,12 @@ function ContactForm() {
   const [sending, setSending]   = useState(false);
   const [sent,    setSent]      = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !message.trim()) return;
     setSending(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1200));
+    const mailto = `mailto:support@advisorai.app?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+    window.location.href = mailto;
     setSending(false);
     setSent(true);
     setSubject("");

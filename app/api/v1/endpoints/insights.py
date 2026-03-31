@@ -16,6 +16,7 @@ from sqlalchemy import select, func
 from app.api.dependencies import get_current_active_user
 from app.core.database import get_db
 from app.models.document import Document, DocumentStatus
+from app.models.knowledge_entry import KnowledgeEntry
 from app.models.user import User
 
 router = APIRouter()
@@ -182,6 +183,7 @@ _CATEGORY_COLORS = {
 @router.get("/calendar")
 async def get_compliance_calendar(
     months_ahead: int = Query(default=3, ge=1, le=12),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     """
@@ -209,6 +211,42 @@ async def get_compliance_calendar(
                 "overdue":     days_until < 0,
                 "urgent":      0 <= days_until <= 7,
             })
+
+    # Add company-specific deadlines from knowledge entries
+    result = await db.execute(
+        select(
+            KnowledgeEntry.id,
+            KnowledgeEntry.title,
+            KnowledgeEntry.knowledge_type,
+            KnowledgeEntry.risk_level,
+            KnowledgeEntry.deadline,
+        )
+        .where(
+            KnowledgeEntry.company_id == current_user.company_id,
+            KnowledgeEntry.deadline.is_not(None),
+            KnowledgeEntry.is_active.is_(True),
+            KnowledgeEntry.deadline >= now,
+            KnowledgeEntry.deadline <= end,
+        )
+        .order_by(KnowledgeEntry.deadline)
+    )
+
+    for row in result.fetchall():
+        due = row.deadline
+        days_until = (due - now).days
+        events.append({
+            "id": str(row.id),
+            "title": row.title,
+            "category": str(row.knowledge_type),
+            "color": _CATEGORY_COLORS.get(str(row.knowledge_type), "#0ea5e9"),
+            "priority": (str(row.risk_level) if row.risk_level else "medium"),
+            "description": "Company-specific deadline",
+            "due_date": due.strftime("%Y-%m-%d"),
+            "due_month": due.strftime("%B %Y"),
+            "days_until": days_until,
+            "overdue": days_until < 0,
+            "urgent": 0 <= days_until <= 7,
+        })
 
     events.sort(key=lambda e: e["due_date"])
     return {"events": events, "total": len(events), "generated_at": now.isoformat()}

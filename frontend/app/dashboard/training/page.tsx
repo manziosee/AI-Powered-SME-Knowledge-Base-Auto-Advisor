@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Brain, Play, RefreshCw, CheckCircle, AlertTriangle, Clock,
   BarChart3, Zap, Database, TrendingUp, Info, Shield, FileText,
+  Upload, Plus, Trash2, X,
 } from "lucide-react";
 import { admin, type TrainingStatus } from "@/lib/api";
 
@@ -14,6 +15,8 @@ const STATUS_CONFIG = {
   completed: { icon: CheckCircle,   color: "text-emerald-500",         bg: "bg-emerald-500/10 border-emerald-500/30",                  label: "Training complete" },
   failed:    { icon: AlertTriangle, color: "text-rose-500",            bg: "bg-rose-500/10 border-rose-500/30",                       label: "Training failed" },
 };
+
+const RISK_LABELS = ["low", "medium", "high", "critical"];
 
 // ── Metric card ───────────────────────────────────────────────────────────────
 function MetricCard({ label, value, icon: Icon, color, sub }: {
@@ -50,48 +53,31 @@ function LogLine({ time, text, type }: { time: string; text: string; type: "info
   );
 }
 
-// ── Static training log simulation ───────────────────────────────────────────
-function buildLog(status: TrainingStatus["status"]): Array<{ time: string; text: string; type: "info" | "success" | "warn" | "error" }> {
-  const now = new Date();
-  const t = (offset: number) => new Date(now.getTime() - offset * 1000).toLocaleTimeString();
-  if (status === "idle") return [{ time: t(0), text: "System ready. No training in progress.", type: "info" }];
-  if (status === "training") return [
-    { time: t(30), text: "Loading training dataset from knowledge base…",               type: "info"    },
-    { time: t(25), text: "Found 1,248 documents → 12,480 labelled samples",              type: "success" },
-    { time: t(20), text: "Initialising TF-IDF vectoriser (max_features=10000)…",        type: "info"    },
-    { time: t(15), text: "Training risk scorer (Logistic Regression)…",                 type: "info"    },
-    { time: t(10), text: "Cross-validating with 5-fold CV…",                            type: "info"    },
-    { time: t(5),  text: "Training document classifier (Naïve Bayes)…",                 type: "info"    },
-    { time: t(2),  text: "Evaluating models on test split…",                            type: "info"    },
-  ];
-  if (status === "completed") return [
-    { time: t(60), text: "Training started",                                             type: "info"    },
-    { time: t(55), text: "Dataset loaded: 12,480 samples across 6 categories",          type: "success" },
-    { time: t(45), text: "TF-IDF vectoriser fitted (9,847 features selected)",          type: "success" },
-    { time: t(30), text: "Risk scorer trained: accuracy 87.4%, F1 0.86",                type: "success" },
-    { time: t(20), text: "Document classifier trained: accuracy 91.2%, F1 0.90",        type: "success" },
-    { time: t(10), text: "Models saved and versioned (v2.1.0)",                         type: "success" },
-    { time: t(5),  text: "Activation complete — new models serving requests",            type: "success" },
-    { time: t(0),  text: "Training pipeline finished successfully",                      type: "success" },
-  ];
-  return [
-    { time: t(20), text: "Training started",                                            type: "info"    },
-    { time: t(15), text: "Dataset loaded successfully",                                 type: "success" },
-    { time: t(10), text: "ERROR: Model failed to converge after 1000 iterations",       type: "error"   },
-    { time: t(5),  text: "Rolled back to previous model version",                       type: "warn"    },
-    { time: t(0),  text: "Training pipeline failed — see error above",                  type: "error"   },
-  ];
-}
+type LogEntry = { time: string; text: string; type: "info" | "success" | "warn" | "error" };
+type TrainingSample = { text: string; label: string };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function TrainingPage() {
-  const [status,   setStatus]   = useState<TrainingStatus>({ status: "idle" });
-  const [loading,  setLoading]  = useState(false);
-  const [polling,  setPolling]  = useState(false);
-  const [testText, setTestText] = useState("");
-  const [testResult, setTestResult] = useState<{ risk_level: string; confidence: number } | null>(null);
-  const [testLoading, setTestLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [status,       setStatus]      = useState<TrainingStatus>({ status: "idle" });
+  const [loading,      setLoading]     = useState(false);
+  const [polling,      setPolling]     = useState(false);
+  const [testText,     setTestText]    = useState("");
+  const [testResult,   setTestResult]  = useState<{ risk_level: string; confidence: number } | null>(null);
+  const [testLoading,  setTestLoading] = useState(false);
+  const [apiError,     setApiError]    = useState<string | null>(null);
+  const [logs,         setLogs]        = useState<LogEntry[]>([]);
+
+  // Training data state
+  const [samples,     setSamples]      = useState<TrainingSample[]>([]);
+  const [newText,     setNewText]      = useState("");
+  const [newLabel,    setNewLabel]     = useState("low");
+  const [csvError,    setCsvError]     = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addLog = useCallback((text: string, type: LogEntry["type"] = "info") => {
+    const time = new Date().toLocaleTimeString();
+    setLogs((prev) => [...prev.slice(-49), { time, text, type }]);
+  }, []);
 
   // Load ML status from backend
   const fetchStatus = useCallback(async () => {
@@ -101,14 +87,14 @@ export default function TrainingPage() {
       setApiError(null);
     } else {
       setApiError(error);
-      // Fallback to idle if API not reachable
       setStatus({ status: "idle" });
     }
   }, []);
 
   useEffect(() => {
     fetchStatus();
-  }, [fetchStatus]);
+    addLog("System ready. No training in progress.", "info");
+  }, [fetchStatus, addLog]);
 
   // Poll while training
   useEffect(() => {
@@ -120,15 +106,15 @@ export default function TrainingPage() {
 
   const handleTrain = async () => {
     setLoading(true);
-    const { data, error } = await admin.trainRiskScorer();
+    addLog(`Starting training${samples.length > 0 ? ` with ${samples.length} custom samples` : " using knowledge base data"}…`, "info");
+    const { data, error } = await admin.trainRiskScorer(samples.length > 0 ? samples : undefined);
     if (data) {
       setStatus({ status: "training" });
       setApiError(null);
+      addLog("Training job started on backend.", "success");
     } else {
       setApiError(error);
-      // Demo mode: simulate training
-      setStatus({ status: "training" });
-      setTimeout(() => setStatus({ status: "completed", accuracy: 87.4, version: "v2.1.0" }), 5000);
+      addLog(`Backend error: ${error}`, "error");
     }
     setLoading(false);
   };
@@ -140,14 +126,14 @@ export default function TrainingPage() {
     if (data) {
       setTestResult(data);
     } else {
-      // Demo fallback
       setApiError(error);
-      const keywords = testText.toLowerCase();
-      const risk = keywords.includes("overdue") || keywords.includes("penalty") || keywords.includes("expired")
+      // client-side fallback
+      const kw = testText.toLowerCase();
+      const risk = kw.includes("overdue") || kw.includes("penalty") || kw.includes("expired")
         ? "critical"
-        : keywords.includes("deadline") || keywords.includes("compliance")
+        : kw.includes("deadline") || kw.includes("compliance")
           ? "high"
-          : keywords.includes("review") || keywords.includes("update")
+          : kw.includes("review") || kw.includes("update")
             ? "medium"
             : "low";
       setTestResult({ risk_level: risk, confidence: 0.78 + Math.random() * 0.18 });
@@ -155,9 +141,54 @@ export default function TrainingPage() {
     setTestLoading(false);
   };
 
+  // Add a manual sample
+  const addSample = () => {
+    if (!newText.trim()) return;
+    setSamples((prev) => [...prev, { text: newText.trim(), label: newLabel }]);
+    addLog(`Added sample: "${newText.slice(0, 40)}…" → ${newLabel}`, "info");
+    setNewText("");
+  };
+
+  // Remove a sample
+  const removeSample = (idx: number) => setSamples((prev) => prev.filter((_, i) => i !== idx));
+
+  // Parse CSV
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCsvError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+      const parsed: TrainingSample[] = [];
+      let errors = 0;
+      // Skip header if first line contains "text" or "label"
+      const startIdx = lines[0]?.toLowerCase().includes("text") && lines[0]?.toLowerCase().includes("label") ? 1 : 0;
+      for (let i = startIdx; i < lines.length; i++) {
+        // Support comma-separated: last token is the label
+        const parts = lines[i].split(",");
+        if (parts.length < 2) { errors++; continue; }
+        const label = parts[parts.length - 1].trim().toLowerCase();
+        const txt = parts.slice(0, parts.length - 1).join(",").trim().replace(/^"|"$/g, "");
+        if (!txt || !RISK_LABELS.includes(label)) { errors++; continue; }
+        parsed.push({ text: txt, label });
+      }
+      if (parsed.length === 0) {
+        setCsvError("No valid rows found. CSV must have columns: text, label (low/medium/high/critical).");
+        return;
+      }
+      setSamples((prev) => [...prev, ...parsed]);
+      addLog(`Loaded ${parsed.length} samples from CSV${errors > 0 ? ` (${errors} rows skipped)` : ""}.`, errors > 0 ? "warn" : "success");
+      if (errors > 0) setCsvError(`${errors} row(s) skipped — invalid format or label value.`);
+    };
+    reader.readAsText(file);
+    // Reset file input so same file can be re-loaded
+    e.target.value = "";
+  };
+
   const cfg = STATUS_CONFIG[status.status];
   const StatusIcon = cfg.icon;
-  const logs = buildLog(status.status);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -170,7 +201,7 @@ export default function TrainingPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Model Training</h1>
-            <p className="text-[var(--fg-muted)] text-sm">Train and manage AI risk scoring &amp; document classifier models</p>
+            <p className="text-[var(--fg-muted)] text-sm">Train AI risk scoring models with your own labelled data</p>
           </div>
         </div>
 
@@ -192,7 +223,7 @@ export default function TrainingPage() {
             {status.status === "training" ? (
               <><RefreshCw size={14} className="animate-spin" /> Training…</>
             ) : (
-              <><Play size={14} /> Start Training</>
+              <><Play size={14} /> Start Training{samples.length > 0 ? ` (${samples.length})` : ""}</>
             )}
           </button>
         </div>
@@ -215,22 +246,135 @@ export default function TrainingPage() {
             {status.status === "completed" && status.version ? `Version ${status.version} active` : ""}
             {status.status === "training" ? "Do not close this page while training is running." : ""}
             {status.status === "failed" && status.error ? status.error : ""}
-            {status.status === "idle" ? "Click 'Start Training' to retrain models with your latest documents." : ""}
+            {status.status === "idle" ? `Click 'Start Training' to train with your documents${samples.length > 0 ? ` or ${samples.length} custom sample${samples.length !== 1 ? "s" : ""}` : ""}.` : ""}
           </p>
         </div>
         {status.status === "training" && (
           <div className="flex gap-1">
-            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse delay-dot-1" />
-            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse delay-dot-2" />
-            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse delay-dot-3" />
+            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse delay-100" />
+            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse delay-200" />
           </div>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* ── Left: Metrics + training log ── */}
+        {/* ── Left: Training data + Metrics + Log ── */}
         <div className="lg:col-span-2 flex flex-col gap-5">
+
+          {/* ── Training data upload ── */}
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-soft)] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+              <h3 className="text-[var(--fg)] text-sm font-semibold flex items-center gap-2">
+                <Database size={14} className="text-cyan-500" /> Training Data
+              </h3>
+              <span className="text-[10px] text-[var(--fg-muted)] uppercase tracking-wide font-semibold">
+                {samples.length} sample{samples.length !== 1 ? "s" : ""} loaded
+              </span>
+            </div>
+            <div className="p-4 flex flex-col gap-4">
+
+              {/* CSV upload */}
+              <div>
+                <p className="text-[var(--fg-muted)] text-xs mb-2">
+                  Upload a CSV with columns: <code className="font-mono text-violet-400">text, label</code> (label must be: low / medium / high / critical)
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={handleCsvUpload}
+                  className="hidden"
+                  id="csv-upload"
+                />
+                <label
+                  htmlFor="csv-upload"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-violet-500/40 bg-violet-500/5 hover:bg-violet-500/10 text-violet-500 text-xs font-semibold cursor-pointer transition-all w-fit"
+                >
+                  <Upload size={13} /> Upload CSV file
+                </label>
+                {csvError && (
+                  <p className="text-rose-500 text-xs mt-2 flex items-center gap-1">
+                    <AlertTriangle size={11} /> {csvError}
+                  </p>
+                )}
+              </div>
+
+              {/* Manual entry */}
+              <div>
+                <p className="text-[var(--fg-muted)] text-xs mb-2">Or add samples manually:</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newText}
+                    onChange={(e) => setNewText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addSample()}
+                    placeholder="Enter document text or snippet…"
+                    className="flex-1 min-w-0 px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--fg)] text-xs placeholder-[var(--fg-muted)] focus:outline-none focus:border-violet-500/50 transition-all"
+                  />
+                  <select
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    aria-label="Risk level"
+                    className="px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--fg)] text-xs focus:outline-none focus:border-violet-500/50 transition-all"
+                  >
+                    {RISK_LABELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={addSample}
+                    disabled={!newText.trim()}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all disabled:opacity-40"
+                  >
+                    <Plus size={12} /> Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Sample list */}
+              {samples.length > 0 && (
+                <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+                  <div className="max-h-48 overflow-y-auto">
+                    {samples.map((s, i) => (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2 border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface-hover)]">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                          s.label === "critical" ? "text-rose-500 border-rose-500/30 bg-rose-500/10"
+                          : s.label === "high" ? "text-amber-500 border-amber-500/30 bg-amber-500/10"
+                          : s.label === "medium" ? "text-blue-500 border-blue-500/30 bg-blue-500/10"
+                          : "text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
+                        }`}>{s.label}</span>
+                        <span className="text-[var(--fg-muted)] text-xs flex-1 truncate">{s.text}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSample(i)}
+                          aria-label="Remove sample"
+                          className="text-[var(--fg-muted)] hover:text-rose-500 transition-colors flex-shrink-0"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 bg-[var(--surface)] border-t border-[var(--border)]">
+                    <span className="text-[var(--fg-muted)] text-[10px]">{samples.length} sample{samples.length !== 1 ? "s" : ""}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSamples([])}
+                      className="flex items-center gap-1 text-[10px] text-rose-500 hover:text-rose-400 transition-colors"
+                    >
+                      <Trash2 size={10} /> Clear all
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[var(--fg-muted)] text-[10px] leading-relaxed">
+                If no custom samples are provided, training uses labelled knowledge entries from your knowledge base.
+                Minimum 4 samples required.
+              </p>
+            </div>
+          </div>
 
           {/* Metric cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -250,10 +394,10 @@ export default function TrainingPage() {
             />
             <MetricCard
               label="Samples"
-              value="12,480"
+              value={samples.length > 0 ? samples.length.toLocaleString() : "Auto"}
               icon={Database}
               color="text-cyan-500 bg-cyan-500/10 border-cyan-500/25"
-              sub="Training set"
+              sub={samples.length > 0 ? "Custom" : "From KB"}
             />
             <MetricCard
               label="Models"
@@ -272,7 +416,7 @@ export default function TrainingPage() {
               </h3>
               <span className="text-[10px] text-[var(--fg-muted)] uppercase tracking-wide font-semibold">Live output</span>
             </div>
-            <div className="p-4 bg-[var(--bg)] rounded-xl m-3 min-h-[200px] flex flex-col gap-2 overflow-y-auto max-h-72">
+            <div className="p-4 bg-[var(--bg)] rounded-xl m-3 min-h-[140px] flex flex-col gap-2 overflow-y-auto max-h-56">
               {logs.map((l, i) => (
                 <LogLine key={i} {...l} />
               ))}
@@ -312,8 +456,8 @@ export default function TrainingPage() {
             </div>
             <div className="mt-4 pt-4 border-t border-[var(--border)]">
               <p className="text-[10px] text-[var(--fg-muted)] leading-relaxed">
-                Models are retrained on your company&apos;s documents.
-                Retraining improves accuracy as you add more labelled content.
+                Models train on your labelled samples or company knowledge entries.
+                More labelled data → higher accuracy.
               </p>
             </div>
           </div>

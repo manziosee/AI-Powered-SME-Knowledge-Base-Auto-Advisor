@@ -32,17 +32,18 @@ COPY --from=builder /install /usr/local
 RUN pip install --no-cache-dir \
     https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
-# Pre-cache SentenceTransformer model (cached layer, rarely changes)
+# Create required directories and non-root user
+RUN mkdir -p /app/uploads /app/models /app/logs \
+ && addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
+# Pre-cache SentenceTransformer model into /app/models so appuser can read it at runtime
+ENV SENTENCE_TRANSFORMERS_HOME=/app/models \
+    HF_HOME=/app/models
 RUN python -c "\
 from sentence_transformers import SentenceTransformer; \
 SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); \
-print('SentenceTransformer model cached.')"
-
-# Create required directories before copying code
-RUN mkdir -p /app/uploads /app/models /app/logs
-
-# Non-root user (before COPY so ownership is set correctly)
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+print('SentenceTransformer model cached.')" \
+ && chown -R appuser:appgroup /app/models
 
 # Application code — LAST so code changes only rebuild this thin layer
 COPY --chown=appuser:appgroup . .

@@ -21,7 +21,11 @@ from app.core.database import get_db, AsyncSessionLocal
 from app.models.company import Company
 from app.models.user import User
 from app.schemas.knowledge import AdvisorQuery
-from app.services.ai_service import generate_embedding, stream_chat_with_advisor
+from app.services.ai_service import (
+    LLMConfigError,
+    generate_embedding,
+    stream_chat_with_advisor,
+)
 from app.services.rag_pipeline import rag_query
 
 router = APIRouter()
@@ -52,16 +56,20 @@ async def ask_advisor(
     language = company.language if company else "en"
     company_name = company.name if company else None
 
-    result = await rag_query(
-        db=db,
-        query=query_data.query,
-        company_id=str(current_user.company_id),
-        language=language,
-        company_name=company_name,
-        use_compression=False,  # fast path — skip compression
-    )
-
-    return result
+    try:
+        result = await rag_query(
+            db=db,
+            query=query_data.query,
+            company_id=str(current_user.company_id),
+            language=language,
+            company_name=company_name,
+            use_compression=False,  # fast path — skip compression
+        )
+        return result
+    except LLMConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:  # pragma: no cover — fallback
+        raise HTTPException(status_code=500, detail=f"Advisor failed: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -84,15 +92,19 @@ async def ask_agent(
 
     from app.services.agent_service import run_agent
 
-    result = await run_agent(
-        query=query_data.query,
-        company_id=str(current_user.company_id),
-        db_session_factory=AsyncSessionLocal,
-        country_code=company.country if company else "US",
-        industry=company.industry if company else None,
-    )
-
-    return result
+    try:
+        result = await run_agent(
+            query=query_data.query,
+            company_id=str(current_user.company_id),
+            db_session_factory=AsyncSessionLocal,
+            country_code=company.country if company else "US",
+            industry=company.industry if company else None,
+        )
+        return result
+    except LLMConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=f"Agent failed: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -140,8 +152,10 @@ async def stream_answer(
                 # SSE format: data: <payload>\n\n
                 yield f"data: {json.dumps({'token': token})}\n\n"
             yield "data: [DONE]\n\n"
-        except Exception as exc:
+        except LLMConfigError as exc:
             yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+        except Exception as exc:  # pragma: no cover
+            yield f"data: {json.dumps({'error': 'Streaming failed: ' + str(exc)})}\n\n"
 
     return StreamingResponse(
         event_stream(),

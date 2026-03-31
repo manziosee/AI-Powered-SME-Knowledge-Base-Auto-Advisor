@@ -405,9 +405,22 @@ export const admin = {
     return request<TrainingStatus>("/admin/ml/status");
   },
 
-  async trainRiskScorer() {
-    return request<{ message: string; task_id?: string }>("/admin/ml/train-risk-scorer", {
+  async llmStatus() {
+    const res = await request<{
+      configured: boolean;
+      primary: "groq" | "openai" | null;
+      groq: { has_key: boolean; model: string };
+      openai: { has_key: boolean; model: string };
+    }>("/admin/llm/status");
+    // Deployed backend may not have this endpoint yet; treat 404 as benign.
+    if (res.error === "HTTP 404") return { data: null, error: null };
+    return res;
+  },
+
+  async trainRiskScorer(trainingData?: Array<{ text: string; label: string }>) {
+    return request<{ message: string; task_id?: string; status?: string; stats?: Record<string, unknown> }>("/admin/ml/train-risk-scorer", {
       method: "POST",
+      body: JSON.stringify(trainingData && trainingData.length > 0 ? { training_data: trainingData } : {}),
     });
   },
 

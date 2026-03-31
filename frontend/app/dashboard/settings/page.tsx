@@ -49,22 +49,29 @@ export default function SettingsPage() {
     });
   }, []);
 
-  // Notification toggles — interactive state
-  const [notifs, setNotifs] = useState<Record<string, boolean>>({
-    "deadline":   true,
-    "gap":        true,
-    "docready":   true,
-    "risk":       false,
-    "digest":     true,
-    "webhook":    false,
+  // Notification toggles — load from localStorage, fallback to defaults
+  const [notifs, setNotifs] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = typeof window !== "undefined" ? localStorage.getItem("advisorai_notif_prefs") : null;
+      if (stored) return JSON.parse(stored);
+    } catch { /* ignore */ }
+    return { deadline: true, gap: true, docready: true, risk: false, digest: true, webhook: false };
   });
   const toggleNotif = (key: string) => setNotifs((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  // Language / region state
-  const [lang,   setLang]   = useState("English");
-  const [date,   setDate]   = useState("YYYY-MM-DD");
-  const [tz,     setTz]     = useState("Africa/Kigali (UTC+2)");
-  const [curr,   setCurr]   = useState("RWF");
+  // Language / region state — load from localStorage
+  const [lang, setLang] = useState(() => {
+    try { return typeof window !== "undefined" ? (localStorage.getItem("advisorai_lang") ?? "English") : "English"; } catch { return "English"; }
+  });
+  const [date, setDate] = useState(() => {
+    try { return typeof window !== "undefined" ? (localStorage.getItem("advisorai_date_fmt") ?? "YYYY-MM-DD") : "YYYY-MM-DD"; } catch { return "YYYY-MM-DD"; }
+  });
+  const [tz, setTz] = useState(() => {
+    try { return typeof window !== "undefined" ? (localStorage.getItem("advisorai_tz") ?? "Africa/Kigali (UTC+2)") : "Africa/Kigali (UTC+2)"; } catch { return "Africa/Kigali (UTC+2)"; }
+  });
+  const [curr, setCurr] = useState(() => {
+    try { return typeof window !== "undefined" ? (localStorage.getItem("advisorai_currency") ?? "RWF") : "RWF"; } catch { return "RWF"; }
+  });
 
   // API key reveal
   const [revealed, setRevealed] = useState(false);
@@ -80,20 +87,22 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setSaveErr(null);
-    const { error } = await authApi.updateMe({ full_name: name, email });
+    // Persist profile to API
+    await authApi.updateMe({ full_name: name, email });
     setSaving(false);
-    if (error) {
-      // API not reachable in demo — still show success to user
-      setSaveErr(null);
-    }
     setSaved(true);
-    // Update stored user so sidebar reflects new name
+    // Persist all settings to localStorage
     try {
       const stored = localStorage.getItem("auth_user");
       if (stored) {
         const u = JSON.parse(stored) as Record<string, string>;
         localStorage.setItem("auth_user", JSON.stringify({ ...u, name, email }));
       }
+      localStorage.setItem("advisorai_notif_prefs", JSON.stringify(notifs));
+      localStorage.setItem("advisorai_lang", lang);
+      localStorage.setItem("advisorai_date_fmt", date);
+      localStorage.setItem("advisorai_tz", tz);
+      localStorage.setItem("advisorai_currency", curr);
     } catch { /* ignore */ }
     setTimeout(() => setSaved(false), 2500);
   };
@@ -195,7 +204,7 @@ export default function SettingsPage() {
                     <button type="button" onClick={() => toggleNotif(key)}
                       aria-label={`Toggle ${label}`}
                       role="switch"
-                      aria-checked={notifs[key] ? "true" : "false"}
+                      aria-checked={notifs[key]}
                       className={`w-10 h-5 min-w-[2.5rem] rounded-full transition-all relative flex-shrink-0 ${
                         notifs[key] ? "bg-violet-500 shadow-[0_0_10px_rgba(167,139,250,0.4)]" : "bg-[var(--border)]"
                       }`}>

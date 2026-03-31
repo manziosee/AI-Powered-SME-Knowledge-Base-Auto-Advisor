@@ -192,17 +192,15 @@ export default function AnalyticsPage() {
               <p className="text-[var(--fg-muted)] text-xs mb-4">Distribution across {kpi.totalDocuments} documents</p>
               {docTypes.length > 0 ? (
                 <div className="flex items-center gap-4">
-                  <ResponsiveContainer width={160} height={160}>
-                    <PieChart>
-                      <Pie data={docTypes} cx="50%" cy="50%" innerRadius={45} outerRadius={75}
-                        paddingAngle={2} dataKey="value">
-                        {docTypes.map((_, i) => (
-                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke={pieStroke} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v: any, n: any) => [v, n]} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <PieChart width={160} height={160}>
+                    <Pie data={docTypes} cx="50%" cy="50%" innerRadius={45} outerRadius={75}
+                      paddingAngle={2} dataKey="value">
+                      {docTypes.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke={pieStroke} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: any, n: any) => [v, n]} />
+                  </PieChart>
                   <div className="flex flex-col gap-1.5 flex-1">
                     {docTypes.map((d, i) => (
                       <div key={d.name} className="flex items-center justify-between text-xs hover:bg-[var(--surface-hover)] px-2 py-1 rounded cursor-pointer transition-colors">

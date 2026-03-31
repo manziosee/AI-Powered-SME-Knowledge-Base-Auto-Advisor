@@ -17,6 +17,11 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+class LLMConfigError(RuntimeError):
+    """Raised when no usable LLM credentials are configured."""
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Embedding model  (local, no API call, 384-dim)
 # ---------------------------------------------------------------------------
@@ -74,6 +79,12 @@ def _get_llm_client():
             return client, settings.GROQ_MODEL, True
         except ImportError:
             logger.warning("groq package not installed, falling back to OpenAI")
+
+    # No Groq key or groq not installed — try OpenAI
+    if not settings.OPENAI_API_KEY:
+        raise LLMConfigError(
+            "No LLM credentials configured. Set GROQ_API_KEY or OPENAI_API_KEY in the environment."
+        )
 
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)

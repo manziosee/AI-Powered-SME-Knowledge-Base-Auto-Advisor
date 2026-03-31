@@ -35,6 +35,7 @@ export default function CompliancePage() {
   const [activeCategory, setCategory] = useState("all");
   const [rules, setRules] = useState<ComplianceRule[]>([]);
   const [score, setScore] = useState<number | null>(null);
+  const [country, setCountry] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,17 +43,25 @@ export default function CompliancePage() {
     analytics.complianceScore().then(({ data }) => {
       if (data) {
         setScore(data.compliance_score);
-        const mapped: ComplianceRule[] = data.gap_rules.map((r) => ({
-          id: r.id,
-          title: r.title,
-          category: r.category,
-          severity: r.severity,
-          deadline: r.deadline,
-          action_required: r.action_required,
-          description: r.description,
-          status: deriveStatus(r.deadline),
-          jurisdiction: "—",
-        }));
+        setCountry(data.country ?? null);
+        const seen = new Set<string>();
+        const mapped: ComplianceRule[] = data.gap_rules
+          .filter((r) => {
+            if (seen.has(r.id)) return false;
+            seen.add(r.id);
+            return true;
+          })
+          .map((r) => ({
+            id: r.id,
+            title: r.title,
+            category: r.category,
+            severity: r.severity,
+            deadline: r.deadline,
+            action_required: r.action_required,
+            description: r.description,
+            status: deriveStatus(r.deadline),
+            jurisdiction: data.country ?? null,
+          }));
         setRules(mapped);
       }
       setLoading(false);
@@ -77,7 +86,7 @@ export default function CompliancePage() {
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/25 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300">
           <ShieldCheck size={16} className="text-emerald-500 animate-pulse" />
           <span className="text-emerald-500 font-black text-lg">{score !== null ? `${Math.round(score)}%` : "—"}</span>
-          <span className="text-[var(--fg-muted)] text-sm">compliance score</span>
+          <span className="text-[var(--fg-muted)] text-sm">compliance score{country ? ` · ${country}` : ""}</span>
         </div>
       </div>
 

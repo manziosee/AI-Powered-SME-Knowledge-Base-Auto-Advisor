@@ -26,7 +26,11 @@ from app.core.database import get_db
 from app.models.chat import ChatMessage, ChatSession, MessageRole
 from app.models.company import Company
 from app.models.user import User
-from app.services.ai_service import chat_with_advisor, generate_embedding
+from app.services.ai_service import (
+    LLMConfigError,
+    chat_with_advisor,
+    generate_embedding,
+)
 
 router = APIRouter()
 
@@ -135,23 +139,27 @@ async def send_message(
     company_name = company.name if company else None
 
     # RAG: embed the new message and retrieve relevant knowledge
-    query_embedding = await generate_embedding(payload.content)
-    sql = text("""
-        SELECT title, content, knowledge_type, risk_level
-        FROM knowledge_entries
-        WHERE company_id = :company_id AND is_active = true
-        ORDER BY embedding <=> :query_embedding
-        LIMIT :limit
-    """)
-    ke_result = await db.execute(
-        sql,
-        {
-            "query_embedding": str(query_embedding),
-            "company_id": str(session.company_id),
-            "limit": payload.context_limit,
-        },
-    )
-    relevant_entries = ke_result.fetchall()
+    try:
+        query_embedding = await generate_embedding(payload.content)
+        sql = text("""
+            SELECT title, content, knowledge_type, risk_level
+            FROM knowledge_entries
+            WHERE company_id = :company_id AND is_active = true
+            ORDER BY embedding <=> :query_embedding
+            LIMIT :limit
+        """)
+        ke_result = await db.execute(
+            sql,
+            {
+                "query_embedding": str(query_embedding),
+                "company_id": str(session.company_id),
+                "limit": payload.context_limit,
+            },
+        )
+        relevant_entries = ke_result.fetchall()
+    except Exception as exc:
+        logger.error("Embedding/retrieval failed in chatbot: %s", exc)
+        relevant_entries = []
 
     context = "\n\n".join(
         f"[{e.knowledge_type}] {e.title}: {e.content}" for e in relevant_entries
@@ -168,6 +176,8 @@ async def send_message(
     # Call multi-turn AI
     try:
         ai_response = await chat_with_advisor(api_history, context, language, company_name)
+    except LLMConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
         logger.error("LLM call failed in chatbot: %s", exc)
         raise HTTPException(status_code=503, detail="AI service temporarily unavailable. Please try again.")

@@ -22,6 +22,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, require_role
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.audit_log import AuditLog
 from app.models.company import Company
@@ -73,7 +74,8 @@ class UserStatusUpdate(BaseModel):
 
 class MLTrainingRequest(BaseModel):
     # list of {"text": "...", "label": "low|medium|high|critical"}
-    training_data: list
+    # Optional — when omitted we auto-build from existing knowledge entries for the company
+    training_data: Optional[list] = None
 
 
 # ---------------------------------------------------------------------------
@@ -333,21 +335,44 @@ async def ml_status(
 @router.post("/ml/train-risk-scorer")
 async def train_risk_scorer(
     payload: MLTrainingRequest,
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
     """
     Train the predictive risk scorer with labelled data.
-    Expects: training_data = [{"text": "...", "label": "low|medium|high|critical"}, ...]
+    If no payload.training_data is provided, build a dataset from existing
+    KnowledgeEntry records with risk_level set for the current company.
     """
-    if len(payload.training_data) < 4:
+    training_data = payload.training_data or []
+
+    # Auto-build training data from knowledge entries when none provided
+    if not training_data:
+        result = await db.execute(
+            select(KnowledgeEntry.content, KnowledgeEntry.risk_level)
+            .where(
+                and_(
+                    KnowledgeEntry.company_id == current_user.company_id,
+                    KnowledgeEntry.risk_level.is_not(None),
+                )
+            )
+            .limit(2000)
+        )
+        rows = result.fetchall()
+        training_data = [
+            {"text": r.content, "label": r.risk_level.value if hasattr(r.risk_level, "value") else r.risk_level}
+            for r in rows if r.content
+        ]
+
+    if len(training_data) < 4:
         raise HTTPException(
             status_code=400,
-            detail="Need at least 4 labelled samples (one per risk level) to train.",
+            detail="Need at least 4 labelled samples to train. Provide training_data or add risk-labelled knowledge entries.",
         )
+
     try:
         stats = _risk_scorer.train(
-            texts=[d["text"] for d in payload.training_data],
-            labels=[d["label"] for d in payload.training_data],
+            texts=[d["text"] for d in training_data],
+            labels=[d["label"] for d in training_data],
         )
         return {"status": "trained", "stats": stats}
     except Exception as exc:
@@ -398,4 +423,39 @@ def _serialize_rule(r: ComplianceRule) -> dict:
         "penalty_description": r.penalty_description,
         "is_active": r.is_active,
         "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# LLM configuration status
+# ---------------------------------------------------------------------------
+
+@router.get("/llm/status")
+async def llm_status(
+    current_user: User = Depends(require_role(UserRole.MANAGER)),
+):
+    """
+    Quick status endpoint to let the UI show which LLM backend is active
+    and whether credentials are missing.
+    """
+    groq_key = bool(settings.GROQ_API_KEY)
+    openai_key = bool(settings.OPENAI_API_KEY)
+
+    primary = None
+    if groq_key:
+        primary = "groq"
+    elif openai_key:
+        primary = "openai"
+
+    return {
+        "configured": primary is not None,
+        "primary": primary,
+        "groq": {
+            "has_key": groq_key,
+            "model": settings.GROQ_MODEL,
+        },
+        "openai": {
+            "has_key": openai_key,
+            "model": settings.OPENAI_MODEL,
+        },
     }

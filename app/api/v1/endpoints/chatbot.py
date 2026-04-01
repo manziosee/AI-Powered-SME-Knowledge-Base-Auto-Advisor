@@ -1,11 +1,12 @@
 """
 Conversational chatbot endpoints.
 
-POST /chatbot/sessions                — create a new chat session
-GET  /chatbot/sessions                — list user's sessions
-GET  /chatbot/sessions/{id}           — get session with full message history
-DELETE /chatbot/sessions/{id}         — delete session
-POST /chatbot/sessions/{id}/messages  — send a message, get AI reply (multi-turn)
+POST /chatbot/sessions                                            — create a new chat session
+GET  /chatbot/sessions                                            — list user's sessions
+GET  /chatbot/sessions/{id}                                       — get session with full message history
+DELETE /chatbot/sessions/{id}                                     — delete session
+POST /chatbot/sessions/{id}/messages                              — send a message, get AI reply (multi-turn)
+POST /chatbot/sessions/{id}/messages/{message_id}/feedback        — rate an AI message (thumbs up/down)
 """
 
 import json
@@ -226,6 +227,55 @@ async def send_message(
             "created_at": assistant_msg.created_at.isoformat(),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Message feedback
+# ---------------------------------------------------------------------------
+
+class MessageFeedback(BaseModel):
+    rating: int  # 1 = thumbs up, -1 = thumbs down
+    comment: Optional[str] = None
+
+
+@router.post(
+    "/sessions/{session_id}/messages/{message_id}/feedback",
+    summary="Rate an AI message",
+    description=(
+        "Store thumbs-up (rating=1) or thumbs-down (rating=-1) feedback on an AI-generated "
+        "message. An optional free-text comment can be included. Feedback is persisted in the "
+        "message's sources field alongside the original source citations."
+    ),
+    response_description="Confirmation dict with status, message_id, and the recorded rating.",
+)
+async def rate_message(
+    session_id: str,
+    message_id: str,
+    payload: MessageFeedback,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Store thumbs-up / thumbs-down feedback on an AI message."""
+    # Verify session belongs to user
+    session, _ = await _get_session_and_messages(db, session_id, current_user.id)
+
+    msg_result = await db.execute(
+        select(ChatMessage).where(ChatMessage.id == message_id)
+    )
+    msg = msg_result.scalar_one_or_none()
+    if not msg or str(msg.session_id) != str(session.id):
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    # Store feedback in message metadata (use sources field as JSON store)
+    existing = json.loads(msg.sources) if msg.sources else []
+    if isinstance(existing, list):
+        # Convert to dict format to store feedback alongside sources
+        metadata = {"sources": existing, "feedback": {"rating": payload.rating, "comment": payload.comment}}
+    else:
+        metadata = {**existing, "feedback": {"rating": payload.rating, "comment": payload.comment}}
+    msg.sources = json.dumps(metadata)
+    await db.commit()
+    return {"status": "ok", "message_id": message_id, "rating": payload.rating}
 
 
 # ---------------------------------------------------------------------------

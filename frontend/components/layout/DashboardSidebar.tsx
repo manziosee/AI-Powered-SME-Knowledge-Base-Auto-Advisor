@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, MessageSquare, BarChart3,
   ShieldCheck, Bell, Settings, Building2, LogOut,
-  ChevronLeft, ChevronRight, Sun, Moon, HelpCircle, Brain, Calendar, Search,
+  ChevronLeft, ChevronRight, Sun, Moon, HelpCircle, Brain, Calendar, Search, Clock,
 } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -19,6 +19,7 @@ const NAV = [
   { label: "AI Advisor",    href: "/dashboard/advisor",       icon: MessageSquare   },
   { label: "Analytics",     href: "/dashboard/analytics",     icon: BarChart3       },
   { label: "Compliance",    href: "/dashboard/compliance",    icon: ShieldCheck     },
+  { label: "Expiry Alerts", href: "/dashboard/expiry",        icon: Clock           },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell            },
   { label: "Company",       href: "/dashboard/company",       icon: Building2       },
   { label: "AI Training",   href: "/dashboard/training",      icon: Brain           },

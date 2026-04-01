@@ -212,6 +212,13 @@ export const chatbot = {
   async deleteSession(id: string) {
     return request<{ message: string }>(`/chatbot/sessions/${id}`, { method: "DELETE" });
   },
+
+  async rateMessage(sessionId: string, messageId: string, rating: number, comment?: string) {
+    return request<{ status: string }>(
+      `/chatbot/sessions/${sessionId}/messages/${messageId}/feedback`,
+      { method: "POST", body: JSON.stringify({ rating, comment }) },
+    );
+  },
 };
 
 // ── Analytics ─────────────────────────────────────────────────────────────────

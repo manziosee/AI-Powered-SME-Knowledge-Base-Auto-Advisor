@@ -4,15 +4,40 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Send, Brain, Plus, Clock, Sparkles,
   FileText, Shield, Search, Zap, BookOpen, Trash2,
+  ThumbsUp, ThumbsDown, Eraser, ChevronDown, ChevronUp, ExternalLink,
 } from "lucide-react";
 import { advisor as advisorApi, chatbot as chatbotApi } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-interface Msg { role: "user" | "assistant"; content: string }
+interface Source { id?: string; title: string; documentId?: string }
+interface Msg {
+  role: "user" | "assistant";
+  content: string;
+  id?: string;
+  sources?: Source[];
+}
 interface Session { id: string; title: string; updatedAt: string; messages: Msg[] }
 
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function Toast({ message, onDone }: { message: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2200);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-emerald-500 text-white text-sm font-semibold shadow-xl shadow-emerald-500/30 animate-in slide-in-from-bottom-3 fade-in-50">
+      {message}
+    </div>
+  );
+}
+
 // ── Message renderer ──────────────────────────────────────────────────────────
-function Message({ role, content }: Msg) {
+function Message({
+  role, content, id, sources, sessionId, onRate,
+}: Msg & { sessionId: string; onRate: (msgId: string, rating: number) => void }) {
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [rated, setRated] = useState<number | null>(null);
+
   if (role === "user") {
     return (
       <div className="flex justify-end">
@@ -43,13 +68,72 @@ function Message({ role, content }: Msg) {
     return <p key={i} dangerouslySetInnerHTML={{ __html: bold }} />;
   });
 
+  const handleRate = (rating: number) => {
+    if (!id || rated !== null) return;
+    setRated(rating);
+    onRate(id, rating);
+  };
+
   return (
     <div className="flex gap-3">
       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mt-1 shadow-[0_0_10px_rgba(167,139,250,0.15)]">
         <Brain size={14} className="text-violet-400" />
       </div>
-      <div className="bg-[var(--bg-soft)] border border-[var(--border)] text-[var(--fg-soft)] text-sm px-4 py-3 rounded-2xl rounded-tl-sm max-w-2xl leading-relaxed flex flex-col gap-0.5 shadow-sm">
-        {formatted}
+      <div className="flex flex-col gap-1 max-w-2xl flex-1">
+        <div className="bg-[var(--bg-soft)] border border-[var(--border)] text-[var(--fg-soft)] text-sm px-4 py-3 rounded-2xl rounded-tl-sm leading-relaxed flex flex-col gap-0.5 shadow-sm">
+          {formatted}
+        </div>
+
+        {/* Sources */}
+        {sources && sources.length > 0 && (
+          <div className="ml-0.5">
+            <button
+              type="button"
+              onClick={() => setSourcesOpen((v) => !v)}
+              className="flex items-center gap-1.5 text-[10px] text-[var(--fg-muted)] hover:text-violet-500 transition-colors py-1"
+            >
+              {sourcesOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+              {sources.length} source{sources.length !== 1 ? "s" : ""}
+            </button>
+            {sourcesOpen && (
+              <div className="flex flex-col gap-1 mt-0.5">
+                {sources.map((s, i) => (
+                  <a
+                    key={i}
+                    href={s.documentId ? `/dashboard/documents?highlight=${s.documentId}` : "/dashboard/documents"}
+                    className="flex items-center gap-1.5 text-[11px] text-violet-500 hover:text-violet-400 transition-colors px-2 py-1 rounded-lg hover:bg-violet-500/8"
+                  >
+                    <FileText size={11} />
+                    {s.title}
+                    <ExternalLink size={9} className="opacity-60" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Thumbs */}
+        {id && (
+          <div className="flex items-center gap-1 ml-0.5">
+            <button
+              type="button"
+              title="Helpful"
+              onClick={() => handleRate(1)}
+              className={`p-1.5 rounded-lg transition-all ${rated === 1 ? "text-emerald-500 bg-emerald-500/10" : "text-[var(--fg-muted)] hover:text-emerald-500 hover:bg-emerald-500/8"}`}
+            >
+              <ThumbsUp size={12} />
+            </button>
+            <button
+              type="button"
+              title="Not helpful"
+              onClick={() => handleRate(-1)}
+              className={`p-1.5 rounded-lg transition-all ${rated === -1 ? "text-rose-500 bg-rose-500/10" : "text-[var(--fg-muted)] hover:text-rose-500 hover:bg-rose-500/8"}`}
+            >
+              <ThumbsDown size={12} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -80,6 +164,53 @@ function buildFallback(question: string): string {
   return "I've searched through your documents and compliance database. Based on the information available, here's what I found:\n\n**Summary:**\nYour question relates to several documents in your knowledge base. The most relevant entries have been identified and cross-referenced with your compliance rules.\n\n- Relevant document found and indexed\n- Compliance rules checked for your jurisdiction\n- Risk level assessed: **Medium**\n\n**Recommendation:** Review the referenced documents and ensure all deadlines are tracked in your compliance calendar.\n\n*Source: AdvisorAI RAG Pipeline — 3 documents referenced*";
 }
 
+// ── Streaming helper ──────────────────────────────────────────────────────────
+async function streamAnswer(
+  question: string,
+  setMessages: React.Dispatch<React.SetStateAction<Msg[]>>,
+): Promise<string> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const url = `${baseUrl}/api/v1/advisor/stream?q=${encodeURIComponent(question)}`;
+
+  let fullText = "";
+  try {
+    const response = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok || !response.body) throw new Error("stream failed");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+      for (const line of lines) {
+        const data = line.slice(6);
+        if (data === "[DONE]") break;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.token) {
+            fullText += parsed.token;
+            setMessages((prev) => {
+              const updated = [...prev];
+              const lastIdx = updated.length - 1;
+              if (updated[lastIdx]?.role === "assistant") {
+                updated[lastIdx] = { ...updated[lastIdx], content: fullText };
+              }
+              return updated;
+            });
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  } catch {
+    return ""; // signal fallback needed
+  }
+  return fullText;
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 const INIT_SESSION: Session = { id: "init", title: "New chat", updatedAt: "now", messages: [] };
 
@@ -89,6 +220,7 @@ export default function AdvisorPage() {
   const [messages,       setMessages]       = useState<Msg[]>([]);
   const [input,          setInput]          = useState("");
   const [typing,         setTyping]         = useState(false);
+  const [toast,          setToast]          = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom on new message
@@ -108,7 +240,6 @@ export default function AdvisorPage() {
         }));
         setSessions(loaded);
         setActiveSession(loaded[0]);
-        // Load first session messages
         chatbotApi.getSession(loaded[0].id).then(({ data: sd }) => {
           if (sd?.messages) setMessages(sd.messages as Msg[]);
         });
@@ -152,6 +283,18 @@ export default function AdvisorPage() {
     });
   }, [activeSession.id]);
 
+  const clearConversation = useCallback(() => {
+    setMessages([]);
+    setSessions((prev) =>
+      prev.map((s) => s.id === activeSession.id ? { ...s, messages: [] } : s)
+    );
+  }, [activeSession.id]);
+
+  const handleRate = useCallback(async (msgId: string, rating: number) => {
+    await chatbotApi.rateMessage(activeSession.id, msgId, rating);
+    setToast("Thanks for the feedback!");
+  }, [activeSession.id]);
+
   const handleSend = useCallback(async () => {
     const q = input.trim();
     if (!q) return;
@@ -169,18 +312,40 @@ export default function AdvisorPage() {
     }
 
     let answer = "";
+    let currentSessionId = activeSession.id;
 
-    // Try real API first
+    // Create session on backend if needed
     if (activeSession.id.startsWith("local-") || activeSession.id === "init") {
-      // Create session on backend if it's a local/init session
       const { data: newS } = await chatbotApi.createSession(activeSession.id === "init" ? q.slice(0, 40) : undefined);
       if (newS) {
+        currentSessionId = newS.id;
         setActiveSession((prev) => ({ ...prev, id: newS.id }));
-        const { data: resp } = await chatbotApi.sendMessage(newS.id, q);
-        answer = resp?.message?.content ?? "";
       }
-    } else {
-      const { data: resp } = await chatbotApi.sendMessage(activeSession.id, q);
+    }
+
+    // Try streaming first for real sessions
+    if (!currentSessionId.startsWith("local-") && currentSessionId !== "init") {
+      // Add empty assistant message placeholder for streaming
+      const streamingMsg: Msg = { role: "assistant", content: "", id: `streaming-${Date.now()}` };
+      setMessages((prev) => [...prev, streamingMsg]);
+      setTyping(false);
+
+      answer = await streamAnswer(q, setMessages);
+    }
+
+    // If streaming failed or session was local, fall back to chatbot API
+    if (!answer) {
+      // Remove streaming placeholder if it exists
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.content === "") {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+      setTyping(true);
+
+      const { data: resp } = await chatbotApi.sendMessage(currentSessionId, q);
       answer = resp?.message?.content ?? "";
     }
 
@@ -198,8 +363,32 @@ export default function AdvisorPage() {
     }
 
     setTyping(false);
+
+    // Only add a new message if streaming didn't already put it there
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      // If last message is assistant with content (from streaming), update it; otherwise add new
+      if (last?.role === "assistant" && last.content && last.content === answer) {
+        return prev; // streaming already finished with this content
+      }
+      if (last?.role === "assistant" && last.content === "") {
+        // Replace empty placeholder
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: answer,
+          id: `msg-${Date.now()}`,
+        };
+        return updated;
+      }
+      if (last?.role === "user") {
+        // Normal fallback path — append assistant message
+        return [...prev, { role: "assistant", content: answer, id: `msg-${Date.now()}` }];
+      }
+      return prev;
+    });
+
     const aiMsg: Msg = { role: "assistant", content: answer };
-    setMessages((prev) => [...prev, aiMsg]);
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSession.id
@@ -211,6 +400,7 @@ export default function AdvisorPage() {
 
   return (
     <div className="flex h-full overflow-hidden">
+      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
       {/* ── Sidebar ── */}
       <div className="w-60 border-r border-[var(--border)] flex flex-col bg-[var(--bg-soft)] flex-shrink-0">
@@ -298,10 +488,22 @@ export default function AdvisorPage() {
             </div>
             <div>
               <p className="text-[var(--fg)] text-sm font-semibold leading-none">{activeSession.title}</p>
-              <p className="text-[var(--fg-muted)] text-[10px] mt-0.5">Powered by Groq Llama 3.1 · RAG</p>
+              <p className="text-[var(--fg-muted)] text-[10px] mt-0.5">Powered by Groq Llama 3.3 · RAG</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Clear conversation */}
+            {messages.length > 0 && (
+              <button
+                type="button"
+                title="Clear conversation"
+                aria-label="Clear conversation"
+                onClick={clearConversation}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border)] text-[var(--fg-muted)] hover:text-rose-500 hover:border-rose-500/30 hover:bg-rose-500/5 text-xs transition-all"
+              >
+                <Eraser size={12} /> Clear
+              </button>
+            )}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-medium">AI Online</span>
@@ -345,7 +547,17 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {messages.map((m, i) => <Message key={i} role={m.role} content={m.content} />)}
+          {messages.map((m, i) => (
+            <Message
+              key={m.id ?? i}
+              role={m.role}
+              content={m.content}
+              id={m.id}
+              sources={m.sources}
+              sessionId={activeSession.id}
+              onRate={handleRate}
+            />
+          ))}
 
           {typing && (
             <div className="flex gap-3">

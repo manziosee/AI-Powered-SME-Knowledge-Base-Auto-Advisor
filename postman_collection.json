@@ -219,7 +219,26 @@
               "host": ["{{base_url}}"],
               "path": ["documents", "upload"]
             },
-            "description": "Upload a document for AI processing. Triggers async extraction and embedding."
+            "description": "Upload a document for AI processing. Triggers async extraction and embedding. If a document with the same filename already exists, a new version is created automatically."
+          }
+        },
+        {
+          "name": "Bulk Upload Documents",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "files", "type": "file", "src": [], "description": "Select up to 20 files (PDF, DOCX, XLSX, DOC, XLS, TXT)" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/documents/bulk-upload",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "bulk-upload"]
+            },
+            "description": "Upload up to 20 files in one request. Each file is validated, version-tracked, and processed asynchronously. Returns {uploaded, failed, errors, documents[]}."
           }
         },
         {
@@ -299,6 +318,22 @@
             },
             "description": "RAG-powered question answering over your uploaded documents."
           }
+        },
+        {
+          "name": "Stream Advisor Answer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/advisor/stream?q=What deadlines are coming up?",
+              "host": ["{{base_url}}"],
+              "path": ["advisor", "stream"],
+              "query": [
+                { "key": "q", "value": "What deadlines are coming up?", "description": "Natural language question for streaming RAG response" }
+              ]
+            },
+            "description": "Streaming (Server-Sent Events) variant of the advisor. Returns AI answer tokens as they are generated. Use EventSource in the browser or curl --no-buffer."
+          }
         }
       ]
     },
@@ -376,6 +411,28 @@
               "path": ["chatbot", "sessions", ":session_id"],
               "variable": [{ "key": "session_id", "value": "your-session-uuid" }]
             }
+          }
+        },
+        {
+          "name": "Rate AI Message (Feedback)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 1,\n  \"comment\": \"helpful\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/chatbot/sessions/:session_id/messages/:message_id/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["chatbot", "sessions", ":session_id", "messages", ":message_id", "feedback"],
+              "variable": [
+                { "key": "session_id", "value": "your-session-uuid" },
+                { "key": "message_id", "value": "your-message-uuid" }
+              ]
+            },
+            "description": "Submit thumbs-up (rating=1) or thumbs-down (rating=-1) feedback for an AI-generated message. Optionally include a free-text comment."
           }
         }
       ]

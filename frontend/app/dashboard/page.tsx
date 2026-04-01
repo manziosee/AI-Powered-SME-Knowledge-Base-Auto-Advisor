@@ -11,6 +11,7 @@ import {
   Activity, TrendingUp, TrendingDown, Settings2, ChevronRight,
   Bell, Calendar, Clock, ArrowUpRight, Heart,
 } from "lucide-react";
+import Link from "next/link";
 import { analytics, notifications as notifApi, insights } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -307,11 +308,13 @@ export default function DashboardPage() {
           icon={FileText}      trend="up"   trendLabel={`${kpi.processedDocs} done`}
           accentColor="#22d3ee" borderColor="border-cyan-500/15"
         />
-        <KpiCard
-          title="Compliance Score" value={kpi.complianceScore ? `${kpi.complianceScore}%` : "—"}  sub="AI-powered analysis"
-          icon={ShieldCheck}   trend="up"   trendLabel="Live"
-          accentColor="#a78bfa" borderColor="border-violet-500/15"
-        />
+        <Link href="/dashboard/compliance" className="block hover:no-underline" title="View compliance details">
+          <KpiCard
+            title="Compliance Score" value={kpi.complianceScore ? `${kpi.complianceScore}%` : "—"}  sub="AI-powered analysis"
+            icon={ShieldCheck}   trend="up"   trendLabel="Live"
+            accentColor="#a78bfa" borderColor="border-violet-500/15"
+          />
+        </Link>
         <KpiCard
           title="Critical Risks"   value={kpi.criticalRisks}  sub={`${kpi.upcomingDeadlines} upcoming deadlines`}
           icon={AlertTriangle} trend="down" trendLabel="Active"
@@ -504,10 +507,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Compliance score candlestick */}
-        <div className="p-5 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)]">
-          <div className="mb-3">
-            <h2 className="text-[var(--fg)] font-semibold text-sm">Compliance Score</h2>
-            <p className="text-[var(--fg-muted)] text-xs mt-0.5">Weekly candlestick view</p>
+        <Link href="/dashboard/compliance" className="block hover:no-underline group" title="View compliance details">
+        <div className="p-5 rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)] group-hover:border-violet-500/30 group-hover:shadow-lg group-hover:shadow-violet-500/8 transition-all duration-300 cursor-pointer">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h2 className="text-[var(--fg)] font-semibold text-sm">Compliance Score</h2>
+              <p className="text-[var(--fg-muted)] text-xs mt-0.5">Weekly candlestick view</p>
+            </div>
+            <ArrowUpRight size={14} className="text-[var(--fg-muted)] group-hover:text-violet-500 transition-colors" />
           </div>
           <div className="flex items-baseline gap-2 mb-4">
             <span className="text-4xl font-black text-[var(--fg)]">{complianceScore || "—"}</span>
@@ -532,6 +539,7 @@ export default function DashboardPage() {
             </ComposedChart>
           </ResponsiveContainer>
         </div>
+        </Link>
       </div>
 
       {/* ── Row 2: risk distribution + alerts ── */}

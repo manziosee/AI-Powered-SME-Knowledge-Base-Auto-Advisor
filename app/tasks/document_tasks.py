@@ -28,15 +28,25 @@ logger = logging.getLogger(__name__)
 @celery_app.task(
     name="app.tasks.document_tasks.process_document_task",
     bind=True,
-    max_retries=2,
+    max_retries=3,
     soft_time_limit=1500,
     time_limit=1800,
 )
 def process_document_task(self, document_id: str, file_content: bytes, mime_type: str):
-    asyncio.run(_process(document_id, file_content, mime_type))
+    try:
+        asyncio.run(_process(document_id, file_content, mime_type, self))
+    except Exception as exc:
+        err_msg = str(exc)
+        # Retry on transient AI/network errors
+        if any(k in err_msg.lower() for k in ["rate limit", "connection", "timeout", "503", "502", "groq"]):
+            try:
+                raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+            except self.MaxRetriesExceededError:
+                pass
+        raise
 
 
-async def _process(document_id: str, file_content: bytes, mime_type: str):
+async def _process(document_id: str, file_content: bytes, mime_type: str, task=None):
     from app.core.database import AsyncSessionLocal
     from app.models.document import Document, DocumentStatus, DocumentType
     from app.models.knowledge_entry import KnowledgeEntry, KnowledgeType, RiskLevel
@@ -74,6 +84,23 @@ async def _process(document_id: str, file_content: bytes, mime_type: str):
             # Step 2: Extract raw text
             # ----------------------------------------------------------
             extracted_text = await extract_text(file_content, mime_type)
+
+            # OCR fallback: if text is too short (e.g. scanned PDF), try pytesseract
+            if len((extracted_text or "").strip()) < 100 and mime_type == "application/pdf":
+                try:
+                    import pytesseract
+                    from pdf2image import convert_from_bytes
+                    pages = convert_from_bytes(file_content, dpi=200)
+                    ocr_texts = []
+                    for page in pages[:20]:  # cap at 20 pages for memory
+                        ocr_texts.append(pytesseract.image_to_string(page))
+                    ocr_result = "\n".join(ocr_texts).strip()
+                    if len(ocr_result) > len(extracted_text or ""):
+                        extracted_text = ocr_result
+                        logger.info("OCR extracted %d chars from document %s", len(ocr_result), document_id)
+                except Exception as ocr_exc:
+                    logger.warning("OCR failed for document %s: %s", document_id, ocr_exc)
+
             if not extracted_text or len(extracted_text.strip()) < 20:
                 document.status = DocumentStatus.FAILED
                 document.doc_metadata = {"error": "Could not extract text from document"}
@@ -278,8 +305,15 @@ async def _process(document_id: str, file_content: bytes, mime_type: str):
 
         except Exception as exc:
             logger.exception("Document processing failed for %s: %s", document_id, exc)
+            err_msg = str(exc)
+            # Propagate transient errors so the Celery task wrapper can retry
+            if any(k in err_msg.lower() for k in ["rate limit", "connection", "timeout", "503", "502", "groq"]):
+                document.status = DocumentStatus.FAILED
+                document.doc_metadata = {"error": err_msg, "will_retry": True}
+                await db.commit()
+                raise
             document.status = DocumentStatus.FAILED
-            document.doc_metadata = {"error": str(exc)}
+            document.doc_metadata = {"error": err_msg}
             await db.commit()
 
 

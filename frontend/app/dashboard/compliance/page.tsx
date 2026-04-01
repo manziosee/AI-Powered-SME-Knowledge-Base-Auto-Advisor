@@ -1,8 +1,24 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ShieldCheck, AlertTriangle, Clock, CheckCircle, ChevronRight, Globe, RefreshCw } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { ShieldCheck, AlertTriangle, Clock, CheckCircle, ChevronRight, Globe, RefreshCw, ChevronLeft, CheckSquare, X } from "lucide-react";
 import { analytics } from "@/lib/api";
+
+const RESOLVED_KEY = "advisorai_resolved_rules";
+const PAGE_SIZE = 10;
+
+type ResolvedMap = Record<string, { note: string; resolvedAt: string }>;
+
+function loadResolved(): ResolvedMap {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(RESOLVED_KEY) : null;
+    return raw ? (JSON.parse(raw) as ResolvedMap) : {};
+  } catch { return {}; }
+}
+
+function saveResolved(map: ResolvedMap) {
+  try { localStorage.setItem(RESOLVED_KEY, JSON.stringify(map)); } catch { /* ignore */ }
+}
 
 type ComplianceRule = {
   id: string; title: string; category: string; severity: string;
@@ -37,6 +53,29 @@ export default function CompliancePage() {
   const [score, setScore] = useState<number | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [resolved, setResolved] = useState<ResolvedMap>(loadResolved);
+  const [resolveOpen, setResolveOpen] = useState<string | null>(null);
+  const [resolveNote, setResolveNote] = useState("");
+
+  const handleResolve = useCallback((ruleId: string) => {
+    if (!resolveNote.trim()) return;
+    const updated: ResolvedMap = {
+      ...resolved,
+      [ruleId]: { note: resolveNote.trim(), resolvedAt: new Date().toISOString() },
+    };
+    setResolved(updated);
+    saveResolved(updated);
+    setResolveOpen(null);
+    setResolveNote("");
+  }, [resolved, resolveNote]);
+
+  const handleUnresolve = useCallback((ruleId: string) => {
+    const updated = { ...resolved };
+    delete updated[ruleId];
+    setResolved(updated);
+    saveResolved(updated);
+  }, [resolved]);
 
   useEffect(() => {
     setLoading(true);
@@ -70,6 +109,8 @@ export default function CompliancePage() {
 
   const categories = ["all", ...Array.from(new Set(rules.map((r) => r.category)))];
   const filtered = activeCategory === "all" ? rules : rules.filter((r) => r.category === activeCategory);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const overdueCount  = rules.filter((r) => r.status === "overdue").length;
   const upcomingCount = rules.filter((r) => r.status === "upcoming").length;
@@ -110,7 +151,7 @@ export default function CompliancePage() {
       {/* Category filter */}
       <div className="flex items-center gap-2 mb-5 flex-wrap">
         {categories.map((c) => (
-          <button key={c} type="button" onClick={() => setCategory(c)}
+          <button key={c} type="button" onClick={() => { setCategory(c); setPage(1); }}
             className={`px-3 py-1.5 rounded-full text-xs transition-all duration-300 hover:scale-105 ${
               activeCategory === c
                 ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/25"
@@ -134,65 +175,179 @@ export default function CompliancePage() {
           <p className="text-[var(--fg-muted)] text-xs mt-1">Upload more documents to improve analysis coverage.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map((rule, ruleIdx) => {
-            const sev = severityConfig[rule.severity] || severityConfig.low;
-            const st  = statusConfig[rule.status]     || statusConfig.on_track;
-            const daysUntil = rule.deadline
-              ? Math.floor((new Date(rule.deadline).getTime() - Date.now()) / 86400000)
-              : null;
+        <>
+          <div className="flex flex-col gap-3">
+            {paginated.map((rule, ruleIdx) => {
+              const sev = severityConfig[rule.severity] || severityConfig.low;
+              const st  = statusConfig[rule.status]     || statusConfig.on_track;
+              const daysUntil = rule.deadline
+                ? Math.floor((new Date(rule.deadline).getTime() - Date.now()) / 86400000)
+                : null;
+              const isResolved = !!resolved[rule.id];
+              const isResolving = resolveOpen === rule.id;
 
-            return (
-              <div key={rule.id ?? ruleIdx}
-                className="p-5 rounded-2xl border border-[var(--border)] hover:border-violet-500/25 bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-all duration-300 group cursor-pointer hover:shadow-lg hover:scale-[1.02]">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 min-w-0">
-                    <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${sev.dot}`} />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className="text-[var(--fg-soft)] font-semibold text-sm">{rule.title}</h3>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sev.badge}`}>
-                          {sev.label}
-                        </span>
-                      </div>
-                      <p className="text-[var(--fg-muted)] text-xs leading-relaxed">
-                        {rule.action_required || rule.description || "Action required"}
-                      </p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs">
-                          <Globe size={11} /> {rule.jurisdiction || "—"}
-                        </div>
-                        <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs">
-                          <span className="w-1 h-1 rounded-full bg-[var(--fg-muted)] opacity-40" />
-                          {rule.category}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <div className={`flex items-center gap-1.5 text-xs ${st.color}`}>
-                      {st.icon} {st.text}
-                    </div>
-                    {rule.deadline && (
-                      <div className="text-right">
-                        <p className="text-[var(--fg-soft)] text-xs font-medium">{rule.deadline}</p>
-                        {daysUntil !== null && (
-                          <p className={`text-[10px] mt-0.5 ${
-                            daysUntil < 0 ? "text-rose-500" : daysUntil < 14 ? "text-amber-500" : "text-emerald-500 opacity-70"
-                          }`}>
-                            {daysUntil < 0 ? `${Math.abs(daysUntil)}d overdue` : `in ${daysUntil}d`}
+              return (
+                <div key={rule.id ?? ruleIdx}
+                  className={`rounded-2xl border bg-[var(--surface)] transition-all duration-300 group hover:shadow-lg ${
+                    isResolved
+                      ? "border-emerald-500/20 opacity-60"
+                      : "border-[var(--border)] hover:border-violet-500/25 hover:bg-[var(--surface-hover)] hover:scale-[1.02] cursor-pointer"
+                  }`}>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4 min-w-0">
+                        <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${sev.dot}`} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h3 className="text-[var(--fg-soft)] font-semibold text-sm">{rule.title}</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sev.badge}`}>
+                              {sev.label}
+                            </span>
+                            {isResolved && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-emerald-500/30 bg-emerald-500/10 text-emerald-500">
+                                <CheckSquare size={9} /> Resolved
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[var(--fg-muted)] text-xs leading-relaxed">
+                            {rule.action_required || rule.description || "Action required"}
                           </p>
-                        )}
+                          {isResolved && resolved[rule.id]?.note && (
+                            <p className="text-emerald-600 dark:text-emerald-400 text-xs mt-1 italic">
+                              Note: {resolved[rule.id].note}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs">
+                              <Globe size={11} /> {rule.jurisdiction || "—"}
+                            </div>
+                            <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs">
+                              <span className="w-1 h-1 rounded-full bg-[var(--fg-muted)] opacity-40" />
+                              {rule.category}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <ChevronRight size={14} className="text-[var(--fg-muted)] group-hover:translate-x-1 transition-all duration-300" />
+
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <div className={`flex items-center gap-1.5 text-xs ${st.color}`}>
+                          {st.icon} {st.text}
+                        </div>
+                        {rule.deadline && (
+                          <div className="text-right">
+                            <p className="text-[var(--fg-soft)] text-xs font-medium">{rule.deadline}</p>
+                            {daysUntil !== null && (
+                              <p className={`text-[10px] mt-0.5 ${
+                                daysUntil < 0 ? "text-rose-500" : daysUntil < 14 ? "text-amber-500" : "text-emerald-500 opacity-70"
+                              }`}>
+                                {daysUntil < 0 ? `${Math.abs(daysUntil)}d overdue` : `in ${daysUntil}d`}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {/* Resolve / unresolve button */}
+                        {isResolved ? (
+                          <button
+                            type="button"
+                            onClick={() => handleUnresolve(rule.id)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] text-[var(--fg-muted)] hover:text-rose-500 hover:border-rose-500/30 transition-all"
+                          >
+                            <X size={10} /> Unresolve
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setResolveOpen(isResolving ? null : rule.id); setResolveNote(""); }}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/8 transition-all"
+                          >
+                            <CheckSquare size={10} /> Resolve
+                          </button>
+                        )}
+                        <ChevronRight size={14} className="text-[var(--fg-muted)] group-hover:translate-x-1 transition-all duration-300" />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Inline resolve form */}
+                  {isResolving && (
+                    <div className="px-5 pb-5 border-t border-[var(--border)] pt-4 flex flex-col gap-2">
+                      <label className="text-[var(--fg-muted)] text-xs uppercase tracking-wide font-semibold">
+                        Resolution note
+                      </label>
+                      <textarea
+                        value={resolveNote}
+                        onChange={(e) => setResolveNote(e.target.value)}
+                        placeholder="Describe how this was resolved…"
+                        rows={2}
+                        className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--fg)] text-xs focus:outline-none focus:border-emerald-500/50 resize-none placeholder-[var(--fg-muted)]"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleResolve(rule.id)}
+                          disabled={!resolveNote.trim()}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all disabled:opacity-40"
+                        >
+                          <CheckSquare size={11} /> Mark Resolved
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setResolveOpen(null); setResolveNote(""); }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--fg-muted)] text-xs transition-all hover:text-[var(--fg)]"
+                        >
+                          <X size={11} /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-5 pt-4 border-t border-[var(--border)]">
+              <p className="text-[var(--fg-muted)] text-xs">
+                Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} rules
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/30 text-xs transition-all disabled:opacity-30"
+                >
+                  <ChevronLeft size={13} /> Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      className={`w-7 h-7 rounded-lg text-xs font-medium transition-all ${
+                        p === page
+                          ? "bg-violet-500 text-white shadow-lg shadow-violet-500/25"
+                          : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/30 text-xs transition-all disabled:opacity-30"
+                >
+                  Next <ChevronRight size={13} />
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

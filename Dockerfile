@@ -7,6 +7,7 @@ WORKDIR /build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ libpq-dev libmagic1 curl \
+    tesseract-ocr poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -23,6 +24,7 @@ WORKDIR /app
 # Runtime system libs only
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 libmagic1 curl \
+    tesseract-ocr poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder

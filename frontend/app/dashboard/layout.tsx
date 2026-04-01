@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import SearchModal from "@/components/ui/SearchModal";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -34,7 +35,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen bg-[var(--bg)] overflow-hidden">
       <DashboardSidebar onSearchOpen={() => setSearchOpen(true)} />
       <main className="flex-1 overflow-y-auto bg-[var(--bg)]">
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </main>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>

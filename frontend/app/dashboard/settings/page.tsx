@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Bell, Shield, Globe, Key, Save, Eye, EyeOff, Check, Copy, AlertCircle } from "lucide-react";
+import { User, Bell, Shield, Globe, Key, Save, Eye, EyeOff, Check, Copy, AlertCircle, X, Lock } from "lucide-react";
 import { auth as authApi } from "@/lib/api";
 
 const tabs = [
@@ -19,6 +19,28 @@ export default function SettingsPage() {
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [saveErr,  setSaveErr]  = useState<string | null>(null);
+
+  // Password change state
+  const [showPwForm,  setShowPwForm]  = useState(false);
+  const [curPw,       setCurPw]       = useState("");
+  const [newPw,       setNewPw]       = useState("");
+  const [confirmPw,   setConfirmPw]   = useState("");
+  const [pwSaving,    setPwSaving]    = useState(false);
+  const [pwSuccess,   setPwSuccess]   = useState(false);
+  const [pwError,     setPwError]     = useState<string | null>(null);
+
+  const handlePasswordChange = async () => {
+    setPwError(null);
+    if (newPw.length < 8) { setPwError("New password must be at least 8 characters."); return; }
+    if (newPw !== confirmPw) { setPwError("Passwords do not match."); return; }
+    setPwSaving(true);
+    const { error } = await authApi.changePassword(curPw, newPw);
+    setPwSaving(false);
+    if (error) { setPwError(error); return; }
+    setPwSuccess(true);
+    setCurPw(""); setNewPw(""); setConfirmPw("");
+    setTimeout(() => { setPwSuccess(false); setShowPwForm(false); }, 2500);
+  };
   const [name,     setName]     = useState("");
   const [email,    setEmail]    = useState("");
   const [userRole, setUserRole] = useState("");
@@ -224,8 +246,98 @@ export default function SettingsPage() {
               <div className="flex flex-col gap-5">
                 <h2 className="text-[var(--fg)] font-semibold">Security</h2>
                 <div className="flex flex-col gap-3">
+
+                  {/* Change password row */}
+                  <div className="rounded-xl bg-[var(--bg-muted)] border border-[var(--border)] overflow-hidden">
+                    <div className="flex items-center justify-between p-4">
+                      <div>
+                        <p className="text-[var(--fg-soft)] text-sm font-medium">Change password</p>
+                        <p className="text-[var(--fg-muted)] text-xs mt-0.5">
+                          {pwSuccess ? "Password changed successfully!" : "Last changed 30 days ago"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setShowPwForm((v) => !v); setPwError(null); }}
+                        className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--fg-soft)] hover:text-violet-500 hover:border-violet-500/40 text-xs font-medium transition-all"
+                      >
+                        {showPwForm ? "Cancel" : "Update"}
+                      </button>
+                    </div>
+
+                    {showPwForm && (
+                      <div className="px-4 pb-4 flex flex-col gap-3 border-t border-[var(--border)] pt-4">
+                        <div>
+                          <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">
+                            <Lock size={10} className="inline mr-1" /> Current password
+                          </label>
+                          <input
+                            type="password"
+                            value={curPw}
+                            onChange={(e) => setCurPw(e.target.value)}
+                            className={INPUT}
+                            placeholder="Enter current password"
+                            aria-label="Current password"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">New password</label>
+                          <input
+                            type="password"
+                            value={newPw}
+                            onChange={(e) => setNewPw(e.target.value)}
+                            className={INPUT}
+                            placeholder="At least 8 characters"
+                            aria-label="New password"
+                            minLength={8}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-1.5">Confirm new password</label>
+                          <input
+                            type="password"
+                            value={confirmPw}
+                            onChange={(e) => setConfirmPw(e.target.value)}
+                            className={INPUT}
+                            placeholder="Re-enter new password"
+                            aria-label="Confirm new password"
+                          />
+                        </div>
+
+                        {pwError && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500/8 border border-rose-500/20 text-rose-500 text-xs">
+                            <AlertCircle size={13} /> {pwError}
+                          </div>
+                        )}
+                        {pwSuccess && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/8 border border-emerald-500/20 text-emerald-500 text-xs">
+                            <Check size={13} /> Password changed successfully!
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handlePasswordChange}
+                            disabled={pwSaving || !curPw || !newPw || !confirmPw}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all disabled:opacity-50"
+                          >
+                            {pwSaving ? <><Save size={13} className="animate-spin" /> Saving…</> : <><Check size={13} /> Change Password</>}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowPwForm(false); setPwError(null); setCurPw(""); setNewPw(""); setConfirmPw(""); }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] text-sm transition-all"
+                          >
+                            <X size={13} /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Other security items */}
                   {[
-                    { label: "Change password",           desc: "Last changed 30 days ago",    action: "Update"  },
                     { label: "Two-factor authentication", desc: "Not enabled — recommended",   action: "Enable"  },
                     { label: "Active sessions",           desc: "2 active sessions",            action: "Manage"  },
                     { label: "Download my data",          desc: "Export all your account data", action: "Export"  },

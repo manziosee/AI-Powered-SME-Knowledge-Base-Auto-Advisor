@@ -2,6 +2,7 @@
 Document management endpoints.
 
 POST   /documents/upload          — upload file (triggers async processing)
+POST   /documents/bulk-upload     — upload multiple files at once (max 20)
 GET    /documents/                — list company documents (filterable, paginated)
 GET    /documents/search          — semantic search across documents + knowledge
 GET    /documents/{id}            — get document detail
@@ -15,7 +16,7 @@ import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
-from sqlalchemy import select, and_, text
+from sqlalchemy import select, and_, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
@@ -35,9 +36,22 @@ router = APIRouter()
 # Upload
 # ---------------------------------------------------------------------------
 
-@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload a single document",
+    description=(
+        "Upload a PDF, DOCX, XLSX, DOC, XLS, or TXT file for AI processing. "
+        "If a document with the same filename already exists for this company, "
+        "the new upload is stored as the next version and the previous document's "
+        "ID is recorded in `doc_metadata.previous_version_id`. "
+        "Processing (text extraction, embedding, knowledge extraction) is triggered asynchronously."
+    ),
+    response_description="The newly created Document record with status=uploaded.",
+)
 async def upload_document(
-    file: UploadFile = File(...),
+    file: UploadFile = File(..., description="Document file to upload (PDF, DOCX, XLSX, DOC, XLS, or TXT)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -63,6 +77,29 @@ async def upload_document(
     document_id = uuid.uuid4()
     file_key = f"{current_user.company_id}/{document_id}/{file.filename}"
 
+    # --- Version tracking: find any existing document with the same filename ---
+    existing_result = await db.execute(
+        select(Document.id, Document.version)
+        .where(
+            and_(
+                Document.company_id == current_user.company_id,
+                Document.original_filename == file.filename,
+            )
+        )
+        .order_by(Document.version.desc())
+        .limit(1)
+    )
+    existing_row = existing_result.first()
+    new_version = 1
+    previous_version_id = None
+    if existing_row is not None:
+        new_version = (existing_row.version or 1) + 1
+        previous_version_id = str(existing_row.id)
+
+    doc_metadata = {}
+    if previous_version_id:
+        doc_metadata["previous_version_id"] = previous_version_id
+
     document = Document(
         id=document_id,
         company_id=current_user.company_id,
@@ -73,6 +110,8 @@ async def upload_document(
         mime_type=file.content_type or "application/octet-stream",
         uploaded_by=current_user.id,
         status=DocumentStatus.UPLOADED,
+        version=new_version,
+        doc_metadata=doc_metadata,
     )
 
     db.add(document)
@@ -82,6 +121,108 @@ async def upload_document(
     process_document_task.delay(str(document.id), file_content, file.content_type)
 
     return document
+
+
+# ---------------------------------------------------------------------------
+# Bulk Upload
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/bulk-upload",
+    status_code=status.HTTP_201_CREATED,
+    summary="Bulk upload multiple documents",
+    description=(
+        "Upload up to 20 files in a single request. Each file is validated and processed "
+        "independently. Versioning applies per file just as with single upload. "
+        "Returns a summary with counts of uploaded and failed files, plus the list of "
+        "DocumentResponse objects for successfully created records."
+    ),
+    response_description="Summary dict with `uploaded`, `failed`, and `documents` keys.",
+)
+async def bulk_upload_documents(
+    files: List[UploadFile] = File(..., description="List of document files (max 20)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User must belong to a company")
+
+    if len(files) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 files per bulk upload request")
+
+    uploaded_docs: List[DocumentResponse] = []
+    failed_count = 0
+    errors: List[dict] = []
+
+    for file in files:
+        try:
+            file_ext = f".{file.filename.split('.')[-1].lower()}" if "." in file.filename else ""
+            if file_ext not in settings.allowed_extensions_list:
+                failed_count += 1
+                errors.append({"filename": file.filename, "error": f"File type '{file_ext}' not allowed"})
+                continue
+
+            file_content = await file.read()
+            file_size = len(file_content)
+
+            if file_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+                failed_count += 1
+                errors.append({"filename": file.filename, "error": f"File exceeds {settings.MAX_UPLOAD_SIZE_MB} MB limit"})
+                continue
+
+            document_id = uuid.uuid4()
+            file_key = f"{current_user.company_id}/{document_id}/{file.filename}"
+
+            # Version tracking
+            existing_result = await db.execute(
+                select(Document.id, Document.version)
+                .where(
+                    and_(
+                        Document.company_id == current_user.company_id,
+                        Document.original_filename == file.filename,
+                    )
+                )
+                .order_by(Document.version.desc())
+                .limit(1)
+            )
+            existing_row = existing_result.first()
+            new_version = 1
+            doc_metadata: dict = {}
+            if existing_row is not None:
+                new_version = (existing_row.version or 1) + 1
+                doc_metadata["previous_version_id"] = str(existing_row.id)
+
+            document = Document(
+                id=document_id,
+                company_id=current_user.company_id,
+                filename=file_key,
+                original_filename=file.filename,
+                file_path=file_key,
+                file_size=file_size,
+                mime_type=file.content_type or "application/octet-stream",
+                uploaded_by=current_user.id,
+                status=DocumentStatus.UPLOADED,
+                version=new_version,
+                doc_metadata=doc_metadata,
+            )
+
+            db.add(document)
+            await db.commit()
+            await db.refresh(document)
+
+            process_document_task.delay(str(document.id), file_content, file.content_type)
+            uploaded_docs.append(document)
+
+        except Exception as exc:
+            failed_count += 1
+            errors.append({"filename": file.filename, "error": str(exc)})
+
+    return {
+        "uploaded": len(uploaded_docs),
+        "failed": failed_count,
+        "errors": errors,
+        "documents": uploaded_docs,
+    }
 
 
 # ---------------------------------------------------------------------------

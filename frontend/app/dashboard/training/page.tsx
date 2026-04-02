@@ -6,7 +6,7 @@ import {
   BarChart3, Zap, Database, TrendingUp, Info, Shield, FileText,
   Upload, Plus, Trash2, X,
 } from "lucide-react";
-import { admin, type TrainingStatus } from "@/lib/api";
+import { admin, auth as authApi, type TrainingStatus } from "@/lib/api";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -66,6 +66,8 @@ export default function TrainingPage() {
   const [testLoading,  setTestLoading] = useState(false);
   const [apiError,     setApiError]    = useState<string | null>(null);
   const [logs,         setLogs]        = useState<LogEntry[]>([]);
+  const [isAdmin,      setIsAdmin]     = useState(false);
+  const [roleChecked,  setRoleChecked] = useState(false);
 
   // Training data state
   const [samples,     setSamples]      = useState<TrainingSample[]>([]);
@@ -79,7 +81,7 @@ export default function TrainingPage() {
     setLogs((prev) => [...prev.slice(-49), { time, text, type }]);
   }, []);
 
-  // Load ML status from backend
+  // Load ML status from backend (admin-only)
   const fetchStatus = useCallback(async () => {
     const { data, error } = await admin.mlStatus();
     if (data) {
@@ -92,8 +94,16 @@ export default function TrainingPage() {
   }, []);
 
   useEffect(() => {
-    fetchStatus();
-    addLog("System ready. No training in progress.", "info");
+    authApi.me().then(({ data }) => {
+      const role = data?.role ?? "employee";
+      const adminAccess = role === "admin" || role === "super_admin";
+      setIsAdmin(adminAccess);
+      setRoleChecked(true);
+      if (adminAccess) {
+        fetchStatus();
+        addLog("System ready. No training in progress.", "info");
+      }
+    });
   }, [fetchStatus, addLog]);
 
   // Poll while training
@@ -105,6 +115,7 @@ export default function TrainingPage() {
   }, [status.status, fetchStatus]);
 
   const handleTrain = async () => {
+    if (!isAdmin) return;
     setLoading(true);
     addLog(`Starting training${samples.length > 0 ? ` with ${samples.length} custom samples` : " using knowledge base data"}…`, "info");
     const { data, error } = await admin.trainRiskScorer(samples.length > 0 ? samples : undefined);
@@ -189,6 +200,31 @@ export default function TrainingPage() {
 
   const cfg = STATUS_CONFIG[status.status];
   const StatusIcon = cfg.icon;
+
+  if (roleChecked && !isAdmin) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
+            <Brain size={20} className="text-violet-500" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Model Training</h1>
+            <p className="text-[var(--fg-muted)] text-sm">Train AI risk scoring models with your own labelled data</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center rounded-2xl bg-[var(--bg-soft)] border border-[var(--border)]">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center">
+            <Shield size={24} className="text-rose-500" />
+          </div>
+          <h2 className="text-[var(--fg)] font-bold text-lg">Admin Access Required</h2>
+          <p className="text-[var(--fg-muted)] text-sm max-w-sm">
+            Model training is restricted to admin users. Contact your company administrator to request access.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

@@ -5,7 +5,7 @@ import {
   Building2, Globe, Users, Shield, MoreHorizontal, Plus,
   X, Mail, CheckCircle, Clock, Trash2, UserCog, RefreshCw, Save, Check,
 } from "lucide-react";
-import { company as companyApi, analytics } from "@/lib/api";
+import { company as companyApi, analytics, auth as authApi } from "@/lib/api";
 
 const roleColors: Record<string, string> = {
   admin:    "text-violet-600 dark:text-violet-300 bg-violet-500/12 border-violet-500/30",
@@ -147,23 +147,38 @@ export default function CompanyPage() {
   const [editForm,    setEditForm]    = useState({ name: "", country: "", industry: "" });
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
+  const [userRole,    setUserRole]    = useState<string>("employee");
+
+  const isManager = userRole === "manager" || userRole === "admin" || userRole === "super_admin";
 
   useEffect(() => {
-    Promise.all([
-      companyApi.get(),
-      companyApi.users(),
-      analytics.complianceScore(),
-      analytics.overview(),
-    ]).then(([compRes, usersRes, complianceRes, overviewRes]) => {
+    const loadData = async () => {
+      const [meRes, compRes, complianceRes, overviewRes] = await Promise.all([
+        authApi.me(),
+        companyApi.get(),
+        analytics.complianceScore(),
+        analytics.overview(),
+      ]);
+
+      const role = meRes.data?.role ?? "employee";
+      setUserRole(role);
+      const canManage = role === "manager" || role === "admin" || role === "super_admin";
+
       if (compRes.data) {
         setCompanyData(compRes.data);
         setEditForm({ name: compRes.data.name, country: compRes.data.country, industry: compRes.data.industry ?? "" });
       }
-      if (usersRes.data) setMembers(usersRes.data.items ?? []);
       if (complianceRes.data) setComplianceScore(Math.round(complianceRes.data.compliance_score));
       if (overviewRes.data) setTotalDocs(overviewRes.data.documents.total);
+
+      if (canManage) {
+        const usersRes = await companyApi.users();
+        if (usersRes.data) setMembers(usersRes.data.items ?? []);
+      }
+
       setLoading(false);
-    });
+    };
+    loadData();
   }, []);
 
   const handleInvited = (m: Member) => setMembers((prev) => [...prev, m]);
@@ -202,10 +217,12 @@ export default function CompanyPage() {
           <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Company</h1>
           <p className="text-[var(--fg-muted)] text-sm mt-0.5">Manage your organisation profile and team</p>
         </div>
-        <button type="button" onClick={() => setShowInvite(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-bold transition-all shadow-[0_4px_16px_rgba(124,58,237,0.35)] hover:shadow-[0_6px_24px_rgba(124,58,237,0.5)] hover:-translate-y-0.5 active:scale-95">
-          <Plus size={14} /> Invite member
-        </button>
+        {isManager && (
+          <button type="button" onClick={() => setShowInvite(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-bold transition-all shadow-[0_4px_16px_rgba(124,58,237,0.35)] hover:shadow-[0_6px_24px_rgba(124,58,237,0.5)] hover:-translate-y-0.5 active:scale-95">
+            <Plus size={14} /> Invite member
+          </button>
+        )}
       </div>
 
       {/* Company profile card */}
@@ -258,7 +275,7 @@ export default function CompanyPage() {
               </>
             )}
           </div>
-          {!editing && (
+          {!editing && isManager && (
             <button type="button" onClick={() => setEditing(true)}
               className="px-4 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-soft)] text-sm hover:text-violet-600 dark:hover:text-violet-300 hover:border-violet-500/40 transition-all">
               Edit profile
@@ -281,8 +298,8 @@ export default function CompanyPage() {
         </div>
       </div>
 
-      {/* Team members */}
-      <div>
+      {/* Team members — only visible to managers/admins */}
+      {isManager && <div>
         <h3 className="text-[var(--fg)] font-semibold mb-4">Team Members ({members.length})</h3>
         <div className="rounded-2xl border border-[var(--border)] overflow-hidden">
           <div className="grid grid-cols-12 px-5 py-3 bg-[var(--bg-muted)] border-b border-[var(--border)] text-[var(--fg-muted)] text-xs uppercase tracking-wide font-semibold">
@@ -326,7 +343,7 @@ export default function CompanyPage() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

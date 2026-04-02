@@ -7,6 +7,7 @@ import {
   LayoutDashboard, FileText, MessageSquare, BarChart3,
   ShieldCheck, Bell, Settings, Building2, LogOut,
   ChevronLeft, ChevronRight, Sun, Moon, HelpCircle, Brain, Calendar, Search, Clock,
+  ShieldAlert,
 } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -39,7 +40,7 @@ export default function DashboardSidebar({ onSearchOpen }: DashboardSidebarProps
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string; avatar: string; company: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; avatar: string; company: string; role?: string } | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -102,6 +103,27 @@ export default function DashboardSidebar({ onSearchOpen }: DashboardSidebarProps
             </>
           )}
         </button>
+
+        {/* Admin Panel link — only for admin/super_admin */}
+        {(user?.role === "admin" || user?.role === "super_admin") && (
+          <Link
+            href="/dashboard/admin"
+            title={collapsed ? "Admin Panel" : undefined}
+            className={cn(
+              "flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-sm transition-all duration-300 group relative overflow-hidden mb-1",
+              pathname.startsWith("/dashboard/admin")
+                ? "bg-gradient-to-r from-rose-500/15 to-pink-500/15 text-rose-600 dark:text-rose-300 border border-rose-500/25 font-medium shadow-lg shadow-rose-500/10"
+                : "text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-rose-500/8 hover:scale-[1.02] hover:shadow-md",
+              collapsed && "justify-center px-2"
+            )}
+          >
+            <ShieldAlert size={16} className={cn(
+              "flex-shrink-0 transition-all duration-300",
+              pathname.startsWith("/dashboard/admin") ? "text-rose-600 dark:text-rose-300 scale-110" : "group-hover:scale-110 group-hover:text-rose-500"
+            )} />
+            {!collapsed && <span className="flex-1 truncate text-sm">Admin Panel</span>}
+          </Link>
+        )}
 
         {NAV.map(({ label, href, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");

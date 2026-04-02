@@ -39,6 +39,30 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass  # non-fatal — rules can be seeded via admin API later
 
+    # Seed super admin user on first boot
+    try:
+        from sqlalchemy import select as sa_select
+        from app.models.user import User, UserRole
+        from app.core.security import get_password_hash
+        import logging as _logging
+        async with AsyncSessionLocal() as db:
+            _existing = await db.execute(sa_select(User).where(User.email == "admin@admin.com"))
+            if not _existing.scalar_one_or_none():
+                _admin = User(
+                    email="admin@admin.com",
+                    hashed_password=get_password_hash("123456789"),
+                    full_name="System Administrator",
+                    role=UserRole.SUPER_ADMIN,
+                    is_active=True,
+                    is_verified=True,
+                    company_id=None,
+                )
+                db.add(_admin)
+                await db.commit()
+                _logging.getLogger(__name__).info("Created default super admin: admin@admin.com")
+    except Exception as _e:
+        pass  # non-fatal
+
     yield
 
     # Shutdown

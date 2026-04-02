@@ -7,6 +7,7 @@ import {
   Upload, Plus, Trash2, X,
 } from "lucide-react";
 import { admin, auth as authApi, type TrainingStatus } from "@/lib/api";
+import * as XLSX from "xlsx";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -163,39 +164,143 @@ export default function TrainingPage() {
   // Remove a sample
   const removeSample = (idx: number) => setSamples((prev) => prev.filter((_, i) => i !== idx));
 
-  // Parse CSV
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Parse CSV text into samples
+  const parseCsvText = (text: string): { parsed: TrainingSample[]; errors: number } => {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const parsed: TrainingSample[] = [];
+    let errors = 0;
+    const startIdx = lines[0]?.toLowerCase().includes("text") && lines[0]?.toLowerCase().includes("label") ? 1 : 0;
+    for (let i = startIdx; i < lines.length; i++) {
+      const parts = lines[i].split(",");
+      if (parts.length < 2) { errors++; continue; }
+      const label = parts[parts.length - 1].trim().toLowerCase();
+      const txt = parts.slice(0, parts.length - 1).join(",").trim().replace(/^"|"$/g, "");
+      if (!txt || !RISK_LABELS.includes(label)) { errors++; continue; }
+      parsed.push({ text: txt, label });
+    }
+    return { parsed, errors };
+  };
+
+  // Universal file upload handler — CSV, Excel, Word, Image
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setCsvError(null);
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-      const parsed: TrainingSample[] = [];
-      let errors = 0;
-      // Skip header if first line contains "text" or "label"
-      const startIdx = lines[0]?.toLowerCase().includes("text") && lines[0]?.toLowerCase().includes("label") ? 1 : 0;
-      for (let i = startIdx; i < lines.length; i++) {
-        // Support comma-separated: last token is the label
-        const parts = lines[i].split(",");
-        if (parts.length < 2) { errors++; continue; }
-        const label = parts[parts.length - 1].trim().toLowerCase();
-        const txt = parts.slice(0, parts.length - 1).join(",").trim().replace(/^"|"$/g, "");
-        if (!txt || !RISK_LABELS.includes(label)) { errors++; continue; }
-        parsed.push({ text: txt, label });
-      }
-      if (parsed.length === 0) {
-        setCsvError("No valid rows found. CSV must have columns: text, label (low/medium/high/critical).");
-        return;
-      }
-      setSamples((prev) => [...prev, ...parsed]);
-      addLog(`Loaded ${parsed.length} samples from CSV${errors > 0 ? ` (${errors} rows skipped)` : ""}.`, errors > 0 ? "warn" : "success");
-      if (errors > 0) setCsvError(`${errors} row(s) skipped — invalid format or label value.`);
-    };
-    reader.readAsText(file);
-    // Reset file input so same file can be re-loaded
     e.target.value = "";
+
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+    // ── CSV ──────────────────────────────────────────────────────────────────
+    if (ext === "csv" || file.type === "text/csv") {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const { parsed, errors } = parseCsvText(ev.target?.result as string);
+        if (parsed.length === 0) {
+          setCsvError("No valid rows. CSV needs columns: text, label (low/medium/high/critical).");
+          return;
+        }
+        setSamples((prev) => [...prev, ...parsed]);
+        addLog(`Loaded ${parsed.length} samples from CSV${errors > 0 ? ` (${errors} skipped)` : ""}.`, errors > 0 ? "warn" : "success");
+        if (errors > 0) setCsvError(`${errors} row(s) skipped — invalid format or label.`);
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    // ── Excel (.xlsx / .xls) ─────────────────────────────────────────────────
+    if (ext === "xlsx" || ext === "xls") {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const wb = XLSX.read(ev.target?.result, { type: "array" });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+          const parsed: TrainingSample[] = [];
+          let errors = 0;
+          // detect header row
+          const startIdx = String(rows[0]?.[0]).toLowerCase().includes("text") ? 1 : 0;
+          for (let i = startIdx; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length < 2) { errors++; continue; }
+            const txt = String(row[0]).trim();
+            const label = String(row[row.length - 1]).trim().toLowerCase();
+            if (!txt || !RISK_LABELS.includes(label)) { errors++; continue; }
+            parsed.push({ text: txt, label });
+          }
+          if (parsed.length === 0) {
+            setCsvError("No valid rows. Excel needs columns: text (col A), label (last col) — low/medium/high/critical.");
+            return;
+          }
+          setSamples((prev) => [...prev, ...parsed]);
+          addLog(`Loaded ${parsed.length} samples from Excel${errors > 0 ? ` (${errors} skipped)` : ""}.`, errors > 0 ? "warn" : "success");
+          if (errors > 0) setCsvError(`${errors} row(s) skipped — invalid label value.`);
+        } catch {
+          setCsvError("Failed to parse Excel file. Ensure it has text and label columns.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // ── Word (.docx) ─────────────────────────────────────────────────────────
+    if (ext === "docx" || ext === "doc") {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const mammoth = await import("mammoth");
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        const text = result.value.trim();
+        if (!text) {
+          setCsvError("Could not extract text from Word document.");
+          return;
+        }
+        // Split into paragraphs and add as unlabeled samples (label defaults to "medium")
+        const paragraphs = text.split(/\n+/).map((p) => p.trim()).filter((p) => p.length > 20);
+        if (paragraphs.length === 0) {
+          setNewText(text.slice(0, 500));
+          addLog("Extracted text from Word doc — review and add a label manually.", "info");
+          return;
+        }
+        const newSamples = paragraphs.map((p) => ({ text: p, label: "medium" }));
+        setSamples((prev) => [...prev, ...newSamples]);
+        addLog(`Extracted ${newSamples.length} paragraph(s) from Word doc (labeled 'medium' by default — adjust as needed).`, "warn");
+        setCsvError(`${newSamples.length} paragraphs imported from Word. Labels default to 'medium' — review and adjust in the list.`);
+      } catch {
+        setCsvError("Failed to parse Word document. Ensure it is a valid .docx file.");
+      }
+      return;
+    }
+
+    // ── Image (.jpg / .png / .jpeg / .webp) ─────────────────────────────────
+    if (["jpg", "jpeg", "png", "webp", "bmp", "tiff"].includes(ext)) {
+      setCsvError("Images: OCR extraction is not supported in the browser. Upload the image via the Documents page, wait for it to be processed, then export its knowledge entries to CSV for training.");
+      addLog("Image upload: use Documents page → processed → export to CSV.", "warn");
+      return;
+    }
+
+    // ── Plain text ────────────────────────────────────────────────────────────
+    if (ext === "txt") {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = (ev.target?.result as string).trim();
+        if (!text) { setCsvError("Empty text file."); return; }
+        // Try CSV format first
+        if (text.includes(",")) {
+          const { parsed, errors } = parseCsvText(text);
+          if (parsed.length > 0) {
+            setSamples((prev) => [...prev, ...parsed]);
+            addLog(`Loaded ${parsed.length} samples from TXT${errors > 0 ? ` (${errors} skipped)` : ""}.`, errors > 0 ? "warn" : "success");
+            return;
+          }
+        }
+        // Otherwise add whole text as one sample
+        setNewText(text.slice(0, 500));
+        addLog("Loaded text from file — review and add a label manually.", "info");
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    setCsvError(`Unsupported file type: .${ext}. Supported: CSV, Excel (.xlsx/.xls), Word (.docx), TXT.`);
   };
 
   const cfg = STATUS_CONFIG[status.status];
@@ -314,13 +419,13 @@ export default function TrainingPage() {
               {/* CSV upload */}
               <div>
                 <p className="text-[var(--fg-muted)] text-xs mb-2">
-                  Upload a CSV with columns: <code className="font-mono text-violet-400">text, label</code> (label must be: low / medium / high / critical)
+                  Upload <code className="font-mono text-violet-400">CSV</code>, <code className="font-mono text-violet-400">Excel (.xlsx/.xls)</code>, <code className="font-mono text-violet-400">Word (.docx)</code>, or <code className="font-mono text-violet-400">TXT</code> — columns: text, label (low/medium/high/critical)
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleCsvUpload}
+                  accept=".csv,.xlsx,.xls,.docx,.doc,.txt"
+                  onChange={handleFileUpload}
                   className="hidden"
                   id="csv-upload"
                 />
@@ -328,7 +433,7 @@ export default function TrainingPage() {
                   htmlFor="csv-upload"
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-violet-500/40 bg-violet-500/5 hover:bg-violet-500/10 text-violet-500 text-xs font-semibold cursor-pointer transition-all w-fit"
                 >
-                  <Upload size={13} /> Upload CSV file
+                  <Upload size={13} /> Upload CSV / Excel / Word / TXT
                 </label>
                 {csvError && (
                   <p className="text-rose-500 text-xs mt-2 flex items-center gap-1">

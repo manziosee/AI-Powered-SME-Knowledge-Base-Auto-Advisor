@@ -85,7 +85,7 @@ class MLTrainingRequest(BaseModel):
 @router.get("/stats")
 async def system_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
     companies = await db.execute(select(func.count(Company.id)))
     users = await db.execute(select(func.count(User.id)))
@@ -103,6 +103,11 @@ async def system_stats(
         },
         "documents": docs.scalar() or 0,
         "knowledge_entries": entries.scalar() or 0,
+        # legacy flat keys for older clients
+        "total_users": users.scalar() or 0,
+        "total_documents": docs.scalar() or 0,
+        "total_companies": companies.scalar() or 0,
+        "ai_queries_total": 0,
         "ml": {
             "risk_scorer_trained": _risk_scorer.is_trained,
             "trained_at": _risk_scorer.trained_at.isoformat() if _risk_scorer.trained_at else None,
@@ -379,12 +384,16 @@ async def train_risk_scorer(
         raise HTTPException(status_code=500, detail=f"Training failed: {exc}")
 
 
+class PredictRiskRequest(BaseModel):
+    text: str
+
+
 @router.post("/ml/predict-risk")
 async def predict_risk(
-    text: str,
+    payload: PredictRiskRequest,
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    result = _risk_scorer.score_with_explanation(text)
+    result = _risk_scorer.score_with_explanation(payload.text)
     return result
 
 
@@ -424,6 +433,189 @@ def _serialize_rule(r: ComplianceRule) -> dict:
         "is_active": r.is_active,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Company management
+# ---------------------------------------------------------------------------
+
+@router.get("/companies")
+async def list_all_companies(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    result = await db.execute(
+        select(Company).order_by(Company.created_at.desc()).limit(limit).offset(offset)
+    )
+    companies = result.scalars().all()
+
+    items = []
+    for company in companies:
+        user_count_q = select(func.count(User.id)).where(User.company_id == company.id)
+        user_count = (await db.execute(user_count_q)).scalar() or 0
+
+        doc_count_q = select(func.count(Document.id)).where(Document.company_id == company.id)
+        doc_count = (await db.execute(doc_count_q)).scalar() or 0
+
+        items.append({
+            "id": str(company.id),
+            "name": company.name,
+            "country": company.country,
+            "industry": company.industry if hasattr(company, "industry") else None,
+            "is_active": company.is_active,
+            "created_at": company.created_at.isoformat() if company.created_at else None,
+            "user_count": user_count,
+            "document_count": doc_count,
+        })
+
+    total_q = await db.execute(select(func.count(Company.id)))
+    total = total_q.scalar() or 0
+
+    return {"items": items, "total": total}
+
+
+# ---------------------------------------------------------------------------
+# Extended user management
+# ---------------------------------------------------------------------------
+
+class UserRoleUpdate(BaseModel):
+    role: str
+
+
+class UserCreate(BaseModel):
+    email: str
+    full_name: str
+    password: str
+    role: str
+    company_id: Optional[str] = None
+
+
+@router.put("/users/{user_id}/role")
+async def update_user_role(
+    user_id: str,
+    payload: UserRoleUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    role_map = {e.value: e for e in UserRole}
+    new_role = role_map.get(payload.role.lower())
+    if not new_role:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {payload.role}")
+
+    user.role = new_role
+    await db.commit()
+    await db.refresh(user)
+    return _serialize_user(user)
+
+
+@router.post("/users", status_code=201)
+async def create_user(
+    payload: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
+):
+    from app.core.security import get_password_hash
+
+    existing = await db.execute(select(User).where(User.email == payload.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    role_map = {e.value: e for e in UserRole}
+    role = role_map.get(payload.role.lower(), UserRole.EMPLOYEE)
+
+    new_user = User(
+        email=payload.email,
+        full_name=payload.full_name,
+        hashed_password=get_password_hash(payload.password),
+        role=role,
+        company_id=payload.company_id,
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return _serialize_user(new_user)
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
+):
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db.delete(user)
+    await db.commit()
+    return {"status": "deleted", "user_id": user_id}
+
+
+# ---------------------------------------------------------------------------
+# Health alerts
+# ---------------------------------------------------------------------------
+
+@router.get("/health-alerts")
+async def health_alerts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    result = await db.execute(select(Company).where(Company.is_active.is_(True)))
+    companies = result.scalars().all()
+
+    alerts = []
+    for company in companies:
+        doc_count_q = select(func.count(Document.id)).where(Document.company_id == company.id)
+        doc_count = (await db.execute(doc_count_q)).scalar() or 0
+
+        user_count_q = select(func.count(User.id)).where(
+            and_(User.company_id == company.id, User.is_active.is_(True))
+        )
+        active_user_count = (await db.execute(user_count_q)).scalar() or 0
+
+        compliance_score = getattr(company, "compliance_score", None) or 0.0
+
+        if doc_count == 0:
+            alerts.append({
+                "company_id": str(company.id),
+                "company_name": company.name,
+                "alert_type": "no_documents",
+                "severity": "critical",
+                "detail": "Company has no documents uploaded",
+            })
+
+        if compliance_score < 50:
+            alerts.append({
+                "company_id": str(company.id),
+                "company_name": company.name,
+                "alert_type": "low_compliance_score",
+                "severity": "critical" if compliance_score < 25 else "warning",
+                "detail": f"Compliance score is {compliance_score:.1f}% (below 50%)",
+            })
+
+        if active_user_count == 0:
+            alerts.append({
+                "company_id": str(company.id),
+                "company_name": company.name,
+                "alert_type": "no_active_users",
+                "severity": "warning",
+                "detail": "Company has no active users",
+            })
+
+    return {"alerts": alerts}
 
 
 # ---------------------------------------------------------------------------

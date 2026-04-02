@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import ReactDOM from "react-dom";
 import {
   Search, Upload, FileText, AlertTriangle, Clock, CheckCircle,
   Filter, MoreHorizontal, Download, Trash2, X, Check,
@@ -73,21 +74,30 @@ function ProgressBar({ pct }: { pct: number }) {
   );
 }
 
-// ── More-options dropdown ─────────────────────────────────────────────────────
+// ── More-options dropdown (portal — avoids overflow-hidden clipping) ──────────
 function DocMenu({ doc, onDelete }: { doc: Doc; onDelete: (id: string) => void }) {
-  const [open, setOpen] = useState(false);
+  const [open,        setOpen]       = useState(false);
+  const [menuPos,     setMenuPos]    = useState({ top: 0, right: 0 });
   const [downloading, setDownloading] = useState(false);
-  const [deleted,     setDeleted]     = useState(false);
+  const [deleted,     setDeleted]    = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const handleToggle = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setOpen((v) => !v);
+  };
 
   const handleDownload = async () => {
-    setDownloading(true);
     setOpen(false);
+    setDownloading(true);
     const { data, error } = await docsApi.getDownloadUrl(doc.id);
     if (data?.url) {
       window.open(data.url, "_blank");
     } else {
-      // Demo fallback — show an alert so the user sees something
-      alert(error ?? "Download URL not available in demo mode.");
+      alert(error ?? "Download URL not available.");
     }
     setDownloading(false);
   };
@@ -99,45 +109,50 @@ function DocMenu({ doc, onDelete }: { doc: Doc; onDelete: (id: string) => void }
       setDeleted(true);
       onDelete(doc.id);
     } else {
-      // Demo fallback — delete from local list anyway
       onDelete(doc.id);
     }
   };
 
   if (deleted) return null;
 
+  const menu = open ? (
+    <>
+      <div className="fixed inset-0 z-[100]" onClick={() => setOpen(false)} />
+      <div
+        className="fixed z-[101] w-44 rounded-xl bg-[var(--bg-soft)] border border-[var(--border)] shadow-2xl py-1"
+        style={{ top: menuPos.top, right: menuPos.right }}
+      >
+        <button
+          type="button"
+          onClick={handleDownload}
+          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors"
+        >
+          <Download size={13} className="text-cyan-500" /> Download
+        </button>
+        <div className="h-px bg-[var(--border)] mx-2" />
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-rose-500 hover:bg-rose-500/8 transition-colors"
+        >
+          <Trash2 size={13} /> Delete document
+        </button>
+      </div>
+    </>
+  ) : null;
+
   return (
-    <div className="relative">
+    <div>
       <button
+        ref={btnRef}
         type="button"
         title="More options"
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-all"
       >
         {downloading ? <Clock size={14} className="animate-spin" /> : <MoreHorizontal size={14} />}
       </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-20 w-40 rounded-xl bg-[var(--bg-soft)] border border-[var(--border)] shadow-xl py-1 overflow-hidden">
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors"
-            >
-              <Download size={13} className="text-cyan-500" /> Download
-            </button>
-            <div className="h-px bg-[var(--border)] mx-2" />
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-rose-500 hover:bg-rose-500/8 transition-colors"
-            >
-              <Trash2 size={13} /> Delete
-            </button>
-          </div>
-        </>
-      )}
+      {typeof window !== "undefined" && menu && ReactDOM.createPortal(menu, document.body)}
     </div>
   );
 }
@@ -385,7 +400,7 @@ export default function DocumentsPage() {
 
             <div className="col-span-1 text-[var(--fg-muted)] text-xs">{doc.size}</div>
 
-            <div className="col-span-1 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="col-span-1 flex justify-end">
               <DocMenu doc={doc} onDelete={handleDelete} />
             </div>
           </div>

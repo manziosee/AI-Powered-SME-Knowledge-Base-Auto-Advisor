@@ -104,6 +104,20 @@ export const auth = {
     );
   },
 
+  async forgotPassword(email: string) {
+    return request<{ message: string; reset_token?: string }>(
+      "/auth/forgot-password",
+      { method: "POST", body: JSON.stringify({ email }) },
+    );
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    return request<{ message: string }>(
+      "/auth/reset-password",
+      { method: "POST", body: JSON.stringify({ token, new_password: newPassword }) },
+    );
+  },
+
   logout() {
     clearToken();
   },
@@ -445,5 +459,80 @@ export const admin = {
       total_companies: number;
       ai_queries_total: number;
     }>("/admin/stats");
+  },
+
+  async systemStats() {
+    return request<{ companies: number; users: { total: number; active: number }; documents: number; knowledge_entries: number }>(
+      "/admin/stats",
+    );
+  },
+
+  async listUsers(params?: { company_id?: string; is_active?: boolean; limit?: number; offset?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.company_id) qs.set("company_id", params.company_id);
+    if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active));
+    if (params?.limit)  qs.set("limit",  String(params.limit));
+    if (params?.offset) qs.set("offset", String(params.offset));
+    const q = qs.toString();
+    return request<{
+      items: Array<{
+        id: string; email: string; full_name: string; role: string;
+        company_id: string | null; is_active: boolean; created_at: string; last_login: string | null;
+      }>;
+      total: number;
+    }>(`/admin/users${q ? `?${q}` : ""}`);
+  },
+
+  async createUser(payload: { email: string; full_name: string; password: string; role: string; company_id?: string }) {
+    return request<{ id: string; email: string; full_name: string; role: string }>(
+      "/admin/users",
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  },
+
+  async updateUserRole(userId: string, role: string) {
+    return request<{ id: string; role: string }>(
+      `/admin/users/${userId}/role`,
+      { method: "PUT", body: JSON.stringify({ role }) },
+    );
+  },
+
+  async toggleUserStatus(userId: string, isActive: boolean) {
+    return request<{ id: string; is_active: boolean }>(
+      `/admin/users/${userId}/status`,
+      { method: "PUT", body: JSON.stringify({ is_active: isActive }) },
+    );
+  },
+
+  async deleteUser(userId: string) {
+    return request<{ status: string; user_id: string }>(`/admin/users/${userId}`, { method: "DELETE" });
+  },
+
+  async listCompanies() {
+    return request<{
+      items: Array<{
+        id: string; name: string; country: string; industry?: string;
+        is_active: boolean; user_count: number; document_count: number;
+        created_at: string; health_score?: number;
+      }>;
+      total: number;
+    }>("/admin/companies");
+  },
+
+  async healthAlerts() {
+    return request<{ alerts: Array<{ company_id: string; company_name: string; alert_type: string; severity: string; detail: string }> }>(
+      "/admin/health-alerts",
+    );
+  },
+
+  async auditLogs(params?: { user_id?: string; limit?: number; offset?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.user_id) qs.set("user_id", params.user_id);
+    if (params?.limit)   qs.set("limit",   String(params.limit));
+    if (params?.offset)  qs.set("offset",  String(params.offset));
+    const q = qs.toString();
+    return request<{ items: Array<{ id: string; user_id: string; action: string; resource_type: string; created_at: string; details?: string }>; total: number }>(
+      `/admin/audit-logs${q ? `?${q}` : ""}`,
+    );
   },
 };

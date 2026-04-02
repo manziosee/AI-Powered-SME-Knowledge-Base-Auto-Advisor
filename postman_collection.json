@@ -1,22 +1,11 @@
 {
   "info": {
-    "name": "AdvisorAI — SME Knowledge Base API",
-    "description": "Complete API collection for the AdvisorAI backend at https://advisorai-backend.fly.dev\n\nSet the `base_url` variable to switch between local and production.\n\nAuth flow:\n1. POST /auth/register or POST /auth/login\n2. The Login request auto-saves `access_token` via the test script\n3. All other requests use Bearer {{access_token}} automatically",
+    "_postman_id": "7deb6c09-5877-42aa-aea9-26c359a2d013",
+    "name": "AdvisorAI API",
+    "description": "AI-Powered Knowledge Base & Auto Advisor for SMEs.\n\n## Features\n- **Document Management** \u2014 upload, classify, version-control business documents\n- **AI Knowledge Extraction** \u2014 extract obligations, deadlines, risks, metrics\n- **Semantic Search** \u2014 query your knowledge base with natural language\n- **Conversational Chatbot** \u2014 multi-turn AI advisor with session history\n- **Compliance Engine** \u2014 country-specific rules, gap analysis, score tracking\n- **Analytics & Export** \u2014 dashboards, PDF/Excel reports\n- **Integrations** \u2014 webhooks, accounting/HR/ERP connectors\n\n## Authentication\nAll endpoints (except `/health` and `/auth/*`) require a Bearer JWT token.\nObtain tokens via `POST /api/v1/auth/login`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "3.0.0"
+    "version": "1.0.0"
   },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "https://advisorai-backend.fly.dev/api/v1",
-      "description": "Production backend. Change to http://localhost:8000/api/v1 for local dev."
-    },
-    {
-      "key": "access_token",
-      "value": "",
-      "description": "Set automatically by the Login request test script."
-    }
-  ],
   "auth": {
     "type": "bearer",
     "bearer": [
@@ -27,6 +16,18 @@
       }
     ]
   },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://advisorai-backend.fly.dev",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
   "item": [
     {
       "name": "Authentication",
@@ -34,212 +35,388 @@
         {
           "name": "Register",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@mycompany.com\",\n  \"password\": \"SecurePass123!\",\n  \"full_name\": \"Admin User\",\n  \"company_name\": \"My Company Ltd\",\n  \"country\": \"Rwanda\",\n  \"industry\": \"Technology\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/register",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "register"]
-            },
-            "description": "Create a new user account. Optionally supply company_name + country to auto-create a company."
-          }
+              "raw": "{\n  \"email\": \"string\",\n  \"full_name\": \"string\",\n  \"role\": \"super_admin\",\n  \"password\": \"string\",\n  \"company_id\": null,\n  \"company_name\": null,\n  \"country\": null,\n  \"industry\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         },
         {
           "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var json = pm.response.json();",
-                  "if (json.access_token) {",
-                  "  pm.collectionVariables.set('access_token', json.access_token);",
-                  "  console.log('Token saved:', json.access_token.slice(0,20) + '...');",
-                  "}"
-                ]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"password\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
               }
             }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@mycompany.com\",\n  \"password\": \"SecurePass123!\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "login"]
-            },
-            "description": "Returns access_token + refresh_token. Token auto-saved to collection variable."
-          }
-        },
-        {
-          "name": "Get Current User",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/auth/me",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "me"]
-            }
-          }
-        },
-        {
-          "name": "Update Profile",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"full_name\": \"Updated Name\",\n  \"email\": \"new@mycompany.com\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/me",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "me"]
-            }
-          }
-        },
-        {
-          "name": "Change Password",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"current_password\": \"OldPass123!\",\n  \"new_password\": \"NewPass456!\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/me/password",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "me", "password"]
-            }
-          }
+          },
+          "response": []
         },
         {
           "name": "Refresh Token",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/refresh",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "refresh"]
-            },
-            "description": "Exchange a refresh token for a new access + refresh token pair."
-          }
+              "raw": "{\n  \"refresh_token\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         },
         {
           "name": "Logout",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{base_url}}/auth/logout",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "logout"]
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "query": [],
+              "variable": []
             },
-            "description": "Revokes the current access token."
-          }
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         },
         {
           "name": "Forgot Password",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Generate a password-reset token and (in production) email it to the user.\nAlways returns 200 so as not to leak whether the email exists.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@mycompany.com\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/forgot-password",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "forgot-password"]
-            },
-            "description": "Sends a password-reset email. Always returns 200 to avoid user enumeration."
-          }
+              "raw": "{\n  \"email\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         },
         {
           "name": "Reset Password",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/reset-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"token\": \"<reset_token_from_email>\",\n  \"new_password\": \"NewSecurePass123!\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/reset-password",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "reset-password"]
+              "raw": "{\n  \"token\": \"string\",\n  \"new_password\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": null,\n  \"language\": null,\n  \"email\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/auth/me/password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me",
+                "password"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"string\",\n  \"new_password\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Authentication endpoints"
     },
     {
       "name": "Documents",
       "item": [
         {
-          "name": "Upload Document",
+          "name": "Upload a single document",
           "request": {
             "method": "POST",
             "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "upload"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Upload a PDF, DOCX, XLSX, DOC, XLS, or TXT file for AI processing. If a document with the same filename already exists for this company, the new upload is stored as the next version and the previous document's ID is recorded in `doc_metadata.previous_version_id`. Processing (text extraction, embedding, knowledge extraction) is triggered asynchronously.",
             "body": {
               "mode": "formdata",
-              "formdata": [
-                { "key": "file", "type": "file", "src": "", "description": "Select a PDF, DOCX, XLSX, or TXT file" }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/documents/upload",
-              "host": ["{{base_url}}"],
-              "path": ["documents", "upload"]
-            },
-            "description": "Upload a document for AI processing. Triggers async extraction and embedding. If a document with the same filename already exists, a new version is created automatically."
-          }
+              "formdata": []
+            }
+          },
+          "response": []
         },
         {
-          "name": "Bulk Upload Documents",
+          "name": "Bulk upload multiple documents",
           "request": {
             "method": "POST",
             "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/bulk-upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "bulk-upload"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Upload up to 20 files in a single request. Each file is validated and processed independently. Versioning applies per file just as with single upload. Returns a summary with counts of uploaded and failed files, plus the list of DocumentResponse objects for successfully created records.",
             "body": {
               "mode": "formdata",
-              "formdata": [
-                { "key": "files", "type": "file", "src": [], "description": "Select up to 20 files (PDF, DOCX, XLSX, DOC, XLS, TXT)" }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/documents/bulk-upload",
-              "host": ["{{base_url}}"],
-              "path": ["documents", "bulk-upload"]
-            },
-            "description": "Upload up to 20 files in one request. Each file is validated, version-tracked, and processed asynchronously. Returns {uploaded, failed, errors, documents[]}."
-          }
+              "formdata": []
+            }
+          },
+          "response": []
         },
         {
           "name": "List Documents",
@@ -247,15 +424,82 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/documents/?search=&doc_type=",
-              "host": ["{{base_url}}"],
-              "path": ["documents", ""],
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents"
+              ],
               "query": [
-                { "key": "search", "value": "", "description": "Full-text search" },
-                { "key": "doc_type", "value": "", "description": "contract | policy | invoice | hr_document | compliance | other" }
-              ]
-            }
-          }
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "doc_type",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Search Documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Search query",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": "Semantic search over both documents and knowledge entries using pgvector.\nReturns the most relevant matches ranked by cosine similarity."
+          },
+          "response": []
         },
         {
           "name": "Get Document",
@@ -263,25 +507,69 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/documents/:document_id",
-              "host": ["{{base_url}}"],
-              "path": ["documents", ":document_id"],
-              "variable": [{ "key": "document_id", "value": "your-document-uuid" }]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/:document_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":document_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "document_id",
+                  "value": ":document_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Get Download URL",
+          "name": "Update Document",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{base_url}}/documents/:document_id/download",
-              "host": ["{{base_url}}"],
-              "path": ["documents", ":document_id", "download"],
-              "variable": [{ "key": "document_id", "value": "your-document-uuid" }]
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/:document_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":document_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "document_id",
+                  "value": ":document_id"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document_type\": null,\n  \"tags\": null,\n  \"metadata\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Delete Document",
@@ -289,116 +577,310 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/documents/:document_id",
-              "host": ["{{base_url}}"],
-              "path": ["documents", ":document_id"],
-              "variable": [{ "key": "document_id", "value": "your-document-uuid" }]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "AI Advisor (RAG)",
-      "item": [
-        {
-          "name": "Ask Question",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"question\": \"What compliance obligations do I have this quarter?\",\n  \"session_id\": null\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/:document_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":document_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "document_id",
+                  "value": ":document_id"
+                }
+              ]
             },
-            "url": {
-              "raw": "{{base_url}}/advisor/ask",
-              "host": ["{{base_url}}"],
-              "path": ["advisor", "ask"]
-            },
-            "description": "RAG-powered question answering over your uploaded documents."
-          }
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Stream Advisor Answer",
+          "name": "Get Download Url",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/advisor/stream?q=What deadlines are coming up?",
-              "host": ["{{base_url}}"],
-              "path": ["advisor", "stream"],
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/:document_id/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":document_id",
+                "download"
+              ],
               "query": [
-                { "key": "q", "value": "What deadlines are coming up?", "description": "Natural language question for streaming RAG response" }
+                {
+                  "key": "expires_in",
+                  "value": "",
+                  "description": "URL validity in seconds",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "document_id",
+                  "value": ":document_id"
+                }
               ]
             },
-            "description": "Streaming (Server-Sent Events) variant of the advisor. Returns AI answer tokens as they are generated. Use EventSource in the browser or curl --no-buffer."
-          }
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get Document Knowledge",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/documents/:document_id/knowledge",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":document_id",
+                "knowledge"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "document_id",
+                  "value": ":document_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Documents endpoints"
     },
     {
-      "name": "Chatbot Sessions",
+      "name": "AI Advisor",
       "item": [
+        {
+          "name": "Ask Advisor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/advisor/ask",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "advisor",
+                "ask"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"string\",\n  \"context_limit\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ask Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/advisor/ask-agent",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "advisor",
+                "ask-agent"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"string\",\n  \"use_agent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Stream Answer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/advisor/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "advisor",
+                "stream"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Question to stream",
+                  "disabled": false
+                }
+              ],
+              "variable": []
+            },
+            "description": "Server-Sent Events streaming endpoint.\n    Client receives tokens one-by-one as `data: <token>\n\n` lines.\n    Final event is `data: [DONE]\n\n`."
+          },
+          "response": []
+        }
+      ],
+      "description": "AI Advisor endpoints"
+    },
+    {
+      "name": "Chatbot",
+      "item": [
+        {
+          "name": "Create Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/chatbot/sessions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chatbot",
+                "sessions"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
         {
           "name": "List Sessions",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/chatbot/sessions",
-              "host": ["{{base_url}}"],
-              "path": ["chatbot", "sessions"]
-            }
-          }
-        },
-        {
-          "name": "Create Session",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Compliance Q1 2026\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/chatbot/sessions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chatbot",
+                "sessions"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
             },
-            "url": {
-              "raw": "{{base_url}}/chatbot/sessions",
-              "host": ["{{base_url}}"],
-              "path": ["chatbot", "sessions"]
-            }
-          }
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Get Session Messages",
+          "name": "Get Session",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/chatbot/sessions/:session_id",
-              "host": ["{{base_url}}"],
-              "path": ["chatbot", "sessions", ":session_id"],
-              "variable": [{ "key": "session_id", "value": "your-session-uuid" }]
-            }
-          }
-        },
-        {
-          "name": "Send Message",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"content\": \"What are my key obligations for this month?\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/chatbot/sessions/:session_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chatbot",
+                "sessions",
+                ":session_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "session_id",
+                  "value": ":session_id"
+                }
+              ]
             },
-            "url": {
-              "raw": "{{base_url}}/chatbot/sessions/:session_id/messages",
-              "host": ["{{base_url}}"],
-              "path": ["chatbot", "sessions", ":session_id", "messages"],
-              "variable": [{ "key": "session_id", "value": "your-session-uuid" }]
-            }
-          }
+            "description": ""
+          },
+          "response": []
         },
         {
           "name": "Delete Session",
@@ -406,91 +888,227 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/chatbot/sessions/:session_id",
-              "host": ["{{base_url}}"],
-              "path": ["chatbot", "sessions", ":session_id"],
-              "variable": [{ "key": "session_id", "value": "your-session-uuid" }]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/chatbot/sessions/:session_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chatbot",
+                "sessions",
+                ":session_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "session_id",
+                  "value": ":session_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Rate AI Message (Feedback)",
+          "name": "Send Message",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/chatbot/sessions/:session_id/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chatbot",
+                "sessions",
+                ":session_id",
+                "messages"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "session_id",
+                  "value": ":session_id"
+                }
+              ]
+            },
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rating\": 1,\n  \"comment\": \"helpful\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
+              "raw": "{\n  \"content\": \"string\",\n  \"context_limit\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Rate an AI message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{base_url}}/chatbot/sessions/:session_id/messages/:message_id/feedback",
-              "host": ["{{base_url}}"],
-              "path": ["chatbot", "sessions", ":session_id", "messages", ":message_id", "feedback"],
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/chatbot/sessions/:session_id/messages/:message_id/feedback",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chatbot",
+                "sessions",
+                ":session_id",
+                "messages",
+                ":message_id",
+                "feedback"
+              ],
+              "query": [],
               "variable": [
-                { "key": "session_id", "value": "your-session-uuid" },
-                { "key": "message_id", "value": "your-message-uuid" }
+                {
+                  "key": "session_id",
+                  "value": ":session_id"
+                },
+                {
+                  "key": "message_id",
+                  "value": ":message_id"
+                }
               ]
             },
-            "description": "Submit thumbs-up (rating=1) or thumbs-down (rating=-1) feedback for an AI-generated message. Optionally include a free-text comment."
-          }
+            "description": "Store thumbs-up (rating=1) or thumbs-down (rating=-1) feedback on an AI-generated message. An optional free-text comment can be included. Feedback is persisted in the message's sources field alongside the original source citations.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 1,\n  \"comment\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Chatbot endpoints"
     },
     {
-      "name": "Analytics",
+      "name": "Analytics & Reports",
       "item": [
         {
-          "name": "Overview",
+          "name": "Get Overview",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/analytics/overview",
-              "host": ["{{base_url}}"],
-              "path": ["analytics", "overview"]
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/analytics/overview",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "analytics",
+                "overview"
+              ],
+              "query": [],
+              "variable": []
             },
-            "description": "Returns document counts, knowledge entry stats, and alert totals. Requires company."
-          }
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Compliance Score",
+          "name": "Get Compliance Score",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/analytics/compliance-score?category=",
-              "host": ["{{base_url}}"],
-              "path": ["analytics", "compliance-score"],
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/analytics/compliance-score",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "analytics",
+                "compliance-score"
+              ],
               "query": [
-                { "key": "category", "value": "", "description": "Optional: filter by rule category" }
-              ]
-            }
-          }
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": "Filter by rule category",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Risk Distribution",
+          "name": "Get Risk Distribution",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/analytics/risk-distribution",
-              "host": ["{{base_url}}"],
-              "path": ["analytics", "risk-distribution"]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/analytics/risk-distribution",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "analytics",
+                "risk-distribution"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Document Types",
+          "name": "Get Document Type Breakdown",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/analytics/document-types",
-              "host": ["{{base_url}}"],
-              "path": ["analytics", "document-types"]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/analytics/document-types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "analytics",
+                "document-types"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
           "name": "Export Report",
@@ -498,18 +1116,38 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/analytics/export?report_type=compliance&report_format=pdf",
-              "host": ["{{base_url}}"],
-              "path": ["analytics", "export"],
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/analytics/export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "analytics",
+                "export"
+              ],
               "query": [
-                { "key": "report_type", "value": "compliance", "description": "compliance | documents | full" },
-                { "key": "report_format", "value": "pdf", "description": "pdf | excel" }
-              ]
+                {
+                  "key": "report_type",
+                  "value": "",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "report_format",
+                  "value": "",
+                  "description": "",
+                  "disabled": false
+                }
+              ],
+              "variable": []
             },
-            "description": "Returns a binary file download."
-          }
+            "description": "Synchronously generate and stream a PDF or Excel report."
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Analytics & Reports endpoints"
     },
     {
       "name": "Notifications",
@@ -520,16 +1158,40 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/notifications/?unread_only=false&limit=50&offset=0",
-              "host": ["{{base_url}}"],
-              "path": ["notifications", ""],
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/notifications/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ],
               "query": [
-                { "key": "unread_only", "value": "false" },
-                { "key": "limit", "value": "50" },
-                { "key": "offset", "value": "0" }
-              ]
-            }
-          }
+                {
+                  "key": "unread_only",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
           "name": "Unread Count",
@@ -537,24 +1199,51 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/notifications/unread-count",
-              "host": ["{{base_url}}"],
-              "path": ["notifications", "unread-count"]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/notifications/unread-count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "unread-count"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Mark Notification Read",
+          "name": "Mark As Read",
           "request": {
             "method": "PATCH",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/notifications/:notification_id/read",
-              "host": ["{{base_url}}"],
-              "path": ["notifications", ":notification_id", "read"],
-              "variable": [{ "key": "notification_id", "value": "your-notification-uuid" }]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/notifications/:notification_id/read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                ":notification_id",
+                "read"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "notification_id",
+                  "value": ":notification_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
           "name": "Mark All Read",
@@ -562,11 +1251,22 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/notifications/read-all",
-              "host": ["{{base_url}}"],
-              "path": ["notifications", "read-all"]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/notifications/read-all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "read-all"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
           "name": "Delete Notification",
@@ -574,60 +1274,33 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/notifications/:notification_id",
-              "host": ["{{base_url}}"],
-              "path": ["notifications", ":notification_id"],
-              "variable": [{ "key": "notification_id", "value": "your-notification-uuid" }]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/notifications/:notification_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                ":notification_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "notification_id",
+                  "value": ":notification_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Notifications endpoints"
     },
     {
-      "name": "Insights",
-      "item": [
-        {
-          "name": "Business Health Score",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/insights/health",
-              "host": ["{{base_url}}"],
-              "path": ["insights", "health"]
-            }
-          }
-        },
-        {
-          "name": "Compliance Calendar",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/insights/calendar?months_ahead=6",
-              "host": ["{{base_url}}"],
-              "path": ["insights", "calendar"],
-              "query": [{ "key": "months_ahead", "value": "6" }]
-            }
-          }
-        },
-        {
-          "name": "Document Expiry",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/insights/expiry?days_ahead=90",
-              "host": ["{{base_url}}"],
-              "path": ["insights", "expiry"],
-              "query": [{ "key": "days_ahead", "value": "90" }]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Company",
+      "name": "Companies",
       "item": [
         {
           "name": "Get My Company",
@@ -635,45 +1308,59 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/companies/me",
-              "host": ["{{base_url}}"],
-              "path": ["companies", "me"]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "me"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Update Company",
+          "name": "Update My Company",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "me"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"My Company Ltd\",\n  \"country\": \"Rwanda\",\n  \"industry\": \"Technology\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/companies/me",
-              "host": ["{{base_url}}"],
-              "path": ["companies", "me"]
+              "raw": "{\n  \"name\": null,\n  \"industry\": null,\n  \"country\": null,\n  \"language\": null,\n  \"address\": null,\n  \"phone\": null,\n  \"email\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
-        },
-        {
-          "name": "Create Company",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"New Company Ltd\",\n  \"country\": \"Kenya\",\n  \"industry\": \"Finance & Banking\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/companies/",
-              "host": ["{{base_url}}"],
-              "path": ["companies", ""]
-            }
-          }
+          },
+          "response": []
         },
         {
           "name": "List Company Users",
@@ -681,43 +1368,1196 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/companies/me/users",
-              "host": ["{{base_url}}"],
-              "path": ["companies", "me", "users"]
-            }
-          }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/me/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "me",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
         },
         {
-          "name": "Invite User",
+          "name": "Update User Role",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/me/users/:user_id/role",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "me",
+                "users",
+                ":user_id",
+                "role"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": ":user_id"
+                }
+              ]
+            },
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"colleague@mycompany.com\",\n  \"role\": \"employee\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/companies/me/invite",
-              "host": ["{{base_url}}"],
-              "path": ["companies", "me", "invite"]
+              "raw": "{\n  \"role\": \"super_admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
+          },
+          "response": []
         },
         {
-          "name": "Remove User",
+          "name": "Remove User From Company",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/companies/me/users/:user_id",
-              "host": ["{{base_url}}"],
-              "path": ["companies", "me", "users", ":user_id"],
-              "variable": [{ "key": "user_id", "value": "your-user-uuid" }]
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/me/users/:user_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "me",
+                "users",
+                ":user_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": ":user_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "List All Companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create Company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"country\": \"string\",\n  \"industry\": null,\n  \"language\": \"string\",\n  \"tax_id\": null,\n  \"address\": null,\n  \"phone\": null,\n  \"email\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Company",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/companies/:company_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                ":company_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "company_id",
+                  "value": ":company_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Companies endpoints"
+    },
+    {
+      "name": "Integrations",
+      "item": [
+        {
+          "name": "List Integrations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create Integration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"integration_type\": \"webhook\",\n  \"endpoint_url\": null,\n  \"headers\": {},\n  \"payload_template\": {},\n  \"event_triggers\": [\n    \"string\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Integration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/:integration_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                ":integration_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "integration_id",
+                  "value": ":integration_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update Integration",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/:integration_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                ":integration_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "integration_id",
+                  "value": ":integration_id"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": null,\n  \"endpoint_url\": null,\n  \"headers\": null,\n  \"payload_template\": null,\n  \"event_triggers\": null,\n  \"is_active\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Integration",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/:integration_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                ":integration_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "integration_id",
+                  "value": ":integration_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Test Integration",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/:integration_id/test",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                ":integration_id",
+                "test"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "integration_id",
+                  "value": ":integration_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get Integration Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/:integration_id/logs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                ":integration_id",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "integration_id",
+                  "value": ":integration_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Receive Webhook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/integrations/webhook/incoming",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "webhook",
+                "incoming"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Public endpoint to receive inbound webhooks from external systems.\nVerifies HMAC-SHA256 signature when WEBHOOK_SECRET is configured."
+          },
+          "response": []
+        }
+      ],
+      "description": "Integrations endpoints"
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "System Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "stats"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "company_id",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "is_active",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"full_name\": \"string\",\n  \"password\": \"string\",\n  \"role\": \"string\",\n  \"company_id\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/users/:user_id/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                ":user_id",
+                "status"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": ":user_id"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/audit-logs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "user_id",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "List Compliance Rules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/compliance-rules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compliance-rules"
+              ],
+              "query": [
+                {
+                  "key": "country_code",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create Compliance Rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/compliance-rules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compliance-rules"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"country_code\": \"string\",\n  \"language_code\": \"string\",\n  \"category\": \"string\",\n  \"severity\": \"string\",\n  \"title\": \"string\",\n  \"description\": \"string\",\n  \"legal_reference\": null,\n  \"deadline_pattern\": null,\n  \"affected_industries\": [\n    null\n  ],\n  \"keywords\": [\n    null\n  ],\n  \"action_required\": null,\n  \"penalty_description\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Compliance Rule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/compliance-rules/:rule_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compliance-rules",
+                ":rule_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "rule_id",
+                  "value": ":rule_id"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": null,\n  \"description\": null,\n  \"severity\": null,\n  \"is_active\": null,\n  \"keywords\": null,\n  \"action_required\": null,\n  \"penalty_description\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Compliance Rule",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/compliance-rules/:rule_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compliance-rules",
+                ":rule_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "rule_id",
+                  "value": ":rule_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Seed Compliance Rules",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/compliance-rules/seed",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compliance-rules",
+                "seed"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Ml Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/ml/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "ml",
+                "status"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Train Risk Scorer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/ml/train-risk-scorer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "ml",
+                "train-risk-scorer"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Train the predictive risk scorer with labelled data.\nIf no payload.training_data is provided, build a dataset from existing\nKnowledgeEntry records with risk_level set for the current company.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"training_data\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Predict Risk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/ml/predict-risk",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "ml",
+                "predict-risk"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List All Companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/companies",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "companies"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/users/:user_id/role",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                ":user_id",
+                "role"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": ":user_id"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/users/:user_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                ":user_id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": ":user_id"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Health Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/health-alerts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "health-alerts"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Llm Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/admin/llm/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "llm",
+                "status"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Quick status endpoint to let the UI show which LLM backend is active\nand whether credentials are missing."
+          },
+          "response": []
+        }
+      ],
+      "description": "Admin endpoints"
+    },
+    {
+      "name": "Business Insights",
+      "item": [
+        {
+          "name": "Get Health Score",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/insights/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "insights",
+                "health"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Aggregate business health score based on:\n- Document coverage (how many docs are processed)\n- Compliance posture (from compliance rules)\n- AI advisor usage (engagement)\n- Expiry risk (docs expiring soon penalise score)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Compliance Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/insights/calendar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "insights",
+                "calendar"
+              ],
+              "query": [
+                {
+                  "key": "months_ahead",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": "Returns upcoming compliance deadlines for the next N months.\nCombines statutory recurring events with company-specific document deadlines."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expiring Documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/insights/expiry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "insights",
+                "expiry"
+              ],
+              "query": [
+                {
+                  "key": "days_ahead",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": "Returns documents that are expiring soon based on metadata.expiry_date.\nAlso flags documents older than 1 year with no renewal record."
+          },
+          "response": []
+        }
+      ],
+      "description": "Business Insights endpoints"
     },
     {
       "name": "Search",
@@ -728,154 +2568,75 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/search?q=contract&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["search"],
+              "raw": "https://advisorai-backend.fly.dev/api/v1/api/v1/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "search"
+              ],
               "query": [
-                { "key": "q", "value": "contract", "description": "Search query" },
-                { "key": "limit", "value": "10" }
-              ]
-            }
-          }
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Search query",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": []
+            },
+            "description": "Full-text keyword search across documents and knowledge entries.\nResults are scoped to the authenticated user's company and ranked by relevance."
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Search endpoints"
     },
     {
-      "name": "Admin — ML",
+      "name": "Health",
       "item": [
         {
-          "name": "ML Training Status",
+          "name": "Service health check",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/admin/ml/status",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "ml", "status"]
-            }
-          }
-        },
-        {
-          "name": "Train Risk Scorer",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/admin/ml/train-risk-scorer",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "ml", "train-risk-scorer"]
-            }
-          }
-        },
-        {
-          "name": "Predict Risk",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"text\": \"This contract expires on 2026-06-30 and includes automatic renewal clauses.\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "https://advisorai-backend.fly.dev/api/v1/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1"
+              ],
+              "query": [],
+              "variable": []
             },
-            "url": {
-              "raw": "{{base_url}}/admin/ml/predict-risk",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "ml", "predict-risk"]
-            }
-          }
-        },
-        {
-          "name": "Admin Stats",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/admin/stats",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "stats"]
-            }
-          }
+            "description": ""
+          },
+          "response": []
         }
-      ]
-    },
+      ],
+      "description": "Health endpoints"
+    }
+  ],
+  "event": [
     {
-      "name": "Health & Docs",
-      "item": [
-        {
-          "name": "Root",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "https://advisorai-backend.fly.dev",
-              "protocol": "https",
-              "host": ["advisorai-backend", "fly", "dev"]
-            },
-            "description": "Returns API name, version, status, and links to docs and health."
-          }
-        },
-        {
-          "name": "System Health",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "https://advisorai-backend.fly.dev/health",
-              "protocol": "https",
-              "host": ["advisorai-backend", "fly", "dev"],
-              "path": ["health"]
-            },
-            "description": "Checks database and Redis connectivity. Returns 'healthy' or 'degraded'."
-          }
-        },
-        {
-          "name": "Swagger UI",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "https://advisorai-backend.fly.dev/docs",
-              "protocol": "https",
-              "host": ["advisorai-backend", "fly", "dev"],
-              "path": ["docs"]
-            },
-            "description": "Interactive Swagger UI — also accessible at /swagger."
-          }
-        },
-        {
-          "name": "ReDoc",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "https://advisorai-backend.fly.dev/redoc",
-              "protocol": "https",
-              "host": ["advisorai-backend", "fly", "dev"],
-              "path": ["redoc"]
-            },
-            "description": "ReDoc documentation — clean read-only API reference."
-          }
-        },
-        {
-          "name": "OpenAPI JSON",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "https://advisorai-backend.fly.dev/api/v1/openapi.json",
-              "protocol": "https",
-              "host": ["advisorai-backend", "fly", "dev"],
-              "path": ["api", "v1", "openapi.json"]
-            },
-            "description": "Raw OpenAPI 3.x spec — used by the frontend docs page to auto-populate."
-          }
-        }
-      ]
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
     }
   ]
 }

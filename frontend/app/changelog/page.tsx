@@ -31,9 +31,33 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; cls: string; icon: React.
 
 const RELEASES: Release[] = [
   {
+    version: "1.5.0",
+    date: "April 2, 2026",
+    tag: "latest",
+    summary: "Admin Panel, forgot password, document delete fix, audit logs, and full API coverage.",
+    changes: [
+      { type: "feature",     text: "Admin Panel (/dashboard/admin) — system-wide overview, user CRUD, company list, audit logs, health alerts" },
+      { type: "feature",     text: "Super-admin account auto-seeded on startup (admin@admin.com, role: super_admin, no company)" },
+      { type: "feature",     text: "Forgot password flow — /forgot-password and /reset-password pages with Redis-backed token" },
+      { type: "feature",     text: "Admin API: GET /admin/companies, GET /admin/health-alerts, GET /admin/audit-logs, POST /admin/users, PUT /admin/users/{id}/role, DELETE /admin/users/{id}" },
+      { type: "feature",     text: "Audit logs table (migration 006) — tracks all mutations with user, action, resource, IP" },
+      { type: "feature",     text: "Training data supports CSV, Excel (.xlsx/.xls), Word (.docx), and TXT uploads" },
+      { type: "improvement", text: "Document delete button always visible (removed opacity-0 group-hover hiding)" },
+      { type: "improvement", text: "POST /admin/ml/predict-risk now accepts JSON body {text} instead of query param" },
+      { type: "improvement", text: "GET /admin/stats accessible to ADMIN role (not just SUPER_ADMIN)" },
+      { type: "improvement", text: "GET /admin/audit-logs accessible to ADMIN role with graceful fallback if table missing" },
+      { type: "improvement", text: "Docs page (/docs) tag icons updated to cover all API groups including Admin and Integrations" },
+      { type: "improvement", text: "Postman collection regenerated from live OpenAPI spec — all 60+ endpoints included" },
+      { type: "fix",         text: "Fixed /admin/stats 500 — double .scalar() on exhausted SQLAlchemy result objects" },
+      { type: "fix",         text: "Fixed TrainingPage crash — STATUS_CONFIG typed as Record with 'trained' key and idle fallback" },
+      { type: "fix",         text: "Fixed mlStatus response normalization — backend {risk_scorer:{}} shape mapped to {status:string}" },
+      { type: "security",    text: "Admin routes require minimum ADMIN role; SUPER_ADMIN required for destructive operations" },
+    ],
+  },
+  {
     version: "1.4.0",
     date: "March 26, 2026",
-    tag: "latest",
+    tag: null,
     summary: "Business Insights, Compliance Calendar, CI/CD pipeline, and security hardening.",
     changes: [
       { type: "feature",     text: "Business Health Score — aggregate 0–100 score with component breakdown and AI recommendations" },

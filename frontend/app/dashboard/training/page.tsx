@@ -10,10 +10,11 @@ import { admin, auth as authApi, type TrainingStatus } from "@/lib/api";
 import * as XLSX from "xlsx";
 
 // ── Status config ─────────────────────────────────────────────────────────────
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
   idle:      { icon: Clock,         color: "text-[var(--fg-muted)]",   bg: "bg-[var(--surface)] border-[var(--border)]",              label: "Ready to train"  },
   training:  { icon: RefreshCw,     color: "text-amber-500",           bg: "bg-amber-500/10 border-amber-500/30",                     label: "Training…"       },
   completed: { icon: CheckCircle,   color: "text-emerald-500",         bg: "bg-emerald-500/10 border-emerald-500/30",                  label: "Training complete" },
+  trained:   { icon: CheckCircle,   color: "text-emerald-500",         bg: "bg-emerald-500/10 border-emerald-500/30",                  label: "Training complete" },
   failed:    { icon: AlertTriangle, color: "text-rose-500",            bg: "bg-rose-500/10 border-rose-500/30",                       label: "Training failed" },
 };
 
@@ -86,7 +87,18 @@ export default function TrainingPage() {
   const fetchStatus = useCallback(async () => {
     const { data, error } = await admin.mlStatus();
     if (data) {
-      setStatus(data);
+      // Backend returns {risk_scorer: {is_trained, trained_at, stats}} OR {status: "idle"}
+      // Normalize to TrainingStatus shape
+      const raw = data as any;
+      if (raw.risk_scorer) {
+        setStatus({
+          status: raw.risk_scorer.is_trained ? "completed" : "idle",
+          accuracy: raw.risk_scorer.stats?.accuracy,
+          version: raw.risk_scorer.stats?.version,
+        });
+      } else {
+        setStatus(raw as TrainingStatus);
+      }
       setApiError(null);
     } else {
       setApiError(error);
@@ -121,9 +133,12 @@ export default function TrainingPage() {
     addLog(`Starting training${samples.length > 0 ? ` with ${samples.length} custom samples` : " using knowledge base data"}…`, "info");
     const { data, error } = await admin.trainRiskScorer(samples.length > 0 ? samples : undefined);
     if (data) {
-      setStatus({ status: "training" });
+      // Backend may return {status:"trained", stats:{}} or {status:"training"}
+      const raw = data as any;
+      const newStatus = raw.status === "trained" ? "completed" : (raw.status ?? "training");
+      setStatus({ status: newStatus as TrainingStatus["status"], accuracy: raw.stats?.accuracy, version: raw.stats?.version });
       setApiError(null);
-      addLog("Training job started on backend.", "success");
+      addLog("Training complete.", "success");
     } else {
       setApiError(error);
       addLog(`Backend error: ${error}`, "error");
@@ -303,7 +318,7 @@ export default function TrainingPage() {
     setCsvError(`Unsupported file type: .${ext}. Supported: CSV, Excel (.xlsx/.xls), Word (.docx), TXT.`);
   };
 
-  const cfg = STATUS_CONFIG[status.status];
+  const cfg = STATUS_CONFIG[status.status] ?? STATUS_CONFIG.idle;
   const StatusIcon = cfg.icon;
 
   if (roleChecked && !isAdmin) {

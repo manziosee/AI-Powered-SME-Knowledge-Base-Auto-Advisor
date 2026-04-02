@@ -87,26 +87,21 @@ async def system_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    companies = await db.execute(select(func.count(Company.id)))
-    users = await db.execute(select(func.count(User.id)))
-    docs = await db.execute(select(func.count(Document.id)))
-    entries = await db.execute(select(func.count(KnowledgeEntry.id)))
-    active_users = await db.execute(
-        select(func.count(User.id)).where(User.is_active.is_(True))
-    )
+    n_companies   = (await db.execute(select(func.count(Company.id)))).scalar() or 0
+    n_users       = (await db.execute(select(func.count(User.id)))).scalar() or 0
+    n_active      = (await db.execute(select(func.count(User.id)).where(User.is_active.is_(True)))).scalar() or 0
+    n_docs        = (await db.execute(select(func.count(Document.id)))).scalar() or 0
+    n_entries     = (await db.execute(select(func.count(KnowledgeEntry.id)))).scalar() or 0
 
     return {
-        "companies": companies.scalar() or 0,
-        "users": {
-            "total": users.scalar() or 0,
-            "active": active_users.scalar() or 0,
-        },
-        "documents": docs.scalar() or 0,
-        "knowledge_entries": entries.scalar() or 0,
-        # legacy flat keys for older clients
-        "total_users": users.scalar() or 0,
-        "total_documents": docs.scalar() or 0,
-        "total_companies": companies.scalar() or 0,
+        "companies": n_companies,
+        "users": {"total": n_users, "active": n_active},
+        "documents": n_docs,
+        "knowledge_entries": n_entries,
+        # legacy flat keys
+        "total_users": n_users,
+        "total_documents": n_docs,
+        "total_companies": n_companies,
         "ai_queries_total": 0,
         "ml": {
             "risk_scorer_trained": _risk_scorer.is_trained,
@@ -176,7 +171,7 @@ async def update_user_status(
 @router.get("/audit-logs")
 async def get_audit_logs(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user_id: Optional[str] = Query(None),

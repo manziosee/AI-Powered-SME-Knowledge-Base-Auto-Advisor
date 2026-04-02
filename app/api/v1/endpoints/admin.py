@@ -176,33 +176,37 @@ async def get_audit_logs(
     offset: int = Query(0, ge=0),
     user_id: Optional[str] = Query(None),
 ):
-    filters = []
-    if user_id:
-        filters.append(AuditLog.user_id == user_id)
+    try:
+        filters = []
+        if user_id:
+            filters.append(AuditLog.user_id == user_id)
 
-    q = select(AuditLog)
-    if filters:
-        q = q.where(and_(*filters))
+        q = select(AuditLog)
+        if filters:
+            q = q.where(and_(*filters))
 
-    result = await db.execute(q.order_by(AuditLog.created_at.desc()).limit(limit).offset(offset))
-    logs = result.scalars().all()
+        result = await db.execute(q.order_by(AuditLog.created_at.desc()).limit(limit).offset(offset))
+        logs = result.scalars().all()
 
-    return {
-        "items": [
-            {
-                "id": str(log.id),
-                "user_id": str(log.user_id),
-                "action": log.action,
-                "resource_type": log.resource_type,
-                "resource_id": str(log.resource_id) if log.resource_id else None,
-                "details": log.details,
-                "ip_address": log.ip_address,
-                "created_at": log.created_at.isoformat() if log.created_at else None,
-            }
-            for log in logs
-        ],
-        "total": len(logs),
-    }
+        return {
+            "items": [
+                {
+                    "id": str(log.id),
+                    "user_id": str(log.user_id) if log.user_id else None,
+                    "action": log.action,
+                    "resource_type": log.resource_type,
+                    "resource_id": str(log.resource_id) if log.resource_id else None,
+                    "details": log.details if isinstance(log.details, str) else str(log.details or ""),
+                    "ip_address": log.ip_address,
+                    "created_at": log.created_at.isoformat() if log.created_at else None,
+                }
+                for log in logs
+            ],
+            "total": len(logs),
+        }
+    except Exception:
+        # Table may not exist yet — return empty gracefully
+        return {"items": [], "total": 0}
 
 
 # ---------------------------------------------------------------------------

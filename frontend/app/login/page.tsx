@@ -201,9 +201,9 @@ export default function LoginPage() {
                 <label className="text-[var(--fg-muted)] text-[10px] font-semibold tracking-widest uppercase">
                   Password
                 </label>
-                <a href="#" className="text-violet-500/60 hover:text-violet-500 text-xs transition-colors">
+                <Link href="/forgot-password" className="text-violet-500/60 hover:text-violet-500 text-xs transition-colors">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <input

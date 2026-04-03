@@ -239,7 +239,7 @@ async def list_documents(
     offset: int = Query(0, ge=0),
 ):
     if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="User must belong to a company")
+        return []
 
     filters = [Document.company_id == current_user.company_id]
     if status_filter:

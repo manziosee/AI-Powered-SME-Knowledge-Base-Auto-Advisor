@@ -1,14 +1,14 @@
 """
 Authentication endpoints.
 
-POST /auth/register        — create account
-POST /auth/login           — login with email + password (JSON body)
-POST /auth/refresh         — exchange refresh token for new access token
-POST /auth/logout          — invalidate refresh token (blacklist in Redis)
-POST /auth/forgot-password — request password reset email
-POST /auth/reset-password  — set new password with reset token
-GET  /auth/me              — get current user profile
-PUT  /auth/me              — update profile (name, language)
+POST /auth/register        — create account (password strength enforced)
+POST /auth/login           — login with email + password, returns JWT pair
+POST /auth/refresh         — rotate refresh token (old token blacklisted)
+POST /auth/logout          — blacklist refresh token in Redis
+POST /auth/forgot-password — request password reset (always 200, no email leak)
+POST /auth/reset-password  — set new password with Redis-backed token
+GET  /auth/me              — current user profile + company
+PUT  /auth/me              — update name / email
 PUT  /auth/me/password     — change password (requires current password)
 """
 
@@ -31,6 +31,7 @@ from app.core.security import (
     decode_token,
     get_password_hash,
     verify_password,
+    validate_password_strength,
 )
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserResponse, Token
@@ -66,13 +67,13 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str = Field(..., min_length=8)
+    token: str = Field(..., description="Reset token received via email")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 chars, must contain letter + digit)")
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str = Field(..., min_length=8)
+    current_password: str = Field(..., description="Current account password")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 chars, must contain letter + digit)")
 
 
 class ProfileUpdate(BaseModel):
@@ -85,11 +86,23 @@ class ProfileUpdate(BaseModel):
 # Register
 # ---------------------------------------------------------------------------
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new account",
+    description="Create a new user account. Optionally creates a company. Password must be ≥8 chars with at least one letter and one digit.",
+)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user_data.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Enforce password strength
+    try:
+        validate_password_strength(user_data.password)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     role_value = user_data.role.value if hasattr(user_data.role, "value") else user_data.role
 
@@ -127,7 +140,12 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 # Login — credentials in JSON body (never query params)
 # ---------------------------------------------------------------------------
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    summary="Login and get JWT tokens",
+    description="Authenticate with email and password. Returns access token (30 min) and refresh token (7 days). Account locks after 5 failed attempts for 15 minutes.",
+)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     redis = None
     try:
@@ -190,7 +208,12 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
 # Refresh token
 # ---------------------------------------------------------------------------
 
-@router.post("/refresh", response_model=Token)
+@router.post(
+    "/refresh",
+    response_model=Token,
+    summary="Rotate refresh token",
+    description="Exchange a valid refresh token for a new access+refresh token pair. The old refresh token is immediately blacklisted in Redis.",
+)
 async def refresh_token(
     payload: RefreshRequest,
     db: AsyncSession = Depends(get_db),
@@ -230,7 +253,7 @@ async def refresh_token(
 # Logout
 # ---------------------------------------------------------------------------
 
-@router.post("/logout")
+@router.post("/logout", summary="Logout and blacklist refresh token", description="Invalidates the provided refresh token. The access token expires naturally after 30 minutes.")
 async def logout(
     payload: RefreshRequest,
     current_user: User = Depends(get_current_active_user),
@@ -248,7 +271,11 @@ async def logout(
 # Forgot / Reset password
 # ---------------------------------------------------------------------------
 
-@router.post("/forgot-password")
+@router.post(
+    "/forgot-password",
+    summary="Request password reset",
+    description="Sends a password reset link. Always returns 200 to prevent email enumeration. In development, the token is returned directly.",
+)
 async def forgot_password(
     payload: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -279,7 +306,11 @@ async def forgot_password(
     return {"status": "ok", "message": "If the email is registered, a reset link has been sent"}
 
 
-@router.post("/reset-password")
+@router.post(
+    "/reset-password",
+    summary="Reset password with token",
+    description="Set a new password using the token from the forgot-password flow. Token is single-use and expires after 1 hour.",
+)
 async def reset_password(
     payload: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -297,6 +328,11 @@ async def reset_password(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    try:
+        validate_password_strength(payload.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
     user.hashed_password = get_password_hash(payload.new_password)
     await db.commit()
     await redis.delete(f"{RESET_TOKEN_PREFIX}{payload.token}")
@@ -308,7 +344,7 @@ async def reset_password(
 # Profile
 # ---------------------------------------------------------------------------
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse, summary="Get current user profile", description="Returns the authenticated user's profile including company name.")
 async def get_me(current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
     # Attach company name for frontend use
     company_name = None
@@ -332,7 +368,7 @@ async def get_me(current_user: User = Depends(get_current_active_user), db: Asyn
     }
 
 
-@router.put("/me")
+@router.put("/me", summary="Update profile", description="Update full name and/or email address. Email uniqueness is enforced.")
 async def update_profile(
     payload: ProfileUpdate,
     db: AsyncSession = Depends(get_db),
@@ -357,7 +393,7 @@ async def update_profile(
     }
 
 
-@router.put("/me/password")
+@router.put("/me/password", summary="Change password", description="Change password. Requires the current password for verification. New password must meet strength requirements.")
 async def change_password(
     payload: ChangePasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -365,6 +401,11 @@ async def change_password(
 ):
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    try:
+        validate_password_strength(payload.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     current_user.hashed_password = get_password_hash(payload.new_password)
     await db.commit()

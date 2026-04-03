@@ -229,14 +229,20 @@ async def bulk_upload_documents(
 # List (with filters)
 # ---------------------------------------------------------------------------
 
-@router.get("/", response_model=List[DocumentResponse])
+@router.get(
+    "/",
+    response_model=List[DocumentResponse],
+    summary="List company documents",
+    description="Returns paginated list of documents for the authenticated user's company. Filter by status or document type.",
+)
 async def list_documents(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    status_filter: Optional[DocumentStatus] = Query(None, alias="status"),
-    doc_type: Optional[DocumentType] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    status_filter: Optional[DocumentStatus] = Query(None, alias="status", description="Filter by processing status"),
+    doc_type: Optional[DocumentType] = Query(None, description="Filter by document type"),
+    search: Optional[str] = Query(None, description="Filter by filename (case-insensitive)"),
+    limit: int = Query(50, ge=1, le=200, description="Max results to return"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
 ):
     if not current_user.company_id:
         return []
@@ -246,6 +252,8 @@ async def list_documents(
         filters.append(Document.status == status_filter)
     if doc_type:
         filters.append(Document.document_type == doc_type)
+    if search:
+        filters.append(Document.original_filename.ilike(f"%{search}%"))
 
     result = await db.execute(
         select(Document)

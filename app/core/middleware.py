@@ -76,8 +76,12 @@ RATE_LIMIT_RULES = {
     "/api/v1/auth/login":           (20,  60),   # 20 req / 60 s
     "/api/v1/auth/forgot-password": (10,  60),   # 10 req / 60 s
     "/api/v1/auth/register":        (20,  60),
+    "/api/v1/auth/reset-password":  (10,  60),   # 10 req / 60 s
     "/api/v1/advisor/ask":          (60,  60),   # 60 req / 60 s
+    "/api/v1/advisor/ask-agent":    (30,  60),   # 30 req / 60 s (heavier)
     "/api/v1/chatbot":              (120, 60),
+    "/api/v1/admin":                (100, 60),   # admin endpoints
+    "/api/v1/documents/upload":     (30,  60),   # upload throttle
     "default":                      (200, 60),   # 200 req / 60 s
 }
 

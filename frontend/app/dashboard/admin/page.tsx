@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import ReactDOM from "react-dom";
 import {
   Users, Building2, FileText, Brain, Shield, AlertTriangle, CheckCircle,
   RefreshCw, Plus, Trash2, UserCog, Activity, BarChart3, Clock, X,
@@ -285,19 +286,26 @@ export default function AdminPage() {
   const [showCreate,   setShowCreate]   = useState(false);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
 
-  // For role dropdowns per user row
+  // For role dropdowns per user row — portal-based to escape overflow-hidden
   const [roleDropdownUser, setRoleDropdownUser] = useState<string | null>(null);
+  const [roleDropdownPos, setRoleDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close role dropdown on outside click
+  // Close role dropdown on outside click or scroll
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setRoleDropdownUser(null);
+        setRoleDropdownPos(null);
       }
     };
+    const scrollHandler = () => { setRoleDropdownUser(null); setRoleDropdownPos(null); };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("scroll", scrollHandler, true);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("scroll", scrollHandler, true);
+    };
   }, []);
 
   // Check admin role
@@ -373,6 +381,7 @@ export default function AdminPage() {
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     setRoleDropdownUser(null);
+    setRoleDropdownPos(null);
     await adminApi.updateUserRole(userId, newRole);
     fetchUsers();
   };
@@ -709,7 +718,7 @@ export default function AdminPage() {
                             : "Never"}
                         </td>
                         <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-1.5" ref={roleDropdownUser === user.id ? dropdownRef : null}>
+                          <div className="flex items-center gap-1.5">
 
                             {/* Toggle status */}
                             <button
@@ -725,33 +734,26 @@ export default function AdminPage() {
                               <CheckCircle size={13} />
                             </button>
 
-                            {/* Role dropdown */}
+                            {/* Role dropdown — portal to escape overflow-hidden */}
                             <div className="relative">
                               <button
                                 type="button"
-                                onClick={() => setRoleDropdownUser(roleDropdownUser === user.id ? null : user.id)}
                                 title="Change role"
                                 className="p-1.5 rounded-lg border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all flex items-center gap-1"
+                                onClick={(e) => {
+                                  if (roleDropdownUser === user.id) {
+                                    setRoleDropdownUser(null);
+                                    setRoleDropdownPos(null);
+                                  } else {
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    setRoleDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                                    setRoleDropdownUser(user.id);
+                                  }
+                                }}
                               >
                                 <UserCog size={13} />
                                 <ChevronDown size={10} />
                               </button>
-                              {roleDropdownUser === user.id && (
-                                <div className="absolute right-0 top-full mt-1 z-20 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-xl overflow-hidden min-w-[130px]">
-                                  {ROLES.map((r) => (
-                                    <button
-                                      key={r}
-                                      type="button"
-                                      onClick={() => handleUpdateRole(user.id, r)}
-                                      className={`w-full text-left px-3 py-2 text-xs capitalize transition-colors hover:bg-[var(--surface-hover)] ${
-                                        r === user.role ? "text-violet-500 font-semibold" : "text-[var(--fg-soft)]"
-                                      }`}
-                                    >
-                                      {r.replace("_", " ")}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
                             </div>
 
                             {/* Delete */}
@@ -777,6 +779,39 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+
+          {/* Portal role dropdown — rendered outside overflow-hidden container */}
+          {typeof window !== "undefined" && roleDropdownUser && roleDropdownPos &&
+            ReactDOM.createPortal(
+              <div
+                ref={dropdownRef}
+                className="fixed z-[9999] bg-white dark:bg-[#1e1e1e] border border-[var(--border)] dark:border-white/10 rounded-xl shadow-2xl dark:shadow-[0_8px_32px_rgba(0,0,0,0.7)] overflow-hidden min-w-[140px]"
+                style={{ top: roleDropdownPos.top, right: roleDropdownPos.right }}
+              >
+                {ROLES.map((r) => {
+                  const activeUser = users.find((u) => u.id === roleDropdownUser);
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => handleUpdateRole(roleDropdownUser, r)}
+                      className={`w-full text-left px-3 py-2.5 text-xs capitalize transition-colors hover:bg-gray-50 dark:hover:bg-white/8 flex items-center gap-2 ${
+                        r === activeUser?.role
+                          ? "text-violet-600 dark:text-violet-400 font-semibold bg-violet-50 dark:bg-violet-500/10"
+                          : "text-gray-700 dark:text-white/80"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                        r === activeUser?.role ? "bg-violet-500" : "bg-transparent"
+                      }`} />
+                      {r.replace("_", " ")}
+                    </button>
+                  );
+                })}
+              </div>,
+              document.body
+            )
+          }
         </div>
       )}
 

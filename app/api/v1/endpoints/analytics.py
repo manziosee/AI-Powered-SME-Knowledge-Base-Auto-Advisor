@@ -43,7 +43,12 @@ async def get_overview(
     current_user: User = Depends(get_current_active_user),
 ):
     if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="User must belong to a company")
+        return {
+            "documents": {"total": 0, "processed": 0, "processing": 0, "uploaded": 0, "failed": 0, "processing_rate_pct": 0},
+            "knowledge_entries": {"total": 0, "by_type": {}},
+            "alerts": {"unread_notifications": 0, "upcoming_deadlines_30d": 0, "critical_risks": 0},
+            "generated_at": datetime.utcnow().isoformat(),
+        }
 
     cid = current_user.company_id
 
@@ -136,7 +141,10 @@ async def get_compliance_score(
     category: Optional[str] = Query(None, description="Filter by rule category"),
 ):
     if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="User must belong to a company")
+        return {
+            "compliance_score": 0, "country": None, "total_rules": 0,
+            "covered_rules": 0, "coverage_percentage": 0, "gap_rules": [],
+        }
 
     # Load company
     from app.models.company import Company
@@ -183,7 +191,7 @@ async def get_risk_distribution(
     current_user: User = Depends(get_current_active_user),
 ):
     if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="User must belong to a company")
+        return {"distribution": {}, "percentages": {}, "total": 0}
 
     result = await db.execute(
         select(KnowledgeEntry.risk_level, func.count(KnowledgeEntry.id))
@@ -216,7 +224,7 @@ async def get_document_type_breakdown(
     current_user: User = Depends(get_current_active_user),
 ):
     if not current_user.company_id:
-        raise HTTPException(status_code=400, detail="User must belong to a company")
+        return {"breakdown": {}}
 
     result = await db.execute(
         select(Document.document_type, func.count(Document.id))

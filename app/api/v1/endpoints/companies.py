@@ -65,7 +65,8 @@ async def get_my_company(
     current_user: User = Depends(get_current_active_user),
 ):
     if not current_user.company_id:
-        raise HTTPException(status_code=404, detail="User is not associated with a company")
+        # Super admin — no company affiliation
+        return {"id": None, "name": "System Administrator", "country": "", "industry": "", "is_active": True}
     result = await db.execute(select(Company).where(Company.id == current_user.company_id))
     company = result.scalar_one_or_none()
     if not company:

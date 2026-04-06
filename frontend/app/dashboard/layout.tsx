@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import SearchModal from "@/components/ui/SearchModal";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import LiveNotificationBanner from "@/components/LiveNotificationBanner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </ErrorBoundary>
       </main>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <LiveNotificationBanner />
     </div>
   );
 }

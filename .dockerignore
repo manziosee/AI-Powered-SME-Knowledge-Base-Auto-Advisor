@@ -64,3 +64,8 @@ docker-compose*.yml
 Dockerfile*
 .dockerignore
 nginx.conf
+
+# Frontend build artefacts (not needed in backend image)
+frontend/node_modules/
+frontend/.next/
+frontend/out/

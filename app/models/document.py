@@ -55,7 +55,13 @@ class Document(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     processed_at = Column(DateTime, nullable=True)
-    
+
+    # E-signature
+    signature_status = Column(String, nullable=True)   # none | pending | signed | declined
+    signature_provider = Column(String, nullable=True) # docusign | hellosign | documenso
+
     company = relationship("Company", back_populates="documents")
     knowledge_entries = relationship("KnowledgeEntry", back_populates="document", cascade="all, delete-orphan")
     versions = relationship("Document", backref="parent", remote_side=[id])
+    comments = relationship("DocumentComment", back_populates="document", cascade="all, delete-orphan")
+    share_links = relationship("ShareLink", back_populates="document", cascade="all, delete-orphan")

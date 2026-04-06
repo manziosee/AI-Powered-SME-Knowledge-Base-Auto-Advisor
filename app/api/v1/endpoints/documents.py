@@ -399,20 +399,23 @@ async def get_download_url(
 
     try:
         import boto3
-        from botocore.exceptions import ClientError
 
-        s3 = boto3.client(
-            "s3",
+        s3_kwargs = dict(
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_REGION,
         )
+        if settings.S3_ENDPOINT_URL:
+            s3_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+
+        s3 = boto3.client("s3", **s3_kwargs)
         url = s3.generate_presigned_url(
             "get_object",
             Params={"Bucket": settings.S3_BUCKET_NAME, "Key": document.file_path},
             ExpiresIn=expires_in,
         )
         return {
+            "url": url,
             "download_url": url,
             "filename": document.original_filename,
             "expires_in": expires_in,
@@ -499,18 +502,157 @@ async def delete_document(
     # Best-effort S3 deletion
     try:
         import boto3
-        s3 = boto3.client(
-            "s3",
+        s3_kwargs = dict(
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_REGION,
         )
+        if settings.S3_ENDPOINT_URL:
+            s3_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        s3 = boto3.client("s3", **s3_kwargs)
         s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=document.file_path)
     except Exception:
         pass  # DB record still deleted even if S3 cleanup fails
 
     await db.delete(document)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Bulk operations
+# ---------------------------------------------------------------------------
+
+from pydantic import BaseModel as _BaseModel
+from typing import Dict as _Dict
+
+
+class BulkDeleteRequest(_BaseModel):
+    document_ids: List[str]
+
+
+class BulkTagRequest(_BaseModel):
+    document_ids: List[str]
+    tags: List[str]
+
+
+class BulkSignatureRequest(_BaseModel):
+    document_ids: List[str]
+    signature_status: str    # none | pending | signed | declined
+    signature_provider: Optional[str] = None
+
+
+@router.post(
+    "/bulk-delete",
+    summary="Bulk delete documents",
+    description="Deletes multiple documents at once. Only documents belonging to the user's company are deleted. S3 cleanup is best-effort.",
+)
+async def bulk_delete_documents(
+    payload: BulkDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User must belong to a company")
+    if len(payload.document_ids) > 50:
+        raise HTTPException(status_code=400, detail="Maximum 50 documents per bulk operation")
+
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id.in_(payload.document_ids),
+                Document.company_id == current_user.company_id,
+            )
+        )
+    )
+    docs = result.scalars().all()
+
+    deleted_ids = []
+    for doc in docs:
+        try:
+            import boto3
+            s3_kwargs = dict(
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_REGION,
+            )
+            if settings.S3_ENDPOINT_URL:
+                s3_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+            s3 = boto3.client("s3", **s3_kwargs)
+            s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=doc.file_path)
+        except Exception:
+            pass
+        await db.delete(doc)
+        deleted_ids.append(str(doc.id))
+
+    await db.commit()
+    return {"deleted": deleted_ids, "count": len(deleted_ids)}
+
+
+@router.patch(
+    "/bulk-tag",
+    summary="Bulk update document tags",
+    description="Replaces tags on multiple documents at once. Only affects documents belonging to the user's company.",
+)
+async def bulk_tag_documents(
+    payload: BulkTagRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User must belong to a company")
+    if len(payload.document_ids) > 50:
+        raise HTTPException(status_code=400, detail="Maximum 50 documents per bulk operation")
+
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id.in_(payload.document_ids),
+                Document.company_id == current_user.company_id,
+            )
+        )
+    )
+    docs = result.scalars().all()
+    updated_ids = []
+    for doc in docs:
+        doc.tags = payload.tags
+        updated_ids.append(str(doc.id))
+
+    await db.commit()
+    return {"updated": updated_ids, "tags": payload.tags, "count": len(updated_ids)}
+
+
+@router.patch(
+    "/bulk-signature",
+    summary="Bulk update e-signature status",
+    description="Sets the signature_status field on multiple documents (e.g. 'pending', 'signed', 'declined').",
+)
+async def bulk_update_signature(
+    payload: BulkSignatureRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    valid_statuses = {"none", "pending", "signed", "declined"}
+    if payload.signature_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid signature_status. Must be one of: {valid_statuses}")
+
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id.in_(payload.document_ids),
+                Document.company_id == current_user.company_id,
+            )
+        )
+    )
+    docs = result.scalars().all()
+    updated_ids = []
+    for doc in docs:
+        doc.signature_status = payload.signature_status
+        if payload.signature_provider:
+            doc.signature_provider = payload.signature_provider
+        updated_ids.append(str(doc.id))
+
+    await db.commit()
+    return {"updated": updated_ids, "signature_status": payload.signature_status, "count": len(updated_ids)}
 
 
 # ---------------------------------------------------------------------------

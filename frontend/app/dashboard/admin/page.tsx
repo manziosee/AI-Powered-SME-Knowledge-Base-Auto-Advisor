@@ -285,6 +285,8 @@ export default function AdminPage() {
   const [userSearch,   setUserSearch]   = useState("");
   const [showCreate,   setShowCreate]   = useState(false);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
+  const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditResourceFilter, setAuditResourceFilter] = useState("");
 
   // For role dropdowns per user row — portal-based to escape overflow-hidden
   const [roleDropdownUser, setRoleDropdownUser] = useState<string | null>(null);
@@ -448,6 +450,12 @@ export default function AdminPage() {
       u.email.toLowerCase().includes(q) ||
       u.role.toLowerCase().includes(q)
     );
+  });
+
+  const filteredAuditLogs = auditLogs.filter((log) => {
+    const matchAction = !auditActionFilter || log.action.toLowerCase().includes(auditActionFilter.toLowerCase());
+    const matchResource = !auditResourceFilter || log.resource_type.toLowerCase().includes(auditResourceFilter.toLowerCase());
+    return matchAction && matchResource;
   });
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -912,17 +920,58 @@ export default function AdminPage() {
       ═══════════════════════════════════════════════════════════════════ */}
       {activeTab === "audit" && (
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[var(--fg-muted)] text-sm">
-              Auto-refreshes every 30 seconds.
-            </p>
-            <button
-              type="button"
-              onClick={() => { fetchAuditLogs(); setAuditRefreshKey((k) => k + 1); }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] text-xs font-semibold transition-all"
-            >
-              <RefreshCw size={13} className={loadingAudit ? "animate-spin" : ""} /> Refresh
-            </button>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="text"
+                value={auditActionFilter}
+                onChange={e => setAuditActionFilter(e.target.value)}
+                placeholder="Filter by action…"
+                className="px-3 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] text-xs placeholder-[var(--fg-muted)] focus:outline-none focus:border-violet-500/50 w-40"
+              />
+              <input
+                type="text"
+                value={auditResourceFilter}
+                onChange={e => setAuditResourceFilter(e.target.value)}
+                placeholder="Filter by resource…"
+                className="px-3 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] text-xs placeholder-[var(--fg-muted)] focus:outline-none focus:border-violet-500/50 w-40"
+              />
+              {(auditActionFilter || auditResourceFilter) && (
+                <button
+                  type="button"
+                  onClick={() => { setAuditActionFilter(""); setAuditResourceFilter(""); }}
+                  className="px-2.5 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-rose-500 text-xs transition-all"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-[var(--fg-muted)] text-xs">Auto-refreshes every 30s</p>
+              <button
+                type="button"
+                onClick={() => {
+                  const rows = filteredAuditLogs.map(l =>
+                    `"${l.action}","${l.user_email ?? l.user_name ?? "system"}","${l.resource_type}","${l.details ?? ""}","${l.ip_address ?? ""}","${l.created_at}"`
+                  );
+                  const csv = ["Action,User,Resource,Details,IP,Time", ...rows].join("\n");
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+                  a.download = `audit-log-${new Date().toISOString().slice(0,10)}.csv`;
+                  a.click();
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] text-xs font-semibold transition-all"
+              >
+                Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => { fetchAuditLogs(); setAuditRefreshKey((k) => k + 1); }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] text-xs font-semibold transition-all"
+              >
+                <RefreshCw size={13} className={loadingAudit ? "animate-spin" : ""} /> Refresh
+              </button>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-soft)] overflow-hidden">
@@ -955,7 +1004,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    auditLogs.map((log) => (
+                    filteredAuditLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-[var(--surface-hover)] transition-colors">
                         <td className="px-4 py-3.5">
                           <span className="text-xs font-semibold text-violet-500 capitalize">{log.action}</span>
@@ -988,7 +1037,7 @@ export default function AdminPage() {
             </div>
             {!loadingAudit && (
               <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between">
-                <span className="text-[10px] text-[var(--fg-muted)]">{auditLogs.length} entries shown</span>
+                <span className="text-[10px] text-[var(--fg-muted)]">{filteredAuditLogs.length} of {auditLogs.length} entries shown</span>
                 <span className="text-[10px] text-[var(--fg-muted)]">
                   Key: {auditRefreshKey} · refreshed {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>

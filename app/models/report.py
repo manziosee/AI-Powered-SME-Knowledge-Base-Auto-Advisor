@@ -42,5 +42,12 @@ class Report(Base):
     file_size_bytes = Column(Integer, nullable=True)
     error_message = Column(Text, nullable=True)
     expires_at = Column(DateTime, nullable=True)        # auto-delete after TTL
+
+    # Scheduled delivery
+    schedule = Column(String, nullable=True)            # cron expression e.g. "0 8 * * 1" (Mon 8am)
+    schedule_email = Column(String, nullable=True)      # delivery email (comma-separated for multiple)
+    next_run_at = Column(DateTime, nullable=True)       # computed from cron
+    last_sent_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)

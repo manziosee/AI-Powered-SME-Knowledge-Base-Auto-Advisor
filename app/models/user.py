@@ -28,7 +28,13 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
-    
+
+    # 2FA / TOTP
+    otp_secret = Column(String, nullable=True)
+    otp_enabled = Column(Boolean, default=False)
+
     company = relationship("Company", back_populates="users")
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    api_keys = relationship("ApiKey", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")

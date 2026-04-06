@@ -3,12 +3,19 @@ from botocore.exceptions import ClientError
 from typing import Optional
 from app.core.config import settings
 
-s3_client = boto3.client(
-    's3',
-    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-    region_name=settings.AWS_REGION
-)
+
+def _make_s3_client():
+    kwargs = dict(
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION,
+    )
+    if settings.S3_ENDPOINT_URL:
+        kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+    return boto3.client("s3", **kwargs)
+
+
+s3_client = _make_s3_client()
 
 
 async def upload_file(file_content: bytes, file_key: str, content_type: str) -> bool:

@@ -61,8 +61,16 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
     CORS_ORIGINS: str = "http://localhost:3000"
 
+    # MinIO / S3-compatible endpoint (leave empty for real AWS S3)
+    S3_ENDPOINT_URL: str = ""
+
     # Webhook security
     WEBHOOK_SECRET: str = ""
+
+    # Stripe billing
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
 
     # Report TTL (seconds before generated reports expire from S3)
     REPORT_TTL_SECONDS: int = 86400  # 24 hours

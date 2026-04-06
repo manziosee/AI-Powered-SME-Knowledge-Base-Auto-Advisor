@@ -18,25 +18,42 @@ const pythonInstall = "pip install advisorai";
 const jsInstall = "npm install @advisorai/sdk";
 
 const pythonExample = `from advisorai import AdvisorAI
+import requests
 
-client = AdvisorAI(api_key="your_api_key")
+BASE = "https://advisorai-backend.fly.dev/api/v1"
+
+# Option A: API Key (sk_ prefix) — no expiry, great for CI/CD
+headers = {"X-API-Key": "sk_your_api_key_here"}
+
+# Option B: JWT login (with 2FA support)
+res = requests.post(f"{BASE}/auth/login",
+    json={"email": "you@co.com", "password": "••••"})
+if res.status_code == 403:  # 2FA required
+    user_id = res.json()["user_id"]
+    code = input("TOTP code: ")
+    res = requests.post(f"{BASE}/auth/2fa/validate",
+        json={"user_id": user_id, "code": code})
+headers = {"Authorization": f"Bearer {res.json()['access_token']}"}
 
 # Upload a document
-doc = client.documents.upload("./compliance_policy.pdf")
-print(f"Document ready: {doc.id}")
+with open("./compliance_policy.pdf", "rb") as f:
+    doc = requests.post(f"{BASE}/documents/upload",
+        headers=headers, files={"file": f}).json()
+print(f"Document ready: {doc['id']}")
 
-# Ask a question
-answer = client.advisor.ask(
-    question="What are our VAT filing deadlines?",
-    stream=False,
-)
-
-print(answer.text)
-print("Sources:", answer.sources)
+# Ask a question (use 'query' not 'question')
+answer = requests.post(f"{BASE}/advisor/ask",
+    headers=headers,
+    json={"query": "What are our VAT filing deadlines?"}
+).json()
+print(answer["answer"])
+print("Sources:", answer["sources"])
 
 # Check compliance score
-score = client.analytics.compliance_score()
-print(f"Score: {score.value}%")`;
+score = requests.get(f"{BASE}/analytics/compliance-score",
+    headers=headers).json()
+print(f"Score: {score['compliance_score']}%")
+print(f"Gaps: {len(score['gap_rules'])} rules not covered")`;
 
 const jsExample = `import { AdvisorAI } from "@advisorai/sdk";
 

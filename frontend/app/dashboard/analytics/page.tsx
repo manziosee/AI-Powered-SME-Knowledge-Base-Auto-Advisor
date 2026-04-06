@@ -7,7 +7,7 @@ import {
   PolarAngleAxis, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Download, TrendingUp, RefreshCw } from "lucide-react";
+import { Download, TrendingUp, RefreshCw, Calendar, Mail, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { analytics } from "@/lib/api";
@@ -19,6 +19,11 @@ export default function AnalyticsPage() {
   const dark = theme === "dark";
   const [period, setPeriod] = useState<"7d"|"30d"|"90d">("30d");
   const [exporting, setExporting] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleEmail, setScheduleEmail] = useState("");
+  const [scheduleCron, setScheduleCron] = useState("0 8 * * 1");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleMsg, setScheduleMsg] = useState<string | null>(null);
 
   const [kpi, setKpi] = useState({ totalDocuments: 0, complianceScore: 0, aiQueries: 0, risksResolved: 0 });
   const [riskDist, setRiskDist] = useState<Record<string, number>>({});
@@ -81,6 +86,22 @@ export default function AnalyticsPage() {
     setExporting(false);
   };
 
+  const handleSchedule = async () => {
+    if (!scheduleEmail.trim()) return;
+    setScheduling(true);
+    setScheduleMsg(null);
+    const { data, error } = await analytics.scheduleReport({
+      report_type: "compliance",
+      report_format: "pdf",
+      schedule: scheduleCron,
+      schedule_email: scheduleEmail.trim(),
+    });
+    setScheduling(false);
+    if (error) { setScheduleMsg(`Error: ${error}`); return; }
+    setScheduleMsg(`Scheduled! Next run: ${data?.next_run_at ? new Date(data.next_run_at).toLocaleString() : "soon"}`);
+    setShowSchedule(false);
+  };
+
   const tickColor  = dark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.45)";
   const gridColor  = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)";
   const radarGrid  = dark ? "rgba(255,255,255,0.1)"  : "rgba(0,0,0,0.1)";
@@ -131,8 +152,47 @@ export default function AnalyticsPage() {
           <Button variant="secondary" size="sm" onClick={() => handleExport("excel")} className="hover:scale-105 transition-transform duration-300">
             <Download size={13} /> Excel
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowSchedule(v => !v)} className="hover:scale-105 transition-transform duration-300">
+            <Calendar size={13} /> Schedule
+          </Button>
         </div>
       </div>
+
+      {/* Schedule modal */}
+      {showSchedule && (
+        <div className="mb-6 p-5 rounded-2xl border border-violet-500/30 bg-violet-500/5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[var(--fg)] font-semibold text-sm flex items-center gap-2"><Calendar size={14} className="text-violet-500" /> Schedule Report</h3>
+            <button type="button" onClick={() => setShowSchedule(false)} className="text-[var(--fg-muted)] hover:text-[var(--fg)]"><X size={14} /></button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[var(--fg-muted)] text-xs mb-1 block">Email recipients</label>
+              <input value={scheduleEmail} onChange={e => setScheduleEmail(e.target.value)}
+                placeholder="you@company.com" type="email"
+                className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--fg)] text-sm focus:outline-none focus:border-violet-500/50" />
+            </div>
+            <div>
+              <label className="text-[var(--fg-muted)] text-xs mb-1 block">Cron schedule</label>
+              <select value={scheduleCron} onChange={e => setScheduleCron(e.target.value)}
+                className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--fg)] text-sm focus:outline-none focus:border-violet-500/50">
+                <option value="0 8 * * 1">Every Monday 8am</option>
+                <option value="0 8 1 * *">1st of every month</option>
+                <option value="0 8 * * *">Daily 8am</option>
+                <option value="0 8 1 */3 *">Quarterly</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button onClick={handleSchedule} disabled={scheduling || !scheduleEmail.trim()}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all disabled:opacity-50">
+                {scheduling ? <RefreshCw size={13} className="animate-spin" /> : <Mail size={13} />}
+                {scheduling ? "Scheduling…" : "Schedule"}
+              </button>
+            </div>
+          </div>
+          {scheduleMsg && <p className="text-xs mt-3 text-emerald-500">{scheduleMsg}</p>}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20 gap-2 text-[var(--fg-muted)]">

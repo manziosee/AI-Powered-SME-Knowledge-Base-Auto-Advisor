@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Bell, AlertTriangle, FileText, ShieldCheck,
   CheckCheck, Trash2, Clock, BellOff, RefreshCw,
 } from "lucide-react";
 import { notifications as notifApi, type ApiNotification } from "@/lib/api";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 /* ── Config maps ─────────────────────────────────────────────── */
 const typeIcon: Record<string, React.ReactNode> = {
@@ -69,6 +70,26 @@ export default function NotificationsPage() {
       setLoading(false);
     });
   }, []);
+
+  // Live push: prepend new notifications from WebSocket
+  const handleWsMessage = useCallback((msg: { type: string; data: Record<string, any> }) => {
+    if (msg.type !== "notification") return;
+    const d = msg.data;
+    const incoming: Notif = {
+      id: d.id ?? String(Date.now()),
+      title: d.title ?? "New notification",
+      message: d.message ?? "",
+      notification_type: d.notification_type ?? "system",
+      is_read: false,
+      created_at: d.created_at ?? new Date().toISOString(),
+    };
+    setNotifs(prev => {
+      if (prev.some(n => n.id === incoming.id)) return prev;
+      return [incoming, ...prev];
+    });
+  }, []);
+
+  useWebSocket({ onMessage: handleWsMessage });
 
   const filtered = notifs.filter((n) => {
     if (filter === "unread")   return !n.is_read;

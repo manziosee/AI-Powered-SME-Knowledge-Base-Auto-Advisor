@@ -28,28 +28,52 @@ export default function LoginPage() {
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
 
+  // 2FA state
+  const [needs2FA,  setNeeds2FA]  = useState(false);
+  const [userId2FA, setUserId2FA] = useState("");
+  const [totpCode,  setTotpCode]  = useState("");
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { data, error } = await authApi.login(email, password);
-    if (data?.access_token) {
-      // Fetch user profile and store
-      const meRes = await authApi.me();
-      if (meRes.data) {
-        const u = meRes.data;
-        const initials = u.full_name?.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) ?? "U";
-        localStorage.setItem("auth_user", JSON.stringify({
-          id: u.id, name: u.full_name, email: u.email,
-          role: u.role, company: u.company?.name ?? "",
-          avatar: initials,
-        }));
+
+    if (needs2FA) {
+      const { data, error } = await authApi.loginWith2FA(userId2FA, totpCode);
+      if (data?.access_token) {
+        await _storeUserAndRedirect();
+      } else {
+        setError(error ?? "Invalid code.");
+        setLoading(false);
       }
-      router.push("/dashboard");
+      return;
+    }
+
+    const { data, error, userId } = await authApi.login(email, password);
+    if (data?.access_token) {
+      await _storeUserAndRedirect();
+    } else if (error === "2fa_required") {
+      setNeeds2FA(true);
+      setUserId2FA(userId ?? "");
+      setLoading(false);
     } else {
       setError(error ?? "Invalid email or password.");
       setLoading(false);
     }
+  };
+
+  const _storeUserAndRedirect = async () => {
+    const meRes = await authApi.me();
+    if (meRes.data) {
+      const u = meRes.data;
+      const initials = u.full_name?.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) ?? "U";
+      localStorage.setItem("auth_user", JSON.stringify({
+        id: u.id, name: u.full_name, email: u.email,
+        role: u.role, company: u.company?.name ?? "",
+        avatar: initials,
+      }));
+    }
+    router.push("/dashboard");
   };
 
   return (
@@ -186,6 +210,20 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            {needs2FA ? (
+              <div>
+                <label className="block text-[var(--fg-muted)] text-[10px] font-semibold mb-2 tracking-widest uppercase">
+                  Authenticator Code
+                </label>
+                <input
+                  type="text" value={totpCode} onChange={(e) => setTotpCode(e.target.value)}
+                  placeholder="000000" maxLength={6} autoFocus required
+                  className={INPUT + " text-center text-2xl font-mono tracking-[0.5em]"}
+                />
+                <p className="text-[var(--fg-muted)] text-xs mt-2">Enter the 6-digit code from your authenticator app.</p>
+              </div>
+            ) : (
+              <>
             <div>
               <label className="block text-[var(--fg-muted)] text-[10px] font-semibold mb-2 tracking-widest uppercase">
                 Email address
@@ -218,6 +256,8 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+              </>
+            )}
 
             <button type="submit" disabled={loading}
               className="group relative w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black text-sm transition-all duration-300 disabled:opacity-50 shadow-[0_0_24px_rgba(124,58,237,0.3)] hover:shadow-[0_0_36px_rgba(124,58,237,0.5)] hover:-translate-y-0.5 active:scale-[0.98] mt-1 overflow-hidden">
@@ -229,7 +269,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <span className="relative z-10">Sign in</span>
+                  <span className="relative z-10">{needs2FA ? "Verify Code" : "Sign in"}</span>
                   <ArrowRight size={15} className="relative z-10 group-hover:translate-x-0.5 transition-transform" />
                 </>
               )}

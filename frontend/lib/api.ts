@@ -66,9 +66,38 @@ async function request<T>(
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const auth = {
   async login(email: string, password: string) {
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        const detail = body?.detail;
+        if (detail?.code === "2fa_required" || detail === "2fa_required") {
+          return { data: null, error: "2fa_required", userId: detail?.user_id ?? "" };
+        }
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { data: null, error: String(body?.detail ?? `HTTP ${res.status}`), userId: "" };
+      }
+      const data = await res.json() as { access_token: string; token_type: string };
+      if (data?.access_token) saveToken(data.access_token);
+      return { data, error: null, userId: "" };
+    } catch {
+      return { data: null, error: "Cannot reach server — is the backend running?", userId: "" };
+    }
+  },
+
+  async loginWith2FA(userId: string, code: string) {
     const res = await request<{ access_token: string; token_type: string }>(
-      "/auth/login",
-      { method: "POST", body: JSON.stringify({ email, password }) },
+      "/auth/2fa/validate",
+      { method: "POST", body: JSON.stringify({ user_id: userId, code }) },
     );
     if (res.data?.access_token) saveToken(res.data.access_token);
     return res;
@@ -120,6 +149,46 @@ export const auth = {
 
   logout() {
     clearToken();
+  },
+
+  // ── 2FA ────────────────────────────────────────────────────────────────────
+  async twoFaStatus() {
+    return request<{ otp_enabled: boolean; has_secret: boolean }>("/auth/2fa/status");
+  },
+  async twoFaSetup() {
+    return request<{ secret: string; otpauth_uri: string; qr_code_base64: string }>(
+      "/auth/2fa/setup", { method: "POST" },
+    );
+  },
+  async twoFaVerify(code: string) {
+    return request<{ message: string }>("/auth/2fa/verify", { method: "POST", body: JSON.stringify({ code }) });
+  },
+  async twoFaDisable(code: string) {
+    return request<{ message: string }>("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ code }) });
+  },
+
+  // ── API Keys ───────────────────────────────────────────────────────────────
+  async listApiKeys() {
+    return request<Array<{ id: string; name: string; key_prefix: string; scopes: string[]; is_active: boolean; last_used_at: string | null; expires_at: string | null; created_at: string }>>("/auth/api-keys");
+  },
+  async createApiKey(name: string, scopes: string[], expires_days?: number) {
+    return request<{ id: string; name: string; key: string; key_prefix: string; scopes: string[]; expires_at: string | null; created_at: string }>(
+      "/auth/api-keys", { method: "POST", body: JSON.stringify({ name, scopes, expires_days }) },
+    );
+  },
+  async revokeApiKey(id: string) {
+    return request<{ status: string }>(`/auth/api-keys/${id}`, { method: "DELETE" });
+  },
+
+  // ── Sessions ───────────────────────────────────────────────────────────────
+  async listSessions() {
+    return request<Array<{ id: string; ip_address: string; device_hint: string; created_at: string; last_seen_at: string }>>("/auth/sessions");
+  },
+  async revokeSession(id: string) {
+    return request<{ status: string }>(`/auth/sessions/${id}`, { method: "DELETE" });
+  },
+  async revokeAllSessions() {
+    return request<{ sessions_revoked: number }>("/auth/sessions", { method: "DELETE" });
   },
 };
 
@@ -282,6 +351,27 @@ export const analytics = {
     const objectUrl = URL.createObjectURL(blob);
     return { data: { url: objectUrl }, error: null };
   },
+
+  async exportKnowledge(format: "csv" | "excel" = "csv") {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    const url = `${API}/analytics/export-knowledge?format=${format}`;
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) return { data: null, error: `Export failed (${res.status})` };
+    const blob = await res.blob();
+    return { data: { url: URL.createObjectURL(blob) }, error: null };
+  },
+
+  async scheduleReport(payload: { report_type: string; report_format: string; schedule: string; schedule_email: string }) {
+    return request<{ id: string; next_run_at: string }>("/analytics/schedule", { method: "POST", body: JSON.stringify(payload) });
+  },
+
+  async listSchedules() {
+    return request<Array<{ id: string; report_type: string; schedule: string; schedule_email: string; next_run_at: string }>>("/analytics/schedules");
+  },
+
+  async deleteSchedule(id: string) {
+    return request<{ status: string }>(`/analytics/schedules/${id}`, { method: "DELETE" });
+  },
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────
@@ -355,6 +445,107 @@ export const company = {
 
   async removeUser(userId: string) {
     return request<{ message: string }>(`/companies/me/users/${userId}`, { method: "DELETE" });
+  },
+};
+
+// ── Share Links ───────────────────────────────────────────────────────────────
+export const shareLinks = {
+  async create(payload: { document_id: string; password?: string; expires_hours?: number; max_views?: number }) {
+    return request<{ id: string; token: string; share_url: string; expires_at: string | null }>("/share-links/", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async list() {
+    return request<Array<{ id: string; token: string; document_id: string; share_url: string; expires_at: string | null; view_count: number; is_active: boolean; created_at: string }>>("/share-links/");
+  },
+  async revoke(id: string) {
+    return request<{ status: string }>(`/share-links/${id}`, { method: "DELETE" });
+  },
+};
+
+// ── Document Comments ─────────────────────────────────────────────────────────
+export const docComments = {
+  async list(docId: string) {
+    return request<Array<{ id: string; user_id: string; user_name: string; parent_id: string | null; content: string; is_edited: boolean; created_at: string }>>(`/documents/${docId}/comments`);
+  },
+  async create(docId: string, content: string, parentId?: string) {
+    return request<{ id: string; content: string; user_name: string; created_at: string }>(`/documents/${docId}/comments`, { method: "POST", body: JSON.stringify({ content, parent_id: parentId }) });
+  },
+  async update(docId: string, commentId: string, content: string) {
+    return request<{ id: string; content: string }>(`/documents/${docId}/comments/${commentId}`, { method: "PUT", body: JSON.stringify({ content }) });
+  },
+  async remove(docId: string, commentId: string) {
+    return request<{ status: string }>(`/documents/${docId}/comments/${commentId}`, { method: "DELETE" });
+  },
+};
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+export const templates = {
+  async list(params?: { category?: string; country_code?: string; search?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.category) qs.set("category", params.category);
+    if (params?.country_code) qs.set("country_code", params.country_code);
+    if (params?.search) qs.set("search", params.search);
+    const q = qs.toString();
+    return request<Array<{ id: string; name: string; description: string; category: string; country_code: string; fields: any[]; tags: string[]; usage_count: number }>>(`/templates/${q ? `?${q}` : ""}`);
+  },
+  async get(id: string) {
+    return request<{ id: string; name: string; content: string; fields: any[]; category: string }>(`/templates/${id}`);
+  },
+  async use(id: string, fieldValues: Record<string, string>) {
+    return request<{ rendered_content: string; unfilled_fields: string[] }>(`/templates/${id}/use`, { method: "POST", body: JSON.stringify({ field_values: fieldValues }) });
+  },
+  async create(payload: { name: string; category: string; content: string; fields?: any[]; tags?: string[]; country_code?: string; is_public?: boolean }) {
+    return request<{ id: string; name: string }>("/templates/", { method: "POST", body: JSON.stringify(payload) });
+  },
+};
+
+// ── Subscriptions ─────────────────────────────────────────────────────────────
+export const subscriptions = {
+  async plans() {
+    return request<Array<{ tier: string; name: string; price_monthly_usd: number; price_annual_usd: number; features: string[] }>>("/subscriptions/plans");
+  },
+  async me() {
+    return request<{ plan: string; status: string; max_documents: number; max_users: number; max_ai_queries_per_month: number; ai_queries_used: number; current_period_end: string | null }>("/subscriptions/me");
+  },
+  async checkout(plan: string, billing_cycle: string, success_url: string, cancel_url: string) {
+    return request<{ checkout_url: string }>("/subscriptions/checkout", { method: "POST", body: JSON.stringify({ plan, billing_cycle, success_url, cancel_url }) });
+  },
+  async portal(return_url: string) {
+    return request<{ portal_url: string }>("/subscriptions/portal", { method: "POST", body: JSON.stringify({ return_url }) });
+  },
+  async cancel() {
+    return request<{ canceled_at: string }>("/subscriptions/me/cancel", { method: "PUT" });
+  },
+};
+
+// ── Connectors ────────────────────────────────────────────────────────────────
+export const connectors = {
+  async list() {
+    return request<Array<{ id: string; name: string; type: string; status: string; last_triggered_at: string | null }>>("/connectors/");
+  },
+  async connectQuickBooks(payload: { name?: string; access_token: string; refresh_token: string; realm_id: string; client_id?: string; client_secret?: string }) {
+    return request<{ status: string; id: string }>("/connectors/quickbooks/connect", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async quickbooksInvoices(limit = 20) {
+    return request<any>(`/connectors/quickbooks/invoices?limit=${limit}`);
+  },
+  async connectXero(payload: { name?: string; access_token: string; refresh_token: string; tenant_id: string; client_id?: string }) {
+    return request<{ status: string; id: string }>("/connectors/xero/connect", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async xeroContacts(limit = 20) {
+    return request<any>(`/connectors/xero/contacts?limit=${limit}`);
+  },
+};
+
+// ── Bulk Documents ────────────────────────────────────────────────────────────
+export const bulkDocuments = {
+  async delete(ids: string[]) {
+    return request<{ deleted: string[]; count: number }>("/documents/bulk-delete", { method: "POST", body: JSON.stringify({ document_ids: ids }) });
+  },
+  async tag(ids: string[], tags: string[]) {
+    return request<{ updated: string[]; count: number }>("/documents/bulk-tag", { method: "PATCH", body: JSON.stringify({ document_ids: ids, tags }) });
+  },
+  async signature(ids: string[], status: string, provider?: string) {
+    return request<{ updated: string[]; count: number }>("/documents/bulk-signature", { method: "PATCH", body: JSON.stringify({ document_ids: ids, signature_status: status, signature_provider: provider }) });
   },
 };
 

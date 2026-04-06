@@ -63,6 +63,12 @@ TOKEN=$(curl -s -X POST https://advisorai-backend.fly.dev/api/v1/auth/login \\
   -d '{"email":"you@company.com","password":"your_password"}' \\
   | jq -r '.access_token')
 
+# If 2FA is enabled, login returns 403 {"code":"2fa_required","user_id":"..."}
+# Complete with:
+# TOKEN=$(curl -s -X POST .../auth/2fa/validate \\
+#   -H "Content-Type: application/json" \\
+#   -d '{"user_id":"<id>","code":"123456"}' | jq -r '.access_token')
+
 # 2. Upload a document
 curl -X POST https://advisorai-backend.fly.dev/api/v1/documents/upload \\
   -H "Authorization: Bearer $TOKEN" \\
@@ -72,32 +78,37 @@ curl -X POST https://advisorai-backend.fly.dev/api/v1/documents/upload \\
 curl -X POST https://advisorai-backend.fly.dev/api/v1/advisor/ask \\
   -H "Authorization: Bearer $TOKEN" \\
   -H "Content-Type: application/json" \\
-  -d '{"question": "What are our data retention obligations?"}'`,
+  -d '{"query": "What are our data retention obligations?"}'`,
   python: `import requests
 
 BASE = "https://advisorai-backend.fly.dev/api/v1"
 
 # 1. Authenticate
-token = requests.post(f"{BASE}/auth/login", json={
+res = requests.post(f"{BASE}/auth/login", json={
     "email": "you@company.com",
     "password": "your_password"
-}).json()["access_token"]
+})
 
+# Handle 2FA if enabled
+if res.status_code == 403 and res.json().get("code") == "2fa_required":
+    user_id = res.json()["user_id"]
+    code = input("Enter your 6-digit TOTP code: ")
+    res = requests.post(f"{BASE}/auth/2fa/validate",
+        json={"user_id": user_id, "code": code})
+
+token = res.json()["access_token"]
 headers = {"Authorization": f"Bearer {token}"}
 
 # 2. Upload a document
 with open("compliance_policy.pdf", "rb") as f:
     doc = requests.post(f"{BASE}/documents/upload",
-        headers=headers,
-        files={"file": f}
-    ).json()
-
+        headers=headers, files={"file": f}).json()
 print(f"Uploaded: {doc['id']}")
 
 # 3. Ask a question
 answer = requests.post(f"{BASE}/advisor/ask",
     headers=headers,
-    json={"question": "What are our data retention obligations?"}
+    json={"query": "What are our data retention obligations?"}
 ).json()
 
 print(answer["answer"])

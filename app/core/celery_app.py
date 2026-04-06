@@ -20,6 +20,8 @@ celery_app = Celery(
         "app.tasks.notification_tasks",
         "app.tasks.ai_tasks",
         "app.tasks.training_tasks",
+        "app.tasks.scheduled_report_tasks",
+        "app.tasks.retention_tasks",
     ]
 )
 
@@ -51,6 +53,16 @@ celery_app.conf.beat_schedule = {
     },
     "check-expiring-contracts": {
         "task": "app.tasks.notification_tasks.check_expiring_contracts",
+        "schedule": 86400.0,
+    },
+    # New: scheduled report delivery (runs every hour, picks up due reports)
+    "deliver-scheduled-reports": {
+        "task": "app.tasks.scheduled_report_tasks.deliver_scheduled_reports",
+        "schedule": 3600.0,
+    },
+    # New: data retention cleanup (runs daily)
+    "enforce-data-retention": {
+        "task": "app.tasks.retention_tasks.enforce_data_retention",
         "schedule": 86400.0,
     },
 }

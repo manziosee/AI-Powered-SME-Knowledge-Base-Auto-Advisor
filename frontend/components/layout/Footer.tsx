@@ -4,18 +4,14 @@ import { Github, Twitter, Linkedin } from "lucide-react";
 
 const links = {
   Product: [
-    { label: "Features",     href: "/#features"    },
-    { label: "How it works", href: "/#how-it-works" },
-    { label: "Use cases",    href: "/#use-cases"    },
-    { label: "Pricing",      href: "/#pricing"      },
-    { label: "Changelog",    href: "/changelog"     },
+    { label: "Changelog", href: "/changelog" },
   ],
   Developers: [
-    { label: "Documentation",  href: "/docs"             },
-    { label: "API Reference",  href: "/docs#auth"        },
-    { label: "Quick Start",    href: "/docs#quickstart"  },
-    { label: "Webhooks",       href: "/docs#webhooks"    },
-    { label: "SDKs & Examples",href: "/docs"             },
+    { label: "Documentation",   href: "/docs"          },
+    { label: "API Reference",   href: "/api-reference" },
+    { label: "Quick Start",     href: "/quick-start"   },
+    { label: "Webhooks",        href: "/webhooks"      },
+    { label: "SDKs & Examples", href: "/sdks"          },
   ],
   Company: [
     { label: "About us",        href: "/about"   },

@@ -146,7 +146,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     summary="Login and get JWT tokens",
     description="Authenticate with email and password. Returns access token (30 min) and refresh token (7 days). Account locks after 5 failed attempts for 15 minutes.",
 )
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     redis = None
     try:
         redis = await get_redis()
@@ -191,6 +191,14 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Account is deactivated")
 
+    # 2FA check — if enabled, require TOTP before issuing tokens
+    if user.otp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "2fa_required", "user_id": str(user.id)},
+            headers={"X-2FA-Required": "true"},
+        )
+
     # Successful login — clear any failure counter
     if redis:
         await redis.delete(f"{LOGIN_FAIL_PREFIX}{payload.email}")
@@ -198,8 +206,28 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     user.last_login = datetime.utcnow()
     await db.commit()
 
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token  = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
+    # Record session for session management
+    try:
+        from app.models.user_session import UserSession
+        from app.core.security import decode_token as _decode
+        jti = _decode(refresh_token).get("jti") or secrets.token_hex(16)
+        ua  = request.headers.get("user-agent", "")
+        from app.api.v1.endpoints.sessions import _parse_device
+        session = UserSession(
+            user_id=user.id,
+            refresh_token_jti=jti,
+            ip_address=request.client.host if request.client else None,
+            user_agent=ua[:512],
+            device_hint=_parse_device(ua),
+            expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        )
+        db.add(session)
+        await db.commit()
+    except Exception:
+        pass  # non-fatal — session tracking is best-effort
 
     return Token(access_token=access_token, refresh_token=refresh_token)
 

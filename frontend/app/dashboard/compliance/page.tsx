@@ -119,15 +119,23 @@ export default function CompliancePage() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Compliance</h1>
-          <p className="text-[var(--fg-muted)] text-sm mt-0.5">Track obligations, deadlines and gaps</p>
+      <div className="flex items-center justify-between mb-8 pb-6 border-b border-[var(--border)] flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-[0_0_24px_rgba(20,184,166,0.45)] flex-shrink-0">
+            <ShieldCheck size={22} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight gradient-text-brand">Compliance</h1>
+            <p className="text-[var(--fg-muted)] text-sm mt-0.5">Track obligations, deadlines and gaps</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/25 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300">
-          <ShieldCheck size={16} className="text-emerald-500 animate-pulse" />
-          <span className="text-emerald-500 font-black text-lg">{score !== null ? `${Math.round(score)}%` : "—"}</span>
-          <span className="text-[var(--fg-muted)] text-sm">compliance score{country ? ` · ${country}` : ""}</span>
+        <div className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-500/15 to-emerald-500/8 border border-teal-500/30 hover:shadow-lg hover:shadow-teal-500/20 transition-all duration-300 hover:scale-105">
+          <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_6px_#2dd4bf]" />
+          <span className="text-teal-500 font-black text-2xl tracking-tight">{score !== null ? `${Math.round(score)}%` : "—"}</span>
+          <div>
+            <p className="text-teal-400 text-xs font-semibold leading-none">Compliance Score</p>
+            {country && <p className="text-[var(--fg-muted)] text-[10px] mt-0.5">{country}</p>}
+          </div>
         </div>
       </div>
 
@@ -154,8 +162,8 @@ export default function CompliancePage() {
           <button key={c} type="button" onClick={() => { setCategory(c); setPage(1); }}
             className={`px-3 py-1.5 rounded-full text-xs transition-all duration-300 hover:scale-105 ${
               activeCategory === c
-                ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/25"
-                : "bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/30"
+                ? "bg-gradient-to-r from-blue-600 to-teal-500 text-white font-semibold shadow-lg shadow-blue-500/25"
+                : "bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-blue-500/30"
             }`}>
             {c === "all" ? "All rules" : c}
           </button>

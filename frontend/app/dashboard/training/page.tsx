@@ -109,7 +109,10 @@ export default function TrainingPage() {
   useEffect(() => {
     authApi.me().then(({ data }) => {
       const role = data?.role ?? "employee";
-      const adminAccess = role === "admin" || role === "super_admin";
+      const perms = data?.permissions ?? [];
+      const adminAccess =
+        role === "admin" || role === "super_admin" ||
+        perms.includes("can_view_ai_training");
       setIsAdmin(adminAccess);
       setRoleChecked(true);
       if (adminAccess) {
@@ -337,9 +340,9 @@ export default function TrainingPage() {
           <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center">
             <Shield size={24} className="text-rose-500" />
           </div>
-          <h2 className="text-[var(--fg)] font-bold text-lg">Admin Access Required</h2>
+          <h2 className="text-[var(--fg)] font-bold text-lg">Access Restricted</h2>
           <p className="text-[var(--fg-muted)] text-sm max-w-sm">
-            Model training is restricted to admin users. Contact your company administrator to request access.
+            You don&apos;t have permission to access AI Training. Contact your administrator to request the <code className="font-mono text-violet-400">can_view_ai_training</code> permission.
           </p>
         </div>
       </div>
@@ -350,13 +353,13 @@ export default function TrainingPage() {
     <div className="p-6 max-w-5xl mx-auto">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
-            <Brain size={20} className="text-violet-500" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.4)] flex-shrink-0">
+            <Brain size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Model Training</h1>
+            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">AI Training</h1>
             <p className="text-[var(--fg-muted)] text-sm">Train AI risk scoring models with your own labelled data</p>
           </div>
         </div>

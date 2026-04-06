@@ -526,14 +526,23 @@ export default function DocumentsPage() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Documents</h1>
-          <p className="text-[var(--fg-muted)] text-sm mt-0.5">{docs.length} documents · 95% processed</p>
+      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.4)] flex-shrink-0">
+            <FileText size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight">
+              <span className="gradient-text-brand">Documents</span>
+            </h1>
+            <p className="text-[var(--fg-muted)] text-sm mt-0.5">{docs.length} documents · AI-indexed & searchable</p>
+          </div>
         </div>
         <button type="button" onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-bold transition-all shadow-[0_4px_16px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 active:scale-95">
-          <Upload size={14} /> Upload documents
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white text-sm font-bold transition-all shadow-[0_4px_16px_rgba(37,99,235,0.35)] hover:-translate-y-0.5 active:scale-95 btn-glow-blue relative overflow-hidden shine-hover">
+          <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+          <Upload size={14} className="relative z-10" />
+          <span className="relative z-10">Upload documents</span>
         </button>
         <input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
           aria-label="Upload documents" title="Upload documents" className="hidden" onChange={onFileChange} />
@@ -542,13 +551,18 @@ export default function DocumentsPage() {
       {/* Drop zone */}
       <div onDragOver={e => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
         onDrop={onDrop} onClick={() => fileRef.current?.click()}
-        className={`mb-4 border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
-          dragging ? "border-violet-500/60 bg-violet-500/8 scale-[1.01]"
-                   : "border-[var(--border)] bg-[var(--surface)] hover:border-violet-500/30 hover:bg-violet-500/4"
+        className={`mb-4 border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-300 cursor-pointer relative overflow-hidden group ${
+          dragging ? "border-violet-500/60 bg-violet-500/8 scale-[1.01] shadow-[0_0_30px_rgba(124,58,237,0.15)]"
+                   : "border-[var(--border)] bg-[var(--surface)] hover:border-violet-500/40 hover:bg-violet-500/4 hover:shadow-[0_0_20px_rgba(124,58,237,0.08)]"
         }`}>
-        <Upload size={24} className={`mx-auto mb-3 transition-colors ${dragging ? "text-violet-500" : "text-[var(--fg-muted)]"}`} />
-        <p className="text-[var(--fg-soft)] text-sm font-medium">Drag &amp; drop documents here, or click to browse</p>
-        <p className="text-[var(--fg-muted)] text-xs mt-1">PDF, Word, Excel, TXT — up to 50 MB each</p>
+        <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center transition-all duration-300 ${dragging ? "bg-violet-500/20 border border-violet-500/40 scale-110" : "bg-[var(--surface-hover)] border border-[var(--border)] group-hover:bg-violet-500/10 group-hover:border-violet-500/30 group-hover:scale-105"}`}>
+          <Upload size={28} className={`transition-colors ${dragging ? "text-violet-500" : "text-[var(--fg-muted)] group-hover:text-violet-400"}`} />
+        </div>
+        <p className={`text-sm font-semibold mb-1 transition-colors ${dragging ? "text-violet-400" : "text-[var(--fg-soft)] group-hover:text-[var(--fg)]"}`}>Drag &amp; drop documents here, or click to browse</p>
+        <p className="text-[var(--fg-muted)] text-xs">PDF, Word, Excel, TXT — up to 50 MB each</p>
+        {dragging && (
+          <div className="absolute inset-0 border-2 border-violet-500/40 rounded-2xl animate-pulse pointer-events-none" />
+        )}
       </div>
 
       {/* Upload progress */}
@@ -582,8 +596,8 @@ export default function DocumentsPage() {
             <button key={t} type="button" onClick={() => setType(t)}
               className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                 typeFilter === t
-                  ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/25"
-                  : "bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/30"
+                  ? "bg-gradient-to-r from-blue-600 to-teal-500 text-white font-semibold shadow-lg shadow-blue-500/25"
+                  : "bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-blue-500/30"
               }`}>
               {t === "all" ? "All" : t.replace("_", " ")}
             </button>

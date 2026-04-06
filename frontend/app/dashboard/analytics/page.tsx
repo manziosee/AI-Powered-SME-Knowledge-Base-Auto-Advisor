@@ -130,10 +130,15 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Analytics</h1>
-          <p className="text-[var(--fg-muted)] text-sm mt-0.5">Performance insights and trends</p>
+      <div className="flex items-center justify-between mb-8 pb-6 border-b border-[var(--border)]">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center shadow-[0_0_24px_rgba(124,58,237,0.45)] flex-shrink-0">
+            <TrendingUp size={22} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight gradient-text-brand">Analytics</h1>
+            <p className="text-[var(--fg-muted)] text-sm mt-0.5">Performance insights and trends</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
@@ -146,10 +151,10 @@ export default function AnalyticsPage() {
                 }`}>{p}</button>
             ))}
           </div>
-          <Button variant="outline" size="sm" onClick={() => handleExport("pdf")} className="hover:scale-105 transition-transform duration-300">
+          <Button variant="blue" size="sm" onClick={() => handleExport("pdf")} className="hover:scale-105 transition-transform duration-300">
             {exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />} Export PDF
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => handleExport("excel")} className="hover:scale-105 transition-transform duration-300">
+          <Button variant="teal" size="sm" onClick={() => handleExport("excel")} className="hover:scale-105 transition-transform duration-300">
             <Download size={13} /> Excel
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowSchedule(v => !v)} className="hover:scale-105 transition-transform duration-300">
@@ -204,16 +209,17 @@ export default function AnalyticsPage() {
           {/* Summary KPIs */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[
-              { label: "Total Documents", value: kpi.totalDocuments.toLocaleString(), delta: "from DB",    accent: "text-cyan-500",    border: "hover:border-cyan-500/30",    bg: "hover:bg-cyan-500/5"    },
-              { label: "Compliance Score", value: kpi.complianceScore ? `${kpi.complianceScore}%` : "—", delta: "live",       accent: "text-emerald-500", border: "hover:border-emerald-500/30", bg: "hover:bg-emerald-500/5" },
-              { label: "Critical Risks",   value: kpi.risksResolved,  delta: "active",     accent: "text-rose-500",    border: "hover:border-rose-500/30",    bg: "hover:bg-rose-500/5"    },
-              { label: "Doc Types",        value: docTypes.length,    delta: "categories", accent: "text-violet-500",  border: "hover:border-violet-500/30",  bg: "hover:bg-violet-500/5"  },
+              { label: "Total Documents", value: kpi.totalDocuments.toLocaleString(), delta: "from DB",    accent: "text-cyan-500",    border: "border-cyan-500/20",    bg: "bg-cyan-500/5",    glow: "kpi-hover-cyan",    icon: "📄" },
+              { label: "Compliance Score", value: kpi.complianceScore ? `${kpi.complianceScore}%` : "—", delta: "live", accent: "text-emerald-500", border: "border-emerald-500/20", bg: "bg-emerald-500/5", glow: "kpi-hover-emerald", icon: "🛡️" },
+              { label: "Critical Risks",   value: kpi.risksResolved,  delta: "active",     accent: "text-rose-500",    border: "border-rose-500/20",    bg: "bg-rose-500/5",    glow: "kpi-hover-rose",    icon: "⚠️" },
+              { label: "Doc Types",        value: docTypes.length,    delta: "categories", accent: "text-violet-500",  border: "border-violet-500/20",  bg: "bg-violet-500/5",  glow: "kpi-hover-violet",  icon: "📊" },
             ].map((s) => (
-              <div key={s.label} className={`p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer ${s.border} ${s.bg}`}>
-                <p className="text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-2 font-semibold">{s.label}</p>
-                <p className="text-3xl font-black text-[var(--fg)] tracking-tight">{s.value}</p>
-                <div className={`flex items-center gap-1 mt-2 text-xs ${s.accent} font-medium`}>
-                  <TrendingUp size={11} className="animate-pulse" /> {s.delta}
+              <div key={s.label} className={`relative p-5 rounded-2xl border overflow-hidden transition-all duration-300 cursor-pointer ${s.border} ${s.bg} ${s.glow} hover:-translate-y-1`}>
+                <div className="absolute top-3 right-3 text-2xl opacity-20">{s.icon}</div>
+                <p className="text-[var(--fg-muted)] text-xs uppercase tracking-wide mb-3 font-bold">{s.label}</p>
+                <p className="text-4xl font-black text-[var(--fg)] tracking-tight mb-2">{s.value}</p>
+                <div className={`flex items-center gap-1 text-xs ${s.accent} font-semibold`}>
+                  <TrendingUp size={11} /> {s.delta}
                 </div>
               </div>
             ))}
@@ -222,8 +228,11 @@ export default function AnalyticsPage() {
           {/* Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* Risk distribution */}
-            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:shadow-lg transition-all duration-300">
-              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Risk Distribution</h3>
+            <div className="chart-card">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-rose-400" />
+                <h3 className="text-[var(--fg)] font-bold text-sm">Risk Distribution</h3>
+              </div>
               <p className="text-[var(--fg-muted)] text-xs mb-4">Current knowledge base risk levels</p>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={riskBarData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
@@ -247,8 +256,11 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Document type pie */}
-            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:shadow-lg transition-all duration-300">
-              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Document Type Breakdown</h3>
+            <div className="chart-card">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-violet-400" />
+                <h3 className="text-[var(--fg)] font-bold text-sm">Document Type Breakdown</h3>
+              </div>
               <p className="text-[var(--fg-muted)] text-xs mb-4">Distribution across {kpi.totalDocuments} documents</p>
               {docTypes.length > 0 ? (
                 <div className="flex items-center gap-4">
@@ -282,8 +294,11 @@ export default function AnalyticsPage() {
           {/* Row 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Compliance radar */}
-            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
-              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Compliance by Category</h3>
+            <div className="chart-card">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                <h3 className="text-[var(--fg)] font-bold text-sm">Compliance by Category</h3>
+              </div>
               <p className="text-[var(--fg-muted)] text-xs mb-3">Gap analysis radar</p>
               {radarData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
@@ -300,8 +315,11 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Risk counts summary */}
-            <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
-              <h3 className="text-[var(--fg)] font-semibold text-sm mb-1">Risk Summary</h3>
+            <div className="chart-card">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-amber-400" />
+                <h3 className="text-[var(--fg)] font-bold text-sm">Risk Summary</h3>
+              </div>
               <p className="text-[var(--fg-muted)] text-xs mb-4">Knowledge base risk breakdown</p>
               <div className="flex flex-col gap-3">
                 {Object.entries(riskDist).map(([level, count]) => {

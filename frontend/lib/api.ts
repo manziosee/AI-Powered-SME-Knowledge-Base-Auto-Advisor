@@ -12,13 +12,51 @@ function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
+function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("refresh_token");
+}
+
 function saveToken(token: string) {
   localStorage.setItem("access_token", token);
 }
 
+function saveRefreshToken(token: string) {
+  localStorage.setItem("refresh_token", token);
+}
+
 function clearToken() {
   localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
   localStorage.removeItem("auth_user");
+}
+
+// Prevent concurrent refresh attempts
+let _refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    const rt = getRefreshToken();
+    if (!rt) return false;
+    try {
+      const res = await fetch(`${API}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: rt }),
+      });
+      if (!res.ok) { clearToken(); return false; }
+      const data = await res.json() as { access_token: string; refresh_token: string };
+      saveToken(data.access_token);
+      saveRefreshToken(data.refresh_token);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
 }
 
 // ── Core fetch wrapper ────────────────────────────────────────────────────────
@@ -40,8 +78,35 @@ async function request<T>(
     });
 
     if (res.status === 401) {
+      // Try to refresh the token once
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        // Retry the original request with the new token
+        const newToken = getToken();
+        const retryHeaders: Record<string, string> = { ...headers };
+        if (newToken) retryHeaders["Authorization"] = `Bearer ${newToken}`;
+        const retryRes = await fetch(`${API}${path}`, {
+          ...options,
+          headers: { ...retryHeaders, ...(options.headers as Record<string, string> ?? {}) },
+        });
+        if (retryRes.status === 401) {
+          clearToken();
+          if (typeof window !== "undefined") window.location.href = "/login";
+          return { data: null, error: "Session expired. Please log in again." };
+        }
+        if (!retryRes.ok) {
+          const body = await retryRes.json().catch(() => ({}));
+          let err: any = body?.detail ?? `HTTP ${retryRes.status}`;
+          if (Array.isArray(err)) err = err.map((e) => e?.msg ?? JSON.stringify(e)).join("; ");
+          else if (typeof err === "object" && err !== null) err = err.msg ?? err.error ?? JSON.stringify(err);
+          return { data: null, error: String(err) };
+        }
+        const data: T = await retryRes.json();
+        return { data, error: null };
+      }
       clearToken();
-      return { data: null, error: "Unauthorized — please log in again." };
+      if (typeof window !== "undefined") window.location.href = "/login";
+      return { data: null, error: "Session expired. Please log in again." };
     }
 
     if (!res.ok) {
@@ -86,8 +151,9 @@ export const auth = {
         const body = await res.json().catch(() => ({}));
         return { data: null, error: String(body?.detail ?? `HTTP ${res.status}`), userId: "" };
       }
-      const data = await res.json() as { access_token: string; token_type: string };
+      const data = await res.json() as { access_token: string; refresh_token: string; token_type: string };
       if (data?.access_token) saveToken(data.access_token);
+      if (data?.refresh_token) saveRefreshToken(data.refresh_token);
       return { data, error: null, userId: "" };
     } catch {
       return { data: null, error: "Cannot reach server — is the backend running?", userId: "" };
@@ -106,15 +172,16 @@ export const auth = {
   async register(payload: {
     email: string; password: string; full_name: string;
     company_name?: string; country?: string; industry?: string;
+    account_type?: "company" | "individual";
   }) {
-    return request<{ id: string; email: string; full_name: string }>(
+    return request<{ id: string; email: string; full_name: string; role: string; account_type: string }>(
       "/auth/register",
       { method: "POST", body: JSON.stringify(payload) },
     );
   },
 
   async me() {
-    return request<{ id: string; email: string; full_name: string; role: string; company?: { name: string } }>(
+    return request<{ id: string; email: string; full_name: string; role: string; account_type?: string; permissions?: string[]; company?: { name: string } }>(
       "/auth/me",
     );
   },
@@ -244,6 +311,23 @@ export const documents = {
     return request<{ url: string }>(`/documents/${id}/download`);
   },
 
+  async getKnowledge(id: string) {
+    return request<Array<{ id: string; title: string; content: string; knowledge_type: string; risk_level: string; deadline?: string; tags: string[] }>>(`/documents/${id}/knowledge`);
+  },
+
+  async bulkUpload(files: File[]) {
+    const form = new FormData();
+    files.forEach(f => form.append("files", f));
+    const token = getToken();
+    const res = await fetch(`${API}/documents/bulk-upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) { const b = await res.json().catch(() => ({})); return { data: null, error: b.detail ?? `HTTP ${res.status}` }; }
+    return { data: await res.json(), error: null };
+  },
+
   async delete(id: string) {
     return request<{ message: string }>(`/documents/${id}`, { method: "DELETE" });
   },
@@ -257,11 +341,25 @@ export interface AskResponse {
 }
 
 export const advisor = {
-  async ask(question: string, sessionId?: string) {
+  async ask(question: string) {
     return request<AskResponse>("/advisor/ask", {
       method: "POST",
       body: JSON.stringify({ query: question }),
     });
+  },
+
+  async askAgent(question: string) {
+    return request<AskResponse>("/advisor/ask-agent", {
+      method: "POST",
+      body: JSON.stringify({ query: question }),
+    });
+  },
+
+  // Server-Sent Events streaming — returns a ReadableStream
+  stream(question: string): EventSource {
+    const token = getToken();
+    const url = `${API}/advisor/stream?query=${encodeURIComponent(question)}${token ? `&token=${token}` : ""}`;
+    return new EventSource(url);
   },
 };
 
@@ -437,14 +535,53 @@ export const company = {
   },
 
   async inviteUser(email: string, role: string) {
-    return request<{ message: string }>("/companies/me/invite", {
+    return request<{ status: string; email: string; role: string }>("/companies/me/invite", {
       method: "POST",
       body: JSON.stringify({ email, role }),
     });
   },
 
+  async getInviteInfo(token: string) {
+    return request<{ email: string; company_name: string; role: string; valid: boolean }>(
+      `/companies/invite/${token}`,
+    );
+  },
+
   async removeUser(userId: string) {
     return request<{ message: string }>(`/companies/me/users/${userId}`, { method: "DELETE" });
+  },
+
+  async updateUserRole(userId: string, role: string) {
+    return request<{ status: string; user_id: string; new_role: string }>(
+      `/companies/me/users/${userId}/role`,
+      { method: "PATCH", body: JSON.stringify({ role }) },
+    );
+  },
+};
+
+
+// -- Integrations (Webhooks) --------------------------------------------------
+export const integrations = {
+  async list() {
+    return request<Array<{ id: string; name: string; webhook_url: string; events: string[]; is_active: boolean; last_triggered_at: string | null; created_at: string }>>("/integrations/");
+  },
+  async get(id: string) {
+    return request<{ id: string; name: string; webhook_url: string; events: string[]; is_active: boolean }>(`/integrations/${id}`);
+  },
+  async create(payload: { name: string; webhook_url: string; events: string[]; secret?: string }) {
+    return request<{ id: string; name: string; webhook_url: string }>("/integrations/", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async update(id: string, payload: { name?: string; webhook_url?: string; events?: string[]; is_active?: boolean }) {
+    return request<{ id: string; name: string }>(`/integrations/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+  },
+  async delete(id: string) {
+    return request<{ status: string }>(`/integrations/${id}`, { method: "DELETE" });
+  },
+  async test(id: string) {
+    return request<{ status: string; response_code?: number }>(`/integrations/${id}/test`, { method: "POST" });
+  },
+  async logs(id: string) {
+    return request<Array<{ id: string; event: string; status: string; response_code: number; created_at: string }>>(`/integrations/${id}/logs`);
   },
 };
 
@@ -668,10 +805,24 @@ export const admin = {
     return request<{
       items: Array<{
         id: string; email: string; full_name: string; role: string;
-        company_id: string | null; is_active: boolean; created_at: string; last_login: string | null;
+        company_id: string | null; is_active: boolean; permissions: string[];
+        account_type: string; created_at: string; last_login: string | null;
       }>;
       total: number;
     }>(`/admin/users${q ? `?${q}` : ""}`);
+  },
+
+  async getUserPermissions(userId: string) {
+    return request<{ user_id: string; permissions: string[]; all_permissions: string[] }>(
+      `/admin/users/${userId}/permissions`,
+    );
+  },
+
+  async updateUserPermissions(userId: string, permissions: string[]) {
+    return request<{ user_id: string; permissions: string[] }>(
+      `/admin/users/${userId}/permissions`,
+      { method: "PUT", body: JSON.stringify({ permissions }) },
+    );
   },
 
   async createUser(payload: { email: string; full_name: string; password: string; role: string; company_id?: string }) {

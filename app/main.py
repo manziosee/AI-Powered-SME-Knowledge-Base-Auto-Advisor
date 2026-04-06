@@ -79,7 +79,12 @@ _OPENAPI_TAGS = [
         "name": "Authentication",
         "description": (
             "Register, login, logout, refresh tokens, forgot/reset password, and profile management.\n\n"
+            "**Registration flows:**\n"
+            "- `account_type=company` — creates a company, user becomes `super_admin`\n"
+            "- `account_type=individual` — personal account, `individual` role, no company\n\n"
             "- `POST /auth/login` — returns `access_token` (30 min) + `refresh_token` (7 days)\n"
+            "- `POST /auth/refresh` — auto-called by the frontend on 401; rotates both tokens\n"
+            "- `POST /auth/forgot-password` — sends reset email via SMTP; returns token in dev mode\n"
             "- Account locked **15 min** after 5 consecutive failed login attempts\n"
             "- If 2FA is enabled, login returns HTTP 403 `{code: '2fa_required', user_id}` — "
             "complete with `POST /auth/2fa/validate`"
@@ -202,7 +207,8 @@ _OPENAPI_TAGS = [
         "description": (
             "Company profile management and team administration.\n\n"
             "- `GET /companies/me` — current user's company\n"
-            "- `POST /companies/me/invite` — invite a team member by email\n"
+            "- `POST /companies/me/invite` — invite a team member by email (sends invite link)\n"
+            "- `GET /companies/invite/{token}` — validate an invite token (public)\n"
             "- Role hierarchy: `EMPLOYEE < MANAGER < ADMIN < SUPER_ADMIN`\n"
             "- Super Admins can create and delete companies"
         ),
@@ -242,11 +248,15 @@ _OPENAPI_TAGS = [
     {
         "name": "Admin",
         "description": (
-            "System administration. Requires `admin` or `super_admin` role.\n\n"
+            "System administration. Requires `admin` or `super_admin` role (or specific permissions).\n\n"
             "**super_admin only:** user CRUD, company management, compliance rule CRUD, seed rules\n\n"
-            "**admin+:** system stats, audit logs (filterable by user/action/resource), "
-            "ML model status/training, health alerts, LLM status\n\n"
-            "Audit logs track every mutation with user ID, action, resource type, IP, and timestamp."
+            "**admin+:** system stats, audit logs, ML model status/training, health alerts, LLM status\n\n"
+            "**Permission-based access (no role required):**\n"
+            "- `GET /admin/ml/status` \u2014 also accessible with `can_view_ai_training` permission\n"
+            "- `POST /admin/ml/train-risk-scorer` \u2014 also accessible with `can_train_model` permission\n"
+            "- `POST /admin/ml/predict-risk` \u2014 also accessible with `can_view_ai_training` permission\n\n"
+            "**Audit log actions tracked:** `update_permissions` (includes added/removed permission lists), "
+            "plus all document, user, and company mutations."
         ),
     },
     {
@@ -314,7 +324,10 @@ app = FastAPI(
         "- **Real-time** — WebSocket push notifications\n"
         "- **Integrations** — HMAC-signed outbound webhooks\n"
         "- **OCR** — Tesseract fallback for scanned PDFs\n"
-        "- **Data Retention** — GDPR/RPDP-compliant auto-archival via Celery beat\n\n"
+        "- **Data Retention** — GDPR/RPDP-compliant auto-archival via Celery beat\n"
+        "- **RBAC + Permissions** — role-based access + fine-grained per-user permission overrides\n"
+        "- **User Invites** — email-based invite flow with 7-day token, role pre-assignment\n"
+        "- **Audit Trail** — every mutation logged including permission changes\n\n"
         "## Authentication\n"
         "All protected endpoints require a Bearer JWT in the `Authorization` header.\n"
         "```\nAuthorization: Bearer <access_token>\n```\n"
@@ -387,6 +400,7 @@ def custom_openapi():
         "/api/v1/auth/2fa/validate",
         "/api/v1/share-links/{token}",
         "/api/v1/share-links/{token}/view",
+        "/api/v1/companies/invite/{token}",
         "/api/v1/connectors/mtn-momo/webhook",
         "/api/v1/connectors/airtel-money/webhook",
         "/api/v1/subscriptions/webhook",

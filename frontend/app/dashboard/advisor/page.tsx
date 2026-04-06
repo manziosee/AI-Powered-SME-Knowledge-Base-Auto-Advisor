@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   Send, Brain, Plus, Clock, Sparkles,
   FileText, Shield, Search, Zap, BookOpen, Trash2,
@@ -406,12 +407,12 @@ export default function AdvisorPage() {
       <div className="w-60 border-r border-[var(--border)] flex flex-col bg-[var(--bg-soft)] flex-shrink-0">
         <div className="p-4 border-b border-[var(--border)]">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="w-6 h-6 rounded-lg bg-violet-500/15 flex items-center justify-center">
                 <Brain size={12} className="text-violet-500" />
               </div>
               <span className="text-[var(--fg)] font-semibold text-xs">AdvisorAI</span>
-            </div>
+            </Link>
             <button
               type="button"
               title="New conversation"
@@ -520,16 +521,18 @@ export default function AdvisorPage() {
           {messages.length === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center py-12">
               <div className="relative mb-6">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500/15 to-cyan-500/10 border border-violet-500/25 flex items-center justify-center shadow-[0_0_40px_rgba(167,139,250,0.12)]">
-                  <Brain size={32} className="text-violet-500" />
+                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shadow-[0_0_50px_rgba(124,58,237,0.35)]">
+                  <Brain size={38} className="text-white" />
                 </div>
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_0_8px_#34d399]">
+                <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_0_12px_#34d399] border-2 border-[var(--bg)]">
                   <span className="text-white text-[8px] font-black">ON</span>
                 </div>
+                {/* Orbit ring */}
+                <div className="absolute inset-0 -m-4 rounded-full border border-violet-500/20 animate-ping opacity-30 pointer-events-none" />
               </div>
-              <h3 className="text-[var(--fg)] font-bold text-lg mb-1">Ask AdvisorAI anything</h3>
+              <h3 className="text-[var(--fg)] font-black text-xl mb-2">Ask AdvisorAI anything</h3>
               <p className="text-[var(--fg-muted)] text-sm max-w-sm text-center mb-8 leading-relaxed">
-                Search your documents, check compliance, score risks — all in plain English.
+                Search your documents, check compliance, score risks — all in plain English. Powered by Groq Llama 3.3 · RAG.
               </p>
               <div className="grid grid-cols-2 gap-2.5 w-full max-w-md">
                 {PROMPTS.map(({ icon: Icon, text, color, bg }) => (

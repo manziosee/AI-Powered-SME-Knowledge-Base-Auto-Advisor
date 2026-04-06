@@ -9,7 +9,7 @@ import {
 import {
   FileText, Brain, ShieldCheck, AlertTriangle,
   Activity, TrendingUp, TrendingDown, Settings2, ChevronRight,
-  Bell, Calendar, Clock, ArrowUpRight, Heart,
+  Bell, Calendar, Clock, ArrowUpRight, Heart, LayoutDashboard, Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { analytics, notifications as notifApi, insights } from "@/lib/api";
@@ -258,26 +258,33 @@ export default function DashboardPage() {
   return (
     <div className="p-5 max-w-[1400px] mx-auto">
 
-      {/* ── Header row (URBN-inspired) ── */}
+      {/* ── Header row ── */}
       <div className="flex items-center justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--fg)] tracking-tight">Dashboard</h1>
-          <p className="text-[var(--fg-muted)] text-xs mt-0.5">{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}{user?.company ? ` · ${user.company}` : ""}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.35)] flex-shrink-0">
+            <LayoutDashboard size={18} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black tracking-tight">
+              <span className="gradient-text-brand">Dashboard</span>
+            </h1>
+            <p className="text-[var(--fg-muted)] text-xs mt-0.5">{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}{user?.company ? ` · ${user.company}` : ""}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
           {/* Live indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            <Activity size={11} className="text-emerald-500 animate-pulse-slow" />
-            <span className="text-emerald-500 text-xs font-medium">Live</span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20">
+            <Activity size={11} className="text-teal-500 animate-pulse-slow" />
+            <span className="text-teal-500 text-xs font-medium">Live</span>
           </div>
 
-          {/* Manage widgets — URBN signature button enhanced */}
+          {/* Manage widgets */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowWidgetMenu(!showWidgetMenu)}
-              className="group flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-violet-500/40 hover:bg-[var(--surface-hover)] text-xs font-medium transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-0.5"
+              className="group flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-blue-500/40 hover:bg-[var(--surface-hover)] text-xs font-medium transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5"
             >
               <Settings2 size={13} className="group-hover:rotate-90 transition-transform duration-300" />
               Manage widgets

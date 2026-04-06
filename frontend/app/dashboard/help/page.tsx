@@ -229,12 +229,14 @@ export default function HelpPage() {
       {/* ── Header ── */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
-            <HelpCircle size={20} className="text-violet-500" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.4)] flex-shrink-0">
+            <HelpCircle size={20} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Help &amp; Support</h1>
+          <div>
+            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Help &amp; Support</h1>
+            <p className="text-[var(--fg-muted)] text-sm">Find answers, contact support, or check system status.</p>
+          </div>
         </div>
-        <p className="text-[var(--fg-muted)] text-sm ml-[52px]">Find answers, contact support, or check system status.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

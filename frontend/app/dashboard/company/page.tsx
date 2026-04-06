@@ -212,10 +212,15 @@ export default function CompanyPage() {
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} onInvited={handleInvited} />}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Company</h1>
-          <p className="text-[var(--fg-muted)] text-sm mt-0.5">Manage your organisation profile and team</p>
+      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)] flex-shrink-0">
+            <Building2 size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Company</h1>
+            <p className="text-[var(--fg-muted)] text-sm mt-0.5">Manage your organisation profile and team</p>
+          </div>
         </div>
         {isManager && (
           <button type="button" onClick={() => setShowInvite(true)}

@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     # Webhook security
     WEBHOOK_SECRET: str = ""
 
+    # Frontend URL (used for password reset links)
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # Stripe billing
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

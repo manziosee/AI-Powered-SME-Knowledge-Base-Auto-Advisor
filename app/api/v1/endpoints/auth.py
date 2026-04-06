@@ -91,9 +91,18 @@ class ProfileUpdate(BaseModel):
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new account",
-    description="Create a new user account. Optionally creates a company. Password must be ≥8 chars with at least one letter and one digit.",
+    description=(
+        "Create a new user account.\n\n"
+        "**`account_type=company` (default):** Creates a company and assigns the registering user as `super_admin`. "
+        "Requires `company_name`. Company name must be unique.\n\n"
+        "**`account_type=individual`:** Creates a personal account with `individual` role and no company. "
+        "Limited to personal document management and AI queries.\n\n"
+        "Password must be \u22658 characters with at least one letter and one digit."
+    ),
 )
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+    from app.models.user import AccountType, DEFAULT_PERMISSIONS
+
     result = await db.execute(select(User).where(User.email == user_data.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -104,26 +113,46 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    role_value = user_data.role.value if hasattr(user_data.role, "value") else user_data.role
+    # Determine account type
+    acct_type_str = (user_data.account_type or "company").lower()
+    is_individual = acct_type_str == "individual"
 
-    # Determine company_id — create new company if company_name provided
-    company_id = user_data.company_id
-    if not company_id and user_data.company_name:
-        from app.models.company import Company
-        company = Company(
-            name=user_data.company_name,
-            country=user_data.country or "US",
-            industry=user_data.industry,
-        )
-        db.add(company)
-        await db.flush()  # get the ID without committing
-        company_id = company.id
+    # Determine role
+    if is_individual:
+        # Individual users get the individual role — no company
+        role_value = UserRole.INDIVIDUAL.value
+        company_id = None
+        account_type = AccountType.INDIVIDUAL
+    else:
+        # Company registration — first user becomes super_admin
+        role_value = UserRole.SUPER_ADMIN.value
+        account_type = AccountType.COMPANY
+        company_id = user_data.company_id
+        if not company_id and user_data.company_name:
+            from app.models.company import Company
+            # Check company name uniqueness
+            existing_co = await db.execute(select(Company).where(Company.name == user_data.company_name))
+            if existing_co.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail=f"A company named '{user_data.company_name}' already exists. Use a different name or ask your administrator to add you.")
+            company = Company(
+                name=user_data.company_name,
+                country=user_data.country or "US",
+                industry=user_data.industry,
+            )
+            db.add(company)
+            await db.flush()
+            company_id = company.id
+
+    # Assign default permissions based on role
+    permissions = DEFAULT_PERMISSIONS.get(role_value, [])
 
     user = User(
         email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
         full_name=user_data.full_name,
         role=role_value,
+        account_type=account_type,
+        permissions=permissions,
         company_id=company_id,
     )
     try:
@@ -131,7 +160,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         await db.commit()
         await db.refresh(user)
         return user
-    except Exception as exc:  # safety net to avoid opaque 500s in production
+    except Exception as exc:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Registration failed: {exc}")
 
@@ -326,8 +355,20 @@ async def forgot_password(
                 str(user.id),
             )
 
-        # TODO: send email via SMTP service
-        # In development the token is returned directly; remove in production
+        # Send password reset email
+        try:
+            from app.services.email_service import send_password_reset_email
+            frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+            await send_password_reset_email(
+                user_email=user.email,
+                user_name=user.full_name,
+                reset_token=reset_token,
+                frontend_url=frontend_url,
+            )
+        except Exception:
+            pass  # non-fatal — token still valid
+
+        # In development return token directly for testing
         if settings.ENVIRONMENT == "development":
             return {"status": "ok", "reset_token": reset_token, "note": "dev-only: remove in production"}
 
@@ -374,19 +415,19 @@ async def reset_password(
 
 @router.get("/me", response_model=UserResponse, summary="Get current user profile", description="Returns the authenticated user's profile including company name.")
 async def get_me(current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db)):
-    # Attach company name for frontend use
     company_name = None
     if current_user.company_id:
         from app.models.company import Company
         result = await db.execute(select(Company).where(Company.id == current_user.company_id))
         company = result.scalar_one_or_none()
         company_name = company.name if company else None
-    # Return as dict so we can add company field not in schema
     return {
         "id": str(current_user.id),
         "email": current_user.email,
         "full_name": current_user.full_name,
         "role": current_user.role,
+        "account_type": current_user.account_type.value if hasattr(current_user.account_type, "value") else (current_user.account_type or "company"),
+        "permissions": current_user.permissions or [],
         "is_active": current_user.is_active,
         "is_verified": current_user.is_verified,
         "company_id": str(current_user.company_id) if current_user.company_id else None,

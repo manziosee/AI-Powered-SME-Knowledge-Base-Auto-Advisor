@@ -477,20 +477,33 @@ export default function SettingsPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight mb-8">Settings</h1>
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center shadow-[0_0_16px_rgba(100,116,139,0.35)] flex-shrink-0">
+          <User size={20} className="text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-black tracking-tight">
+            <span className="gradient-text-brand">Settings</span>
+          </h1>
+          <p className="text-[var(--fg-muted)] text-sm">Manage your account, security, and preferences</p>
+        </div>
+      </div>
 
       <div className="flex gap-6">
         {/* Sidebar */}
         <div className="w-48 flex-shrink-0">
-          <nav className="flex flex-col gap-1">
+          <nav className="flex flex-col gap-1.5">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button key={id} type="button" onClick={() => setActive(id)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-300 hover:scale-105 ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-300 hover:scale-[1.01] group ${
                   active === id
-                    ? "bg-gradient-to-r from-violet-500/15 to-purple-500/15 border border-violet-500/30 text-violet-500 font-semibold shadow-lg shadow-violet-500/10"
-                    : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface)] hover:border-violet-500/20"
+                    ? "bg-gradient-to-r from-blue-600/15 to-teal-500/10 border border-blue-500/30 text-blue-500 font-semibold shadow-lg shadow-blue-500/10"
+                    : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface)] border border-transparent hover:border-[var(--border)]"
                 }`}>
-                <Icon size={15} /> {label}
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${active === id ? "bg-blue-500/15 border border-blue-500/25" : "bg-[var(--surface)] border border-[var(--border)] group-hover:border-blue-500/20"}`}>
+                  <Icon size={13} className={active === id ? "text-blue-500" : "text-[var(--fg-muted)] group-hover:text-[var(--fg)]"} />
+                </div>
+                {label}
               </button>
             ))}
           </nav>
@@ -540,8 +553,9 @@ export default function SettingsPage() {
                   </div>
                 )}
                 <button type="button" onClick={handleSave} disabled={saving}
-                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-bold text-sm transition-all shadow-[0_0_15px_rgba(124,58,237,0.25)] hover:-translate-y-0.5 active:scale-95 disabled:opacity-50">
-                  {saved ? <><Check size={13} /> Saved!</> : saving ? <><Save size={13} className="animate-spin" /> Saving…</> : <><Save size={13} /> Save changes</>}
+                  className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 text-white font-bold text-sm transition-all shadow-[0_0_15px_rgba(37,99,235,0.25)] hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 overflow-hidden shine-hover relative">
+                  <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                  {saved ? <><Check size={13} className="relative z-10" /><span className="relative z-10">Saved!</span></> : saving ? <><Save size={13} className="animate-spin relative z-10" /><span className="relative z-10">Saving…</span></> : <><Save size={13} className="relative z-10" /><span className="relative z-10">Save changes</span></>}
                 </button>
               </div>
             )}

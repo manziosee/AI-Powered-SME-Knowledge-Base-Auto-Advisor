@@ -120,16 +120,21 @@ export default function NotificationsPage() {
 
       {/* ── Header ───────────────────────────────────────────────── */}
       <div className="flex items-start justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight flex items-center gap-2.5">
-            Notifications
+        <div className="flex items-center gap-3">
+          <div className="relative flex-shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center shadow-[0_0_20px_rgba(244,63,94,0.4)]">
+              <Bell size={20} className="text-white" />
+            </div>
             {unread > 0 && (
-              <span className="flex items-center justify-center min-w-[1.5rem] h-6 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black shadow-[0_0_10px_rgba(239,68,68,0.4)]">
+              <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)] border-2 border-[var(--bg)]">
                 {unread}
               </span>
             )}
-          </h1>
-          <p className="text-[var(--fg-muted)] text-sm mt-0.5">Stay on top of deadlines and compliance alerts</p>
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Notifications</h1>
+            <p className="text-[var(--fg-muted)] text-sm mt-0.5">Stay on top of deadlines and compliance alerts</p>
+          </div>
         </div>
         <button type="button" onClick={markAllRead}
           className="flex items-center gap-1.5 text-[var(--fg-muted)] text-xs hover:text-[var(--fg)] transition-all px-3 py-2 rounded-xl hover:bg-[var(--surface)] border border-transparent hover:border-[var(--border)]">

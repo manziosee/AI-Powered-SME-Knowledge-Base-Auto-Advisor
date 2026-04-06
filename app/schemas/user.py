@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, UUID4
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from app.models.user import UserRole
+from app.models.user import UserRole, AccountType
 from app.models.document import DocumentType, DocumentStatus
 from app.models.knowledge_entry import KnowledgeType, RiskLevel
 
@@ -19,6 +19,7 @@ class UserCreate(UserBase):
     company_name: Optional[str] = None
     country: Optional[str] = None
     industry: Optional[str] = None
+    account_type: Optional[str] = "company"  # "company" or "individual"
 
 
 class UserUpdate(BaseModel):
@@ -32,6 +33,8 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     company_id: Optional[UUID4]
+    account_type: Optional[str] = "company"
+    permissions: Optional[List[str]] = []
     created_at: datetime
     last_login: Optional[datetime]
     

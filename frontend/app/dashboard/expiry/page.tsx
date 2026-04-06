@@ -71,13 +71,13 @@ export default function ExpiryPage() {
     <div className="p-6 max-w-[1200px] mx-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center">
-            <Clock size={18} className="text-amber-500" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.4)] flex-shrink-0">
+            <Clock size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Expiring Documents</h1>
+            <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Expiry Alerts</h1>
             <p className="text-[var(--fg-muted)] text-sm mt-0.5">Track documents approaching their expiry dates</p>
           </div>
         </div>

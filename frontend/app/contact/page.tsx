@@ -29,9 +29,12 @@ export default function ContactPage() {
       <section className="pt-36 pb-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <span className="text-xs font-semibold tracking-[0.2em] uppercase text-violet-500 mb-4 block">Get in touch</span>
-            <h1 className="text-4xl md:text-5xl font-black text-[var(--fg)] mb-4">We&apos;d love to hear from you</h1>
-            <p className="text-[var(--fg-soft)] text-lg max-w-xl mx-auto">Have a question, need a demo, or want to discuss enterprise options? Drop us a message.</p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-violet-500/25 bg-violet-500/8 text-xs font-bold tracking-widest text-violet-600 dark:text-violet-400 uppercase mb-6">
+              <Mail size={11} className="fill-current" />
+              Get in touch
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-[var(--fg)] mb-4 tracking-tight">We&apos;d love to <span className="gradient-text">hear from you</span></h1>
+            <p className="text-[var(--fg-soft)] text-lg max-w-xl mx-auto leading-relaxed">Have a question, need a demo, or want to discuss enterprise options? Drop us a message.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">

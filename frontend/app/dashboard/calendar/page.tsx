@@ -237,10 +237,15 @@ export default function ComplianceCalendarPage() {
     <div className="p-5 max-w-[1400px] mx-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--fg)] tracking-tight">Compliance Calendar</h1>
-          <p className="text-[var(--fg-muted)] text-xs mt-0.5">Track upcoming deadlines and regulatory filings</p>
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-[0_0_16px_rgba(59,130,246,0.4)] flex-shrink-0">
+            <Calendar size={18} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-[var(--fg)] tracking-tight">Compliance Calendar</h1>
+            <p className="text-[var(--fg-muted)] text-xs mt-0.5">Track upcoming deadlines and regulatory filings</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button

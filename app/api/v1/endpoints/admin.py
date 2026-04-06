@@ -82,7 +82,11 @@ class MLTrainingRequest(BaseModel):
 # System stats
 # ---------------------------------------------------------------------------
 
-@router.get("/stats")
+@router.get(
+    "/stats",
+    summary="System-wide statistics",
+    description="Returns total counts for companies, users (total + active), documents, and knowledge entries. Also includes ML model training status. Requires `admin` role.",
+)
 async def system_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -115,7 +119,11 @@ async def system_stats(
 # User management
 # ---------------------------------------------------------------------------
 
-@router.get("/users")
+@router.get(
+    "/users",
+    summary="List all users (Super Admin)",
+    description="Returns all users across all companies with optional filters for `company_id` and `is_active`. Includes `permissions` and `account_type` fields.",
+)
 async def list_all_users(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
@@ -148,7 +156,11 @@ async def list_all_users(
     }
 
 
-@router.put("/users/{user_id}/status")
+@router.put(
+    "/users/{user_id}/status",
+    summary="Activate or deactivate a user",
+    description="Toggle a user's `is_active` flag. Deactivated users cannot log in. Requires `super_admin`.",
+)
 async def update_user_status(
     user_id: str,
     payload: UserStatusUpdate,
@@ -168,7 +180,15 @@ async def update_user_status(
 # Audit logs
 # ---------------------------------------------------------------------------
 
-@router.get("/audit-logs")
+@router.get(
+    "/audit-logs",
+    summary="Get audit logs",
+    description=(
+        "Returns the audit trail for all mutations in the system. Filterable by `user_id`.\n\n"
+        "Each entry includes: `action`, `resource_type`, `resource_id`, `details` (JSON), `ip_address`, `created_at`.\n\n"
+        "Permission changes are logged with `action=update_permissions` and include `added`/`removed` permission lists."
+    ),
+)
 async def get_audit_logs(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -213,7 +233,11 @@ async def get_audit_logs(
 # Compliance rules management
 # ---------------------------------------------------------------------------
 
-@router.get("/compliance-rules")
+@router.get(
+    "/compliance-rules",
+    summary="List compliance rules",
+    description="Returns active compliance rules filterable by `country_code` and `category`. Requires `admin` role.",
+)
 async def list_compliance_rules(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -242,7 +266,12 @@ async def list_compliance_rules(
     return {"items": [_serialize_rule(r) for r in rules], "total": len(rules)}
 
 
-@router.post("/compliance-rules", status_code=201)
+@router.post(
+    "/compliance-rules",
+    status_code=201,
+    summary="Create a compliance rule",
+    description="Add a new compliance rule for a country. Requires `super_admin`.",
+)
 async def create_compliance_rule(
     payload: ComplianceRuleCreate,
     db: AsyncSession = Depends(get_db),
@@ -271,7 +300,11 @@ async def create_compliance_rule(
     return _serialize_rule(rule)
 
 
-@router.put("/compliance-rules/{rule_id}")
+@router.put(
+    "/compliance-rules/{rule_id}",
+    summary="Update a compliance rule",
+    description="Update title, description, severity, keywords, or action_required for a rule. Requires `super_admin`.",
+)
 async def update_compliance_rule(
     rule_id: str,
     payload: ComplianceRuleUpdate,
@@ -294,7 +327,11 @@ async def update_compliance_rule(
     return _serialize_rule(rule)
 
 
-@router.delete("/compliance-rules/{rule_id}")
+@router.delete(
+    "/compliance-rules/{rule_id}",
+    summary="Deactivate a compliance rule",
+    description="Soft-deletes a compliance rule by setting `is_active=False`. Requires `super_admin`.",
+)
 async def delete_compliance_rule(
     rule_id: str,
     db: AsyncSession = Depends(get_db),
@@ -309,7 +346,11 @@ async def delete_compliance_rule(
     return {"status": "deactivated", "rule_id": rule_id}
 
 
-@router.post("/compliance-rules/seed")
+@router.post(
+    "/compliance-rules/seed",
+    summary="Seed default compliance rules",
+    description="Seeds the database with built-in country-specific compliance rules (RW, KE, NG, ZA, FR, US, EU/GDPR). Idempotent — safe to run multiple times. Requires `super_admin`.",
+)
 async def seed_compliance_rules(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
@@ -322,10 +363,17 @@ async def seed_compliance_rules(
 # ML model management
 # ---------------------------------------------------------------------------
 
-@router.get("/ml/status")
+@router.get(
+    "/ml/status",
+    summary="ML model training status",
+    description="Returns training status and stats for the risk scorer model. Accessible to `admin`/`super_admin` roles or users with `can_view_ai_training` permission.",
+)
 async def ml_status(
-    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    current_user: User = Depends(get_current_active_user),
 ):
+    role_val = current_user.role.value if hasattr(current_user.role, "value") else current_user.role
+    if role_val not in ("admin", "super_admin") and not current_user.has_permission("can_view_ai_training"):
+        raise HTTPException(status_code=403, detail="Access denied. Requires admin role or 'can_view_ai_training' permission.")
     return {
         "risk_scorer": {
             "is_trained": _risk_scorer.is_trained,
@@ -336,17 +384,35 @@ async def ml_status(
     }
 
 
-@router.post("/ml/train-risk-scorer")
+@router.post(
+    "/ml/train-risk-scorer",
+    summary="Train the risk scorer model",
+    description=(
+        "Trigger retraining of the TF-IDF + Logistic Regression risk scorer.\n\n"
+        "- Provide `training_data` as `[{\"text\": \"...\", \"label\": \"low|medium|high|critical\"}]`\n"
+        "- If omitted, auto-builds from labelled knowledge entries in your company's knowledge base\n"
+        "- Minimum 4 labelled samples required\n\n"
+        "Accessible to `admin`/`super_admin` roles or users with `can_train_model` permission."
+    ),
+)
 async def train_risk_scorer(
     payload: MLTrainingRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    current_user: User = Depends(get_current_active_user),
 ):
     """
-    Train the predictive risk scorer with labelled data.
-    If no payload.training_data is provided, build a dataset from existing
-    KnowledgeEntry records with risk_level set for the current company.
+    Train the predictive risk scorer.
+    Requires either admin role OR can_train_model permission.
     """
+    from app.models.user import _ROLE_HIERARCHY_VALUES
+    role_val = current_user.role.value if hasattr(current_user.role, "value") else current_user.role
+    is_admin = role_val in ("admin", "super_admin")
+    has_perm = current_user.has_permission("can_train_model")
+    if not is_admin and not has_perm:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Requires admin role or 'can_train_model' permission.",
+        )
     training_data = payload.training_data or []
 
     # Auto-build training data from knowledge entries when none provided
@@ -387,11 +453,18 @@ class PredictRiskRequest(BaseModel):
     text: str
 
 
-@router.post("/ml/predict-risk")
+@router.post(
+    "/ml/predict-risk",
+    summary="Predict risk level for text",
+    description="Run the trained risk scorer on a text snippet. Returns `risk_level` (low/medium/high/critical) and `confidence`. Requires `admin` role or `can_view_ai_training` permission.",
+)
 async def predict_risk(
     payload: PredictRiskRequest,
-    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    current_user: User = Depends(get_current_active_user),
 ):
+    role_val = current_user.role.value if hasattr(current_user.role, "value") else current_user.role
+    if role_val not in ("admin", "super_admin") and not current_user.has_permission("can_view_ai_training"):
+        raise HTTPException(status_code=403, detail="Access denied.")
     result = _risk_scorer.score_with_explanation(payload.text)
     return result
 
@@ -406,6 +479,8 @@ def _serialize_user(u: User) -> dict:
         "email": u.email,
         "full_name": u.full_name,
         "role": u.role.value,
+        "account_type": u.account_type.value if hasattr(u.account_type, "value") else (u.account_type or "company"),
+        "permissions": u.permissions or [],
         "company_id": str(u.company_id) if u.company_id else None,
         "is_active": u.is_active,
         "is_verified": u.is_verified,
@@ -438,7 +513,11 @@ def _serialize_rule(r: ComplianceRule) -> dict:
 # Company management
 # ---------------------------------------------------------------------------
 
-@router.get("/companies")
+@router.get(
+    "/companies",
+    summary="List all companies with stats (Super Admin)",
+    description="Returns all companies with user count and document count. Requires `super_admin`.",
+)
 async def list_all_companies(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
@@ -483,6 +562,10 @@ class UserRoleUpdate(BaseModel):
     role: str
 
 
+class UserPermissionsUpdate(BaseModel):
+    permissions: list[str]
+
+
 class UserCreate(BaseModel):
     email: str
     full_name: str
@@ -491,7 +574,83 @@ class UserCreate(BaseModel):
     company_id: Optional[str] = None
 
 
-@router.put("/users/{user_id}/role")
+@router.get(
+    "/users/{user_id}/permissions",
+    summary="Get a user's permissions",
+    description="Returns the user's current permission list and the full list of all available permissions. Requires `admin` role.",
+)
+async def get_user_permissions(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    from app.models.user import ALL_PERMISSIONS
+    return {
+        "user_id": str(user.id),
+        "permissions": user.permissions or [],
+        "all_permissions": ALL_PERMISSIONS,
+    }
+
+
+@router.put(
+    "/users/{user_id}/permissions",
+    summary="Update a user's permissions",
+    description=(
+        "Replace a user's permission set. Only valid permission keys are accepted — invalid ones are silently dropped.\n\n"
+        "**Available permissions:** `can_view_ai_training`, `can_train_model`, `can_view_documents`, "
+        "`can_upload_documents`, `can_receive_alerts`, `can_manage_users`, `can_view_analytics`, "
+        "`can_view_compliance`, `can_manage_company`\n\n"
+        "Every change is written to the audit log with old/new/added/removed permission lists."
+    ),
+)
+async def update_user_permissions(
+    user_id: str,
+    payload: UserPermissionsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    from app.models.user import ALL_PERMISSIONS
+    from app.models.audit_log import AuditLog
+    valid = [p for p in payload.permissions if p in ALL_PERMISSIONS]
+    old_perms = list(user.permissions or [])
+    user.permissions = valid
+    await db.commit()
+    await db.refresh(user)
+    # Audit log
+    try:
+        log = AuditLog(
+            user_id=current_user.id,
+            action="update_permissions",
+            resource_type="user",
+            resource_id=str(user.id),
+            details={
+                "target_user_email": user.email,
+                "old_permissions": old_perms,
+                "new_permissions": valid,
+                "added": [p for p in valid if p not in old_perms],
+                "removed": [p for p in old_perms if p not in valid],
+            },
+        )
+        db.add(log)
+        await db.commit()
+    except Exception:
+        pass
+    return {"user_id": str(user.id), "permissions": user.permissions}
+
+
+@router.put(
+    "/users/{user_id}/role",
+    summary="Update a user's role",
+    description="Change a user's role. Valid values: `employee`, `manager`, `admin`, `super_admin`, `individual`. Requires `super_admin`.",
+)
 async def update_user_role(
     user_id: str,
     payload: UserRoleUpdate,
@@ -514,7 +673,12 @@ async def update_user_role(
     return _serialize_user(user)
 
 
-@router.post("/users", status_code=201)
+@router.post(
+    "/users",
+    status_code=201,
+    summary="Create a user (Super Admin)",
+    description="Create a new user and optionally assign them to a company. The password is set directly — use the invite flow for email-based onboarding.",
+)
 async def create_user(
     payload: UserCreate,
     db: AsyncSession = Depends(get_db),
@@ -544,7 +708,11 @@ async def create_user(
     return _serialize_user(new_user)
 
 
-@router.delete("/users/{user_id}")
+@router.delete(
+    "/users/{user_id}",
+    summary="Delete a user (Super Admin)",
+    description="Permanently deletes a user. Cannot delete yourself. Requires `super_admin`.",
+)
 async def delete_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
@@ -567,7 +735,11 @@ async def delete_user(
 # Health alerts
 # ---------------------------------------------------------------------------
 
-@router.get("/health-alerts")
+@router.get(
+    "/health-alerts",
+    summary="System health alerts",
+    description="Returns alerts for companies with no documents, low compliance scores (<50%), or no active users. Requires `admin` role.",
+)
 async def health_alerts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),

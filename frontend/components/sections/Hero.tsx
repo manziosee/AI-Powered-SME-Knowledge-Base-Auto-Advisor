@@ -1,268 +1,360 @@
 "use client";
 
 import React, { useRef } from "react";
-import { ArrowRight, Sparkles, Shield, Brain, CheckCircle, Zap, ChevronRight } from "lucide-react";
+import { ArrowRight, Sparkles, Shield, Brain, CheckCircle, Zap, Play, Globe, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 
-
-/* ─── Mini dashboard KPI card (inside mockup) ────────────────────── */
-function MockKpi({ label, value, trend, color }: {
-  label: string; value: string; trend: string; color: string;
-}) {
-  return (
-    <div className="flex flex-col gap-0.5 p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
-      <span className="text-[9px] text-[var(--fg-muted)] uppercase tracking-wide">{label}</span>
-      <span className="text-lg font-black text-[var(--fg)]">{value}</span>
-      <span className={`text-[9px] ${color === "#22d3ee" ? "text-cyan-400" : color === "#34d399" ? "text-emerald-400" : color === "#fb7185" ? "text-rose-400" : color === "#a78bfa" ? "text-violet-400" : "text-white"}`}>{trend}</span>
-    </div>
-  );
-}
-
 const trust = [
-  { icon: Shield,   label: "SOC 2 ready"        },
+  { icon: Shield,   label: "SOC 2 Ready"        },
   { icon: Brain,    label: "LangChain RAG"       },
-  { icon: Sparkles, label: "Groq Llama 3.1 70B" },
+  { icon: Sparkles, label: "Groq LLaMA 3.3 70B" },
   { icon: Zap,      label: "< 500 ms answers"   },
 ];
 
 const kpis = [
-  { label: "Documents",   value: "1,248", trend: "↑ 38 today",  color: "#22d3ee" },
-  { label: "Compliance",  value: "94%",   trend: "↑ +2 pts",    color: "#34d399" },
-  { label: "Risks Found", value: "3",     trend: "↓ −1 today",  color: "#fb7185" },
-  { label: "AI Queries",  value: "876",   trend: "↑ +124%",     color: "#a78bfa" },
+  { label: "Documents",   value: "1,248", trend: "↑ 38 today",  color: "text-cyan-400",    bg: "bg-cyan-500/10",    border: "border-cyan-500/20"    },
+  { label: "Compliance",  value: "94%",   trend: "↑ +2 pts",    color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  { label: "Risks Found", value: "3",     trend: "↓ −1 today",  color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20"    },
+  { label: "AI Queries",  value: "876",   trend: "↑ +124%",     color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20"  },
+];
+
+/* Floating badge card */
+function FloatingCard({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`absolute glass-card rounded-2xl px-4 py-3 shadow-2xl ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* Service feature card (from image 1) */
+function ServiceCard({ icon: Icon, title, desc, color, bg, border }: {
+  icon: React.ElementType; title: string; desc: string;
+  color: string; bg: string; border: string;
+}) {
+  return (
+    <div className={`group flex flex-col items-center text-center p-4 rounded-2xl border ${border} ${bg} hover:scale-105 hover:-translate-y-1 transition-all duration-300 cursor-default`}>
+      <div className={`w-10 h-10 rounded-xl ${bg} border ${border} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+        <Icon size={18} className={color} />
+      </div>
+      <p className="text-[var(--fg-soft)] text-xs font-bold mb-0.5">{title}</p>
+      <p className="text-[var(--fg-muted)] text-[10px] leading-snug">{desc}</p>
+    </div>
+  );
+}
+
+const services = [
+  { icon: Brain,     title: "Web Design",     desc: "Modern UI/UX",   color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20" },
+  { icon: Zap,       title: "Development",    desc: "Fast & Secure",  color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20"   },
+  { icon: Shield,    title: "Compliance",     desc: "7 Jurisdictions",color: "text-emerald-400",bg: "bg-emerald-500/10",border: "border-emerald-500/20"},
+  { icon: TrendingUp,title: "Analytics",      desc: "Grow Smarter",   color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20"   },
 ];
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
-  const mockupY = useTransform(scrollYProgress, [0, 1], [0, 60]);
+  const mockupY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+  const bgY     = useTransform(scrollYProgress, [0, 1], [0, 40]);
 
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[var(--bg)] pt-24 pb-16"
+      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-28 pb-20 bg-[var(--bg)]"
     >
-      {/* ── Layered backgrounds ── */}
-      <div className="absolute inset-0 bg-dots opacity-40 pointer-events-none" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-gradient-to-b from-violet-600/12 via-cyan-500/6 to-transparent rounded-full blur-[160px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-[var(--bg)] to-transparent pointer-events-none" />
+      {/* ── Multi-layer mesh background ── */}
+      <motion.div style={{ y: bgY }} className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 mesh-bg" />
+        {/* Large violet radial */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[700px] rounded-full blur-[140px]"
+          style={{ background: "radial-gradient(ellipse, rgba(124,58,237,0.14) 0%, transparent 70%)" }} />
+        {/* Blue accent (image 1 inspired) */}
+        <div className="absolute bottom-1/4 right-0 w-[700px] h-[500px] rounded-full blur-[120px]"
+          style={{ background: "radial-gradient(ellipse, rgba(37,99,235,0.10) 0%, transparent 70%)" }} />
+        {/* Teal bottom left (image 3 inspired) */}
+        <div className="absolute bottom-0 left-0 w-[500px] h-[400px] rounded-full blur-[100px]"
+          style={{ background: "radial-gradient(ellipse, rgba(13,148,136,0.08) 0%, transparent 70%)" }} />
+        <div className="absolute inset-0 bg-dots opacity-25" />
+      </motion.div>
 
       {/* ── Content ── */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center flex flex-col items-center gap-7">
+      <div className="relative z-10 max-w-6xl mx-auto px-6 text-center flex flex-col items-center gap-8">
 
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="group"
-        >
-          <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-violet-500/35 bg-violet-500/8 backdrop-blur-sm text-xs font-bold tracking-wide shadow-[0_0_20px_rgba(124,58,237,0.18)] hover:shadow-[0_0_30px_rgba(124,58,237,0.35)] hover:scale-105 transition-all duration-300">
-            <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-            <Sparkles size={12} className="text-violet-500 group-hover:rotate-12 transition-transform" />
-            <span className="text-violet-700 dark:text-violet-300">Powered by Groq · LangChain · pgvector</span>
+        {/* Announcement badge */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <div className="group inline-flex items-center gap-2.5 px-5 py-2 rounded-full border border-blue-500/30 bg-blue-500/8 text-xs font-semibold tracking-wide cursor-default hover:border-blue-500/60 hover:bg-blue-500/12 transition-all duration-300 shadow-[0_0_30px_rgba(37,99,235,0.15)]">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            </span>
+            <Globe size={11} className="text-blue-500" />
+            <span className="text-blue-600 dark:text-blue-300">Now powered by Groq · LangChain · pgvector</span>
+            <ArrowRight size={11} className="text-blue-500 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </motion.div>
 
-        {/* Headline */}
-        <motion.div
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="flex flex-col items-center"
-        >
-          <h1 className="text-6xl sm:text-7xl md:text-[6.5rem] font-black leading-[1.0] tracking-tight text-balance">
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-purple-500 to-cyan-600 dark:from-violet-400 dark:via-purple-400 dark:to-cyan-400 drop-shadow-2xl mb-2">
-              Your Business,
+        {/* Headline — combining all 3 design inspirations */}
+        <motion.div initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.1 }}>
+          <h1 className="text-5xl sm:text-6xl md:text-[5.5rem] lg:text-[6.5rem] font-black leading-[0.95] tracking-tight text-balance">
+            <span className="block text-[var(--fg)]">Grow Your</span>
+            <span className="block text-[var(--fg)]">Business with</span>
+            <span className="block gradient-text-brand drop-shadow-2xl pb-2 mt-1">
+              Smart AI.
             </span>
-            <span className="block text-[var(--fg)]">Always Compliant.</span>
           </h1>
-          <div className="mt-4 flex items-center gap-2 text-sm text-[var(--fg-muted)]">
-            <div className="flex -space-x-1">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className={`w-6 h-6 rounded-full border-2 border-[var(--bg)] flex items-center justify-center text-[8px] font-bold ${
-                  i === 0 ? "bg-violet-500 text-white"
-                  : i === 1 ? "bg-cyan-500 text-white"
-                  : i === 2 ? "bg-emerald-500 text-white"
-                  : "bg-amber-500 text-white"
-                }`}>
-                  {String.fromCharCode(65 + i)}
+
+          {/* Social proof avatars */}
+          <div className="mt-5 flex items-center justify-center gap-2.5 text-sm text-[var(--fg-muted)]">
+            <div className="flex -space-x-2">
+              {[
+                { bg: "bg-gradient-to-br from-violet-500 to-purple-600", label: "A" },
+                { bg: "bg-gradient-to-br from-blue-500 to-indigo-600",   label: "B" },
+                { bg: "bg-gradient-to-br from-teal-500 to-emerald-600",  label: "C" },
+                { bg: "bg-gradient-to-br from-amber-500 to-orange-500",  label: "D" },
+                { bg: "bg-gradient-to-br from-rose-500 to-pink-600",     label: "E" },
+              ].map(({ bg, label }, i) => (
+                <div key={i} className={`w-7 h-7 rounded-full border-2 border-[var(--bg)] ${bg} flex items-center justify-center text-[9px] font-black text-white shadow-lg`}>
+                  {label}
                 </div>
               ))}
             </div>
-            <span className="text-xs">Join 10,000+ users</span>
+            <span className="text-xs font-medium">
+              <span className="text-[var(--fg)] font-bold">10,000+</span> SMEs already on board
+            </span>
           </div>
         </motion.div>
 
         {/* Sub-headline */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-base md:text-lg text-[var(--fg-soft)] max-w-2xl leading-relaxed text-balance"
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.2 }}
+          className="text-base md:text-xl text-[var(--fg-soft)] max-w-2xl leading-relaxed text-balance"
         >
-          Our platform provides seamless AI-powered document management, compliance
-          monitoring, and instant business insights — built for small and medium enterprises.
+          AI-powered document management, compliance monitoring, and instant business
+          insights — built for small and medium enterprises across Africa and beyond.
         </motion.p>
 
-        {/* CTAs — Enhanced PayView style */}
+        {/* CTA buttons — image 1 inspired (prominent blue + ghost) */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}
           className="flex flex-col sm:flex-row items-center gap-4"
         >
           <Link
             href="/register"
-            className="group relative inline-flex items-center gap-3 px-10 py-4.5 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black text-sm tracking-wide transition-all duration-300 shadow-[0_10px_40px_rgba(124,58,237,0.4)] hover:shadow-[0_15px_50px_rgba(124,58,237,0.6)] hover:-translate-y-1 active:scale-95 overflow-hidden"
+            className="group relative inline-flex items-center gap-3 px-10 py-4 rounded-full bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 text-white font-black text-sm tracking-wider transition-all duration-300 btn-glow-blue hover:-translate-y-1 active:scale-95 overflow-hidden shine-hover"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <span className="relative z-10">GET STARTED</span>
-            <ArrowRight size={18} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+            <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+            <span className="relative z-10">Get Started Free</span>
+            <ArrowRight size={17} className="relative z-10 group-hover:translate-x-1 transition-transform" />
           </Link>
-          
-          {/* Enhanced circle arrow */}
+
           <Link
-            href="/register"
-            aria-label="Get started"
-            className="group relative w-16 h-16 rounded-full border-2 border-violet-500/30 hover:border-violet-500/60 flex items-center justify-center text-violet-400 hover:text-violet-300 transition-all duration-300 hover:bg-violet-500/10 hover:-translate-y-1 active:scale-95 overflow-hidden"
+            href="/docs"
+            className="group inline-flex items-center gap-2.5 px-7 py-4 rounded-full border border-[var(--border)] text-[var(--fg-soft)] font-semibold text-sm hover:text-[var(--fg)] hover:border-blue-500/30 hover:bg-blue-500/5 hover:-translate-y-0.5 transition-all duration-300"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <ArrowRight size={22} className="relative z-10 group-hover:translate-x-1 transition-transform" />
-          </Link>
-          
-          <Link
-            href="#how-it-works"
-            className="hidden sm:inline-flex items-center gap-2.5 px-6 py-4 text-[var(--fg-muted)] hover:text-[var(--fg)] text-sm font-semibold transition-all duration-300 hover:bg-[var(--surface-hover)] rounded-full"
-          >
-            <span>See how it works</span>
-            <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+            <span className="w-7 h-7 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center group-hover:border-blue-500/30 transition-all">
+              <Play size={10} className="text-blue-500 ml-0.5" fill="currentColor" />
+            </span>
+            Watch a demo
           </Link>
         </motion.div>
 
         {/* Trust signals */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.45 }}
-          className="flex flex-wrap justify-center items-center gap-5 text-[var(--fg-muted)] text-xs tracking-wide"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.45 }}
+          className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[var(--fg-muted)] text-xs"
         >
           {trust.map(({ icon: Icon, label }) => (
-            <span key={label} className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors cursor-default">
-              <Icon size={13} className="text-violet-500" />
+            <span key={label} className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors">
+              <Icon size={12} className="text-blue-500" />
               {label}
             </span>
           ))}
-          <span className="hidden sm:flex items-center gap-1.5">
-            <CheckCircle size={12} className="text-emerald-500" /> No credit card required
+          <span className="flex items-center gap-1.5">
+            <CheckCircle size={12} className="text-emerald-500" />
+            No credit card required
           </span>
         </motion.div>
 
         {/* ── Dashboard Mockup ── */}
         <motion.div
           style={{ y: mockupY }}
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.5 }}
-          className="w-full max-w-4xl mt-4"
+          initial={{ opacity: 0, y: 48 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.55 }}
+          className="relative w-full max-w-5xl mt-6"
         >
-          <div className="relative rounded-2xl overflow-hidden border border-[var(--border)] shadow-[0_40px_80px_rgba(0,0,0,0.4)]">
+          {/* Floating stat badges — image 2 inspired glassmorphism */}
+          <FloatingCard className="float-badge -left-4 top-16 z-20 hidden lg:block border border-blue-500/20">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                <Brain size={14} className="text-blue-400" />
+              </div>
+              <div>
+                <p className="text-[var(--fg)] text-sm font-black leading-none">876</p>
+                <p className="text-[var(--fg-muted)] text-[10px]">AI queries today</p>
+              </div>
+            </div>
+          </FloatingCard>
 
+          <FloatingCard className="float-badge-2 -right-4 top-24 z-20 hidden lg:block border border-teal-500/20">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
+                <Shield size={14} className="text-teal-400" />
+              </div>
+              <div>
+                <p className="text-[var(--fg)] text-sm font-black leading-none">94%</p>
+                <p className="text-[var(--fg-muted)] text-[10px]">Compliance score</p>
+              </div>
+            </div>
+          </FloatingCard>
+
+          <FloatingCard className="float-badge-3 left-12 -bottom-4 z-20 hidden lg:block border border-emerald-500/20">
+            <div className="flex items-center gap-2">
+              <CheckCircle size={14} className="text-emerald-400" />
+              <span className="text-[var(--fg-soft)] text-xs font-medium">3 deadlines resolved today</span>
+            </div>
+          </FloatingCard>
+
+          {/* Main mockup frame */}
+          <div className="relative rounded-2xl overflow-hidden border border-[var(--border)] shadow-[0_50px_120px_rgba(37,99,235,0.2)] dark:shadow-[0_50px_120px_rgba(37,99,235,0.3)]">
             {/* Browser chrome */}
             <div className="flex items-center gap-2 px-4 py-3 bg-[var(--bg-muted)] border-b border-[var(--border)]">
               <span className="w-3 h-3 rounded-full bg-rose-500/70" />
               <span className="w-3 h-3 rounded-full bg-amber-400/70" />
               <span className="w-3 h-3 rounded-full bg-emerald-500/70" />
               <div className="ml-4 flex-1 h-5 rounded-full bg-[var(--surface)] max-w-xs flex items-center px-3 gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-slow" />
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                 <div className="flex-1 h-2 rounded-full bg-[var(--border)]" />
+              </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                <div className="w-16 h-4 rounded bg-[var(--surface)] border border-[var(--border)]" />
+                <div className="w-20 h-4 rounded-full bg-blue-500/20 border border-blue-500/30" />
               </div>
             </div>
 
             {/* Dashboard content */}
-            <div className="bg-[var(--bg-soft)] grid grid-cols-12 min-h-[340px]">
+            <div className="bg-[var(--bg-soft)] grid grid-cols-12 min-h-[360px]">
               {/* Sidebar */}
-              <div className="col-span-2 border-r border-[var(--border)] p-3 flex flex-col gap-2">
-                <div className="h-7 rounded-lg bg-violet-500/20 border border-violet-500/25 w-full mb-2" />
-                {["Dashboard","Documents","AI Advisor","Analytics","Compliance"].map((item, i) => (
-                  <div key={item} className={`h-5 rounded-md text-[8px] flex items-center px-2 gap-1.5 ${
-                    i === 0 ? "bg-violet-500/15 border border-violet-500/25 text-violet-400" : "text-[var(--fg-muted)]"
+              <div className="col-span-2 border-r border-[var(--border)] p-3 flex flex-col gap-2 bg-[var(--bg)]">
+                <div className="h-7 rounded-lg bg-gradient-to-r from-blue-500/20 to-violet-500/10 border border-blue-500/20 w-full mb-3 flex items-center px-2 gap-1.5">
+                  <div className="w-3 h-3 rounded bg-blue-500/50" />
+                  <div className="flex-1 h-1.5 rounded-full bg-blue-500/20" />
+                </div>
+                {["Dashboard","Documents","AI Advisor","Analytics","Compliance","Settings"].map((item, i) => (
+                  <div key={item} className={`h-6 rounded-lg text-[8px] flex items-center px-2 gap-1.5 transition-colors ${
+                    i === 0
+                      ? "bg-gradient-to-r from-blue-500/15 to-violet-500/10 border border-blue-500/25 text-blue-400"
+                      : "text-[var(--fg-muted)] hover:bg-[var(--surface)]"
                   }`}>
-                    <span className="w-1.5 h-1.5 rounded-sm bg-current opacity-60 flex-shrink-0" />
+                    <span className={`w-1.5 h-1.5 rounded-sm flex-shrink-0 ${i === 0 ? "bg-blue-400" : "bg-current opacity-40"}`} />
                     <span className="truncate opacity-80 hidden xl:block">{item}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Main */}
-              <div className="col-span-10 p-4 flex flex-col gap-3">
+              {/* Main panel */}
+              <div className="col-span-10 p-5 flex flex-col gap-4">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="h-4 w-24 rounded-md bg-[var(--fg)] opacity-80 mb-1" />
-                    <div className="h-2.5 w-36 rounded bg-[var(--fg-muted)] opacity-30" />
+                    <div className="h-4 w-32 rounded-md bg-[var(--fg)] opacity-80 mb-1.5" />
+                    <div className="h-2 w-44 rounded bg-[var(--fg-muted)] opacity-30" />
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-24 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center gap-1 px-2">
-                      <span className="text-[7px] text-[var(--fg-muted)]">⊞ Manage widgets</span>
+                    <div className="h-7 w-28 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center px-2 gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-blue-500/50" />
+                      <div className="flex-1 h-1.5 rounded-full bg-[var(--border)]" />
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-violet-500/20 border border-violet-500/30" />
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500/30 to-violet-500/20 border border-blue-500/30" />
                   </div>
                 </div>
 
                 {/* KPI cards */}
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-3">
                   {kpis.map((kpi) => (
-                    <MockKpi key={kpi.label} {...kpi} />
+                    <div key={kpi.label} className={`p-3 rounded-xl ${kpi.bg} border ${kpi.border}`}>
+                      <span className="text-[9px] text-[var(--fg-muted)] uppercase tracking-wide block mb-1">{kpi.label}</span>
+                      <span className={`text-xl font-black ${kpi.color} block leading-none`}>{kpi.value}</span>
+                      <span className={`text-[9px] ${kpi.color} opacity-80 mt-0.5 block`}>{kpi.trend}</span>
+                    </div>
                   ))}
                 </div>
 
                 {/* Charts row */}
-                <div className="grid grid-cols-3 gap-2 flex-1">
-                  {/* Chart 1 — area */}
-                  <div className="col-span-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] p-2.5">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="h-2 w-20 rounded bg-[var(--fg)] opacity-70" />
-                      <div className="h-4 w-16 rounded-md bg-[var(--surface)] border border-[var(--border)]" />
+                <div className="grid grid-cols-3 gap-3 flex-1">
+                  {/* Area chart */}
+                  <div className="col-span-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] p-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="h-2.5 w-24 rounded bg-[var(--fg)] opacity-70" />
+                      <div className="flex gap-1.5 items-center">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        <div className="h-1.5 w-12 rounded-full bg-[var(--border)]" />
+                        <span className="w-2 h-2 rounded-full bg-teal-500" />
+                        <div className="h-1.5 w-12 rounded-full bg-[var(--border)]" />
+                      </div>
                     </div>
-                    {/* Fake SVG chart lines */}
-                    <svg viewBox="0 0 200 70" className="w-full opacity-60">
+                    <svg viewBox="0 0 240 80" className="w-full" preserveAspectRatio="none">
                       <defs>
-                        <linearGradient id="hGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.4"/>
-                          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0"/>
+                        <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5"/>
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
+                        </linearGradient>
+                        <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#0d9488" stopOpacity="0.3"/>
+                          <stop offset="100%" stopColor="#0d9488" stopOpacity="0"/>
                         </linearGradient>
                       </defs>
-                      <path d="M0 55 Q25 40 50 45 Q75 50 100 30 Q125 20 150 25 Q175 30 200 15" stroke="#a78bfa" strokeWidth="2" fill="none"/>
-                      <path d="M0 55 Q25 40 50 45 Q75 50 100 30 Q125 20 150 25 Q175 30 200 15 L200 70 L0 70Z" fill="url(#hGrad)"/>
-                      <path d="M0 60 Q25 55 50 58 Q75 62 100 50 Q125 40 150 45 Q175 48 200 38" stroke="#22d3ee" strokeWidth="1.5" strokeDasharray="4 3" fill="none" opacity="0.7"/>
+                      <path d="M0 60 C30 48,50 52,80 40 C110 28,130 22,160 26 C190 30,210 18,240 12" stroke="#3b82f6" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                      <path d="M0 60 C30 48,50 52,80 40 C110 28,130 22,160 26 C190 30,210 18,240 12 L240 80 L0 80Z" fill="url(#g1)"/>
+                      <path d="M0 68 C30 62,50 66,80 58 C110 50,130 46,160 50 C190 54,210 44,240 42" stroke="#0d9488" strokeWidth="1.5" strokeDasharray="5 3" fill="none" opacity="0.8"/>
+                      <path d="M0 68 C30 62,50 66,80 58 C110 50,130 46,160 50 C190 54,210 44,240 42 L240 80 L0 80Z" fill="url(#g2)"/>
+                      {[40,80,120,160,200].map((x, i) => (
+                        <circle key={i} cx={x} cy={[40,52,40,26,18][i]} r="3" fill="#3b82f6" opacity="0.8" />
+                      ))}
                     </svg>
                   </div>
 
-                  {/* AI chat snippet */}
-                  <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] p-2.5 flex flex-col gap-1.5">
-                    <div className="h-2 w-16 rounded bg-[var(--fg)] opacity-70" />
+                  {/* AI chat */}
+                  <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] p-3 flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="w-4 h-4 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                        <Brain size={8} className="text-blue-400" />
+                      </div>
+                      <div className="h-2 w-14 rounded bg-[var(--fg)] opacity-60" />
+                    </div>
                     <div className="flex justify-end">
-                      <div className="bg-violet-500/10 border border-violet-500/15 text-[7px] text-violet-400 px-2 py-1 rounded-xl max-w-[80%]">
-                        What are our compliance deadlines?
+                      <div className="bg-blue-500/12 border border-blue-500/20 text-[7px] text-blue-400 px-2 py-1.5 rounded-xl max-w-[85%] leading-relaxed">
+                        What compliance deadlines are coming?
                       </div>
                     </div>
-                    <div className="flex gap-1 items-start">
-                      <div className="w-4 h-4 rounded-full bg-violet-500/15 border border-violet-500/25 flex-shrink-0" />
-                      <div className="bg-[var(--bg-muted)] border border-[var(--border)] text-[7px] text-[var(--fg-soft)] px-2 py-1 rounded-xl max-w-[80%]">
-                        Based on your docs, 3 deadlines upcoming: VAT Apr 15, PAYE Apr 30...
+                    <div className="flex gap-1.5 items-start">
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500/30 to-violet-500/20 border border-blue-500/25 flex-shrink-0 flex items-center justify-center">
+                        <Sparkles size={8} className="text-blue-400" />
+                      </div>
+                      <div className="bg-[var(--bg)] border border-[var(--border)] text-[7px] text-[var(--fg-soft)] px-2 py-1.5 rounded-xl leading-relaxed">
+                        3 deadlines upcoming: VAT Apr 15, PAYE Apr 30, Filing May 1...
+                      </div>
+                    </div>
+                    <div className="flex gap-1 mt-auto">
+                      <div className="flex-1 h-5 rounded-lg bg-[var(--bg)] border border-[var(--border)]" />
+                      <div className="w-5 h-5 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                        <ArrowRight size={8} className="text-blue-400" />
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Services row — inspired by image 1 */}
+                <div className="grid grid-cols-4 gap-2 mt-1">
+                  {services.map((s) => (
+                    <ServiceCard key={s.title} {...s} />
+                  ))}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Glow under mockup */}
-          <div className="h-px w-3/4 mx-auto bg-gradient-to-r from-transparent via-violet-500/40 to-transparent mt-px" />
-          <div className="h-8 w-1/2 mx-auto bg-violet-500/8 rounded-full blur-xl" />
+          {/* Glow below mockup */}
+          <div className="h-px w-3/4 mx-auto bg-gradient-to-r from-transparent via-blue-500/50 to-transparent mt-px" />
+          <div className="h-12 w-1/2 mx-auto bg-blue-500/10 rounded-full blur-2xl -mt-1" />
         </motion.div>
       </div>
     </section>

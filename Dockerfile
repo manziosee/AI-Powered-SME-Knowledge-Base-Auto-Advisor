@@ -1,53 +1,63 @@
-# ─────────────────────────────────────────────
-# Stage 1: dependency builder
-# ─────────────────────────────────────────────
+# =============================================================================
+# AdvisorAI Backend — optimised for fast rebuilds
+#
+# Layer order (most stable → least stable):
+#   1. System packages  — cached until base image changes
+#   2. pip install      — cached until requirements.txt changes
+#   3. spaCy model      — cached until spaCy version changes
+#   4. SentenceTransformer model — cached until model name changes
+#   5. App code         — rebuilds only when YOUR code changes (seconds)
+# =============================================================================
+
+# ── Stage 1: dependency builder ───────────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
+# System build deps — cached as long as this list doesn't change
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ libpq-dev libmagic1 curl \
-    tesseract-ocr poppler-utils \
+    gcc libpq-dev libmagic1 curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy ONLY requirements first — pip layer is cached until requirements.txt changes
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# ─────────────────────────────────────────────
-# Stage 2: runtime image
-# ─────────────────────────────────────────────
+# ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
-# Runtime system libs only
+# Runtime system libs — tesseract + poppler for OCR/PDF
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 libmagic1 curl \
-    tesseract-ocr poppler-utils \
+    tesseract-ocr tesseract-ocr-eng \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
+# Copy installed Python packages from builder
 COPY --from=builder /install /usr/local
 
-# Download spaCy model (baked into image — cached layer, rarely changes)
+# spaCy model — separate layer, cached until spaCy version changes
 RUN pip install --no-cache-dir \
     https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
-# Create required directories and non-root user
-RUN mkdir -p /app/uploads /app/models /app/logs \
- && addgroup --system appgroup && adduser --system --ingroup appgroup appuser
-
-# Pre-cache SentenceTransformer model into /app/models so appuser can read it at runtime
+# Pre-cache SentenceTransformer model — separate layer, cached until model name changes
 ENV SENTENCE_TRANSFORMERS_HOME=/app/models \
     HF_HOME=/app/models
-RUN python -c "\
+RUN mkdir -p /app/models /app/uploads /app/logs \
+ && python -c "\
 from sentence_transformers import SentenceTransformer; \
 SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); \
-print('SentenceTransformer model cached.')" \
- && chown -R appuser:appgroup /app/models
+print('Model cached.')"
 
-# Application code — LAST so code changes only rebuild this thin layer
+# Non-root user
+RUN addgroup --system appgroup \
+ && adduser --system --ingroup appgroup appuser \
+ && chown -R appuser:appgroup /app
+
+# App code — LAST layer, only this rebuilds when you change code
 COPY --chown=appuser:appgroup . .
 
 USER appuser

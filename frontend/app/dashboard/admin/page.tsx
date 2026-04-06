@@ -5,7 +5,7 @@ import ReactDOM from "react-dom";
 import {
   Users, Building2, FileText, Brain, Shield, AlertTriangle, CheckCircle,
   RefreshCw, Plus, Trash2, UserCog, Activity, BarChart3, Clock, X,
-  Mail, Lock, Eye, EyeOff, ChevronDown, Search, Globe,
+  Mail, Lock, Eye, EyeOff, ChevronDown, Search, Globe, ChevronRight,
 } from "lucide-react";
 import { auth as authApi, admin as adminApi } from "@/lib/api";
 
@@ -20,8 +20,8 @@ interface SystemStats {
 
 interface AdminUser {
   id: string; email: string; full_name: string; role: string;
-  company_id: string | null; is_active: boolean;
-  created_at: string; last_login: string | null;
+  company_id: string | null; is_active: boolean; permissions: string[];
+  account_type: string; created_at: string; last_login: string | null;
 }
 
 interface AdminCompany {
@@ -43,7 +43,19 @@ interface AuditLog {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ROLES = ["employee", "manager", "admin", "super_admin"];
+const ROLES = ["employee", "manager", "admin", "super_admin", "individual"];
+
+const ALL_PERMISSIONS = [
+  { key: "can_view_ai_training",  label: "View AI Training",   group: "AI" },
+  { key: "can_train_model",       label: "Train Model",         group: "AI" },
+  { key: "can_view_documents",    label: "View Documents",      group: "Documents" },
+  { key: "can_upload_documents",  label: "Upload Documents",    group: "Documents" },
+  { key: "can_receive_alerts",    label: "Receive Alerts",      group: "Alerts" },
+  { key: "can_manage_users",      label: "Manage Users",        group: "Admin" },
+  { key: "can_view_analytics",    label: "View Analytics",      group: "Admin" },
+  { key: "can_view_compliance",   label: "View Compliance",     group: "Compliance" },
+  { key: "can_manage_company",    label: "Manage Company",      group: "Admin" },
+];
 
 const TABS = [
   { key: "overview",   label: "Overview",   icon: BarChart3 },
@@ -92,6 +104,7 @@ function RoleBadge({ role }: { role: string }) {
     admin:       "bg-blue-500/15 text-blue-500 border-blue-500/30",
     manager:     "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
     employee:    "bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)]",
+    individual:  "bg-amber-500/15 text-amber-500 border-amber-500/30",
   };
   return (
     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border capitalize ${styles[role] ?? styles.employee}`}>
@@ -112,6 +125,233 @@ function SeverityBadge({ severity }: { severity: string }) {
     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border capitalize ${styles[severity] ?? styles.info}`}>
       {severity}
     </span>
+  );
+}
+
+// ── User Detail Drawer ────────────────────────────────────────────────────────
+
+function UserDetailDrawer({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [role, setRole] = useState(user.role);
+  const [permissions, setPermissions] = useState<string[]>(user.permissions ?? []);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmRole, setConfirmRole] = useState<string | null>(null);
+
+  const togglePerm = (key: string) =>
+    setPermissions((prev) =>
+      prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
+    );
+
+  const applyRoleDefaults = (newRole: string) => {
+    const elevated = ["admin", "super_admin"];
+    const currentIsElevated = elevated.includes(user.role);
+    const newIsElevated = elevated.includes(newRole);
+    // Require confirmation when escalating to admin/super_admin
+    if (newIsElevated && !currentIsElevated) {
+      setConfirmRole(newRole);
+      return;
+    }
+    _applyRole(newRole);
+  };
+
+  const _applyRole = (newRole: string) => {
+    setRole(newRole);
+    setConfirmRole(null);
+    const defaults: Record<string, string[]> = {
+      super_admin: ALL_PERMISSIONS.map((p) => p.key),
+      admin: ["can_view_ai_training","can_train_model","can_view_documents","can_upload_documents","can_receive_alerts","can_manage_users","can_view_analytics","can_view_compliance","can_manage_company"],
+      manager: ["can_view_documents","can_upload_documents","can_receive_alerts","can_view_analytics","can_view_compliance"],
+      employee: ["can_view_documents","can_receive_alerts","can_view_compliance"],
+      individual: ["can_view_documents","can_upload_documents","can_receive_alerts","can_view_compliance"],
+    };
+    setPermissions(defaults[newRole] ?? []);
+  };
+
+  const handleSave = async () => {
+    setSaving(true); setError("");
+    const [r1, r2] = await Promise.all([
+      adminApi.updateUserRole(user.id, role),
+      adminApi.updateUserPermissions(user.id, permissions),
+    ]);
+    if (r1.error || r2.error) {
+      setError(r1.error ?? r2.error ?? "Save failed");
+    } else {
+      setSaved(true);
+      setTimeout(() => { onSaved(); onClose(); }, 800);
+    }
+    setSaving(false);
+  };
+
+  const groups = Array.from(new Set(ALL_PERMISSIONS.map((p) => p.group)));
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 ml-auto w-full max-w-[480px] h-full bg-[var(--surface)] border-l border-[var(--border)] shadow-2xl flex flex-col overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-violet-500 text-sm font-bold">
+              {user.full_name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+            </div>
+            <div>
+              <p className="text-[var(--fg)] font-bold text-sm">{user.full_name}</p>
+              <p className="text-[var(--fg-muted)] text-xs">{user.email}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all">
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+
+          {/* Account type badge */}
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--fg-muted)] text-xs">Account type:</span>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+              user.account_type === "individual"
+                ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                : "bg-cyan-500/15 text-cyan-500 border-cyan-500/30"
+            }`}>
+              {user.account_type === "individual" ? "Individual" : "Company"}
+            </span>
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block text-[var(--fg-muted)] text-[10px] font-bold mb-2 tracking-widest uppercase">Role</label>
+            <div className="grid grid-cols-3 gap-2">
+              {ROLES.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => applyRoleDefaults(r)}
+                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all capitalize ${
+                    role === r
+                      ? "bg-violet-500/20 border-violet-500/50 text-violet-500"
+                      : "bg-[var(--bg-soft)] border-[var(--border)] text-[var(--fg-muted)] hover:border-violet-500/30 hover:text-[var(--fg)]"
+                  }`}
+                >
+                  {r.replace("_", " ")}
+                </button>
+              ))}
+            </div>
+            <p className="text-[var(--fg-muted)] text-[10px] mt-1.5">Selecting a role auto-fills default permissions below. You can still customize them.</p>
+          </div>
+
+          {/* Permissions */}
+          <div>
+            <label className="block text-[var(--fg-muted)] text-[10px] font-bold mb-3 tracking-widest uppercase">Permissions</label>
+            <div className="flex flex-col gap-4">
+              {groups.map((group) => (
+                <div key={group}>
+                  <p className="text-[var(--fg-muted)] text-[10px] font-semibold uppercase tracking-widest mb-2">{group}</p>
+                  <div className="flex flex-col gap-1.5">
+                    {ALL_PERMISSIONS.filter((p) => p.group === group).map((perm) => (
+                      <label
+                        key={perm.key}
+                        className="flex items-center gap-3 p-2.5 rounded-xl border border-[var(--border)] hover:border-violet-500/30 hover:bg-violet-500/5 cursor-pointer transition-all"
+                      >
+                        <div className={`w-4 h-4 rounded flex items-center justify-center border flex-shrink-0 transition-all ${
+                          permissions.includes(perm.key)
+                            ? "bg-violet-500 border-violet-500"
+                            : "bg-transparent border-[var(--border)]"
+                        }`}>
+                          {permissions.includes(perm.key) && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={permissions.includes(perm.key)}
+                          onChange={() => togglePerm(perm.key)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[var(--fg-soft)] text-xs font-medium">{perm.label}</p>
+                          <p className="text-[var(--fg-muted)] text-[10px] font-mono">{perm.key}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 px-6 py-4 border-t border-[var(--border)] flex flex-col gap-2">
+          {error && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/8 border border-rose-500/25 text-rose-500 text-xs">
+              <AlertTriangle size={13} /> {error}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] text-sm font-semibold transition-all">
+              Cancel
+            </button>
+            <button type="button" onClick={handleSave} disabled={saving || saved}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-bold transition-all disabled:opacity-50 shadow-[0_0_16px_rgba(124,58,237,0.3)]">
+              {saved ? (
+                <><CheckCircle size={14} /> Saved!</>
+              ) : saving ? (
+                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
+              ) : (
+                "Save Changes"
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Role escalation confirmation modal */}
+      {confirmRole && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-[340px] mx-4 rounded-2xl bg-[var(--surface)] border border-amber-500/40 shadow-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={18} className="text-amber-500" />
+              </div>
+              <div>
+                <p className="text-[var(--fg)] font-bold text-sm">Confirm Role Escalation</p>
+                <p className="text-[var(--fg-muted)] text-xs mt-0.5">This grants elevated access</p>
+              </div>
+            </div>
+            <p className="text-[var(--fg-soft)] text-sm mb-5">
+              You are about to assign <strong className="text-amber-500 capitalize">{confirmRole.replace("_", " ")}</strong> to{" "}
+              <strong>{user.full_name}</strong>. This will give them{" "}
+              {confirmRole === "super_admin" ? "full system access including user management and company settings" : "admin-level access including user management"}.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setConfirmRole(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] text-sm font-semibold transition-all">
+                Cancel
+              </button>
+              <button type="button" onClick={() => _applyRole(confirmRole)}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition-all">
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -284,6 +524,7 @@ export default function AdminPage() {
 
   const [userSearch,   setUserSearch]   = useState("");
   const [showCreate,   setShowCreate]   = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [auditActionFilter, setAuditActionFilter] = useState("");
   const [auditResourceFilter, setAuditResourceFilter] = useState("");
@@ -464,14 +705,14 @@ export default function AdminPage() {
     <div className="p-6 max-w-6xl mx-auto">
 
       {/* ── Page header ── */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
-            <Shield size={20} className="text-violet-500" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-[0_0_20px_rgba(244,63,94,0.4)] flex-shrink-0">
+            <Shield size={20} className="text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-black text-[var(--fg)] tracking-tight">Admin Panel</h1>
-            <p className="text-[var(--fg-muted)] text-sm">System administration & oversight</p>
+            <p className="text-[var(--fg-muted)] text-sm">System administration &amp; oversight</p>
           </div>
         </div>
         <button
@@ -672,7 +913,7 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--surface)]">
-                    {["Name", "Email", "Role", "Status", "Last Login", "Actions"].map((h) => (
+                    {["Name", "Email", "Role", "Permissions", "Status", "Last Login", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--fg-muted)]">
                         {h}
                       </th>
@@ -692,13 +933,13 @@ export default function AdminPage() {
                     ))
                   ) : filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-[var(--fg-muted)] text-sm">
+                      <td colSpan={7} className="px-4 py-12 text-center text-[var(--fg-muted)] text-sm">
                         No users found.
                       </td>
                     </tr>
                   ) : (
                     filteredUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-[var(--surface-hover)] transition-colors">
+                      <tr key={user.id} className="hover:bg-[var(--surface-hover)] transition-colors cursor-pointer" onClick={() => setSelectedUser(user)}>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
                             <div className="w-7 h-7 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-violet-500 text-[10px] font-bold flex-shrink-0">
@@ -710,6 +951,27 @@ export default function AdminPage() {
                         <td className="px-4 py-3.5 text-[var(--fg-muted)] text-xs truncate max-w-[160px]">{user.email}</td>
                         <td className="px-4 py-3.5">
                           <RoleBadge role={user.role} />
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="relative group flex items-center gap-1 flex-wrap cursor-help">
+                            {(user.permissions ?? []).length === 0 ? (
+                              <span className="text-[var(--fg-muted)] text-[10px]">none</span>
+                            ) : (
+                              <>
+                                <span className="text-[10px] font-semibold text-violet-500">{(user.permissions ?? []).length}</span>
+                                <span className="text-[var(--fg-muted)] text-[10px]">perms</span>
+                              </>
+                            )}
+                            <ChevronRight size={11} className="text-[var(--fg-muted)] ml-0.5" />
+                            {/* Tooltip */}
+                            {(user.permissions ?? []).length > 0 && (
+                              <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block w-52 rounded-xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl p-2">
+                                {(user.permissions ?? []).map((p) => (
+                                  <div key={p} className="px-2 py-1 text-[10px] text-[var(--fg-soft)] font-mono hover:bg-[var(--surface-hover)] rounded-lg">{p}</div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
@@ -726,7 +988,7 @@ export default function AdminPage() {
                             : "Never"}
                         </td>
                         <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
 
                             {/* Toggle status */}
                             <button
@@ -1052,6 +1314,15 @@ export default function AdminPage() {
         <CreateUserModal
           onClose={() => setShowCreate(false)}
           onCreated={fetchUsers}
+        />
+      )}
+
+      {/* User detail drawer */}
+      {selectedUser && (
+        <UserDetailDrawer
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
+          onSaved={() => { setSelectedUser(null); fetchUsers(); }}
         />
       )}
     </div>

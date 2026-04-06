@@ -78,31 +78,47 @@ const NAV_GROUPS: NavGroup[] = [
 function DesktopDropdown({
   group,
   pathname,
+  isOpen,
+  onToggle,
+  onClose,
 }: {
   group: NavGroup;
   pathname: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
 }) {
   return (
-    <div className="group/menu relative">
+    <div className="relative">
       {/* Trigger */}
       <button
         type="button"
-        className="flex items-center gap-1 px-3.5 py-2 text-sm font-medium text-[var(--fg-soft)] hover:text-[var(--fg)] rounded-xl hover:bg-[var(--surface-hover)] transition-colors focus:outline-none"
+        onClick={onToggle}
+        className={cn(
+          "flex items-center gap-1 px-3.5 py-2 text-sm font-medium rounded-xl transition-colors focus:outline-none",
+          isOpen
+            ? "text-[var(--fg)] bg-[var(--surface-hover)]"
+            : "text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]"
+        )}
       >
         {group.label}
         <ChevronDown
           size={14}
-          className="mt-px text-[var(--fg-muted)] transition-transform duration-200 group-hover/menu:rotate-180"
+          className={cn(
+            "mt-px text-[var(--fg-muted)] transition-transform duration-200",
+            isOpen && "rotate-180"
+          )}
         />
       </button>
 
-      {/* Panel — fade + slide in on hover */}
+      {/* Panel */}
       <div
         className={cn(
           "absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 z-50",
-          "opacity-0 pointer-events-none translate-y-1",
-          "group-hover/menu:opacity-100 group-hover/menu:pointer-events-auto group-hover/menu:translate-y-0",
-          "transition-all duration-200 ease-out"
+          "transition-all duration-200 ease-out",
+          isOpen
+            ? "opacity-100 pointer-events-auto translate-y-0"
+            : "opacity-0 pointer-events-none translate-y-1"
         )}
       >
         {/* Arrow notch */}
@@ -116,6 +132,7 @@ function DesktopDropdown({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onClose}
                 className={cn(
                   "flex items-start gap-3 px-4 py-3 transition-colors",
                   active
@@ -265,6 +282,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
 
   /* Scroll detection */
   useEffect(() => {
@@ -273,26 +292,37 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* Close mobile menu on route change */
+  /* Close all dropdowns on route change */
   useEffect(() => {
     setMobileOpen(false);
+    setOpenGroup(null);
   }, [pathname]);
+
+  /* Close dropdown when clicking outside the navbar */
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setOpenGroup(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   /* Lock body scroll when mobile menu is open */
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
+
+  const handleGroupToggle = (label: string) => {
+    setOpenGroup((prev) => (prev === label ? null : label));
+  };
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4 pt-4">
       <div
+        ref={navRef}
         className={cn(
           "w-full max-w-5xl rounded-2xl transition-all duration-300",
           scrolled
@@ -308,7 +338,13 @@ export default function Navbar() {
           <ul className="hidden md:flex items-center gap-0.5">
             {NAV_GROUPS.map((group) => (
               <li key={group.label}>
-                <DesktopDropdown group={group} pathname={pathname} />
+                <DesktopDropdown
+                  group={group}
+                  pathname={pathname}
+                  isOpen={openGroup === group.label}
+                  onToggle={() => handleGroupToggle(group.label)}
+                  onClose={() => setOpenGroup(null)}
+                />
               </li>
             ))}
           </ul>
@@ -339,9 +375,10 @@ export default function Navbar() {
             {/* Get Started */}
             <Link
               href="/register"
-              className="group relative inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-bold tracking-wide transition-all duration-200 shadow-[0_4px_20px_rgba(124,58,237,0.4)] hover:shadow-[0_6px_28px_rgba(124,58,237,0.6)] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
+              className="group relative inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 hover:from-blue-500 hover:via-violet-500 hover:to-purple-500 text-white text-sm font-bold tracking-wide transition-all duration-200 shadow-[0_4px_20px_rgba(37,99,235,0.4)] hover:shadow-[0_6px_28px_rgba(37,99,235,0.6)] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
               <span className="relative z-10">Get Started</span>
               <ArrowRight
                 size={14}
@@ -364,7 +401,7 @@ export default function Navbar() {
               type="button"
               onClick={() => setMobileOpen((v) => !v)}
               aria-label="Toggle menu"
-              aria-expanded={mobileOpen ? "true" : "false"}
+              aria-expanded={mobileOpen}
               className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-all"
             >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
@@ -402,10 +439,11 @@ export default function Navbar() {
               <Link
                 href="/register"
                 onClick={() => setMobileOpen(false)}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white text-center text-sm font-bold shadow-[0_4px_16px_rgba(124,58,237,0.4)] hover:from-violet-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 text-white text-center text-sm font-bold shadow-[0_4px_16px_rgba(37,99,235,0.4)] hover:from-blue-500 hover:via-violet-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
               >
-                Get Started
-                <ArrowRight size={14} />
+                <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+                <span className="relative z-10">Get Started</span>
+                <ArrowRight size={14} className="relative z-10" />
               </Link>
             </div>
           </div>

@@ -248,12 +248,12 @@ export default function ResetPasswordPage() {
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
 
           {/* Logo */}
-          <div className="flex items-center gap-2.5 mb-8">
+          <Link href="/" className="flex items-center gap-2.5 mb-8 hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center shadow-[0_0_16px_rgba(124,58,237,0.15)]">
               <Brain size={18} className="text-violet-500" />
             </div>
             <span className="text-[var(--fg)] font-bold text-base tracking-tight">AdvisorAI</span>
-          </div>
+          </Link>
 
           {/* Header */}
           <div className="mb-7">

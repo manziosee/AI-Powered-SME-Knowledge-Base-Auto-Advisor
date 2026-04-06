@@ -50,7 +50,7 @@ export default function Footer() {
                   aria-label={label}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-xl border border-[var(--border)] flex items-center justify-center text-[var(--fg-muted)] hover:text-violet-500 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-200 hover:-translate-y-1"
+                  className="w-9 h-9 rounded-xl border border-[var(--border)] flex items-center justify-center text-[var(--fg-muted)] hover:text-blue-500 hover:border-blue-500/40 hover:bg-blue-500/5 transition-all duration-200 hover:-translate-y-1"
                 >
                   <Icon size={15} />
                 </a>

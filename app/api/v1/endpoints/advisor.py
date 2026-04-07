@@ -81,16 +81,34 @@ async def ask_advisor(
             )).fetchall()
 
             if doc_rows:
-                status_lines = "\n".join(
-                    f"- {r.original_filename} (status: {r.status})" for r in doc_rows
-                )
-                result["answer"] = (
-                    "I don't have indexed content yet for your documents, so I can't answer precisely.\n\n"
-                    "Here are the files I see in your workspace right now:\n"
-                    f"{status_lines}\n\n"
-                    "If a file is still 'uploaded' or 'processing', wait a moment or click Reprocess in Documents. "
-                    "Once processing finishes, I'll answer using the extracted text."
-                )
+                processed_docs = [d for d in doc_rows if d.status in ("processed", "failed")]
+                pending_docs = [d for d in doc_rows if d.status not in ("processed", "failed")]
+                
+                msg_parts = []
+                
+                if pending_docs:
+                    pending_list = "\n".join(f"  • {d.original_filename} ({d.status})" for d in pending_docs)
+                    msg_parts.append(f"📄 **Documents still processing:**\n{pending_list}\n")
+                    msg_parts.append("⚠️ These documents are not yet searchable. Please wait for processing to complete, or go to **Documents** and click **Reprocess** to try again.\n")
+                
+                if processed_docs:
+                    processed_list = "\n".join(f"  • {d.original_filename}" for d in processed_docs)
+                    msg_parts.append(f"✅ **Processed documents:**\n{processed_list}")
+                
+                if not processed_docs:
+                    result["answer"] = (
+                        "I can't answer your question yet because your documents are still being processed.\n\n"
+                        + "\n".join(f"  • {d.original_filename} ({d.status})" for d in doc_rows)
+                        + "\n\n"
+                        "**What to do:**\n"
+                        "1. Wait a few minutes for processing to complete\n"
+                        "2. Or go to **Documents** → click the **⋮** menu → **Reprocess**\n"
+                        "3. Once status shows 'processed', ask me again and I'll have the full content to work with.\n"
+                        "\n"
+                        "You can check processing status in the Documents tab."
+                    )
+                else:
+                    result["answer"] = "I don't have specific information about that in your knowledge base. Try rephrasing your question, or upload a document that covers this topic."
         return result
     except LLMConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc))

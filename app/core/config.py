@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import List
 from functools import lru_cache
 
@@ -8,6 +9,15 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    
+    @field_validator('DEBUG', mode='before')
+    @classmethod
+    def parse_debug(cls, v):
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.lower() in ('true', '1', 'yes', 'on')
+        return True
     API_V1_PREFIX: str = "/api/v1"
     
     SECRET_KEY: str
@@ -90,9 +100,10 @@ class Settings(BaseSettings):
     def allowed_extensions_list(self) -> List[str]:
         return [ext.strip() for ext in self.ALLOWED_EXTENSIONS.split(",")]
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True,
+    }
 
 
 @lru_cache()

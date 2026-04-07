@@ -218,30 +218,48 @@ export default function AdvisorPage() {
 
   // Load sessions + sidebar stats on mount
   useEffect(() => {
-    chatbotApi.sessions().then(({ data }) => {
-      if (data && data.length > 0) {
-        const loaded: Session[] = data.map((s) => ({
+    const loadData = async () => {
+      // Always start with init session
+      let currentSessions = [INIT_SESSION];
+      let currentActiveSession = INIT_SESSION;
+      let currentMessages: Msg[] = [];
+
+      // Try to load existing sessions from backend
+      const { data: sessionsData } = await chatbotApi.sessions();
+      
+      if (sessionsData && Array.isArray(sessionsData) && sessionsData.length > 0) {
+        const loaded: Session[] = sessionsData.map((s: any) => ({
           id: s.id,
-          title: s.title,
-          updatedAt: s.updated_at,
+          title: s.title || "Chat",
+          updatedAt: s.updated_at || "recent",
           messages: [],
         }));
-        setSessions(loaded);
-        setActiveSession(loaded[0]);
-        chatbotApi.getSession(loaded[0].id).then(({ data: sd }) => {
-          if (sd?.messages) setMessages(sd.messages as Msg[]);
-        });
+        
+        currentSessions = [...currentSessions, ...loaded];
+        currentActiveSession = loaded[0];
+        
+        // Load messages for the most recent session
+        const { data: sessionData } = await chatbotApi.getSession(loaded[0].id);
+        if (sessionData?.messages) {
+          currentMessages = sessionData.messages as Msg[];
+        }
       }
-    });
 
-    analytics.overview().then(({ data }) => {
-      if (data) {
+      setSessions(currentSessions);
+      setActiveSession(currentActiveSession);
+      setMessages(currentMessages);
+
+      // Load sidebar stats
+      const { data: overview } = await analytics.overview();
+      if (overview) {
         setSidebarStats({
-          docs:    data.documents.total,
-          entries: data.knowledge_entries.total,
+          docs: overview.documents?.total || 0,
+          entries: overview.knowledge_entries?.total || 0,
         });
       }
-    });
+    };
+
+    loadData();
   }, []);
 
   const createNewSession = useCallback(async () => {

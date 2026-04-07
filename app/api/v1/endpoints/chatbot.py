@@ -179,16 +179,28 @@ async def send_message(
             """)
             doc_result = await db.execute(doc_sql, {"company_id": str(session.company_id)})
             uploaded_docs = doc_result.fetchall()
+            
             if uploaded_docs:
-                doc_lines = "\n".join(
-                    f"  - {d.original_filename} (status: {d.status})" for d in uploaded_docs
-                )
-                context = (
-                    f"The user has uploaded the following documents, but their content has not been fully "
-                    f"extracted into the knowledge base yet (they may still be processing):\n{doc_lines}\n\n"
-                    "You can reference these documents by name and let the user know their content is being "
-                    "processed. Once processing completes, you will be able to answer questions about their content."
-                )
+                processed_docs = [d for d in uploaded_docs if d.status == "processed"]
+                pending_docs = [d for d in uploaded_docs if d.status != "processed"]
+                
+                if pending_docs:
+                    pending_list = "\n".join(f"  • {d.original_filename} ({d.status})" for d in pending_docs)
+                    context = (
+                        f"⏳ **Your documents are still being processed:**\n{pending_list}\n\n"
+                        "These files are not yet searchable. Please wait for processing to complete, or go to **Documents** and click **Reprocess** to try again.\n"
+                        "\n"
+                        "Once the status shows 'processed', I can answer questions about their content."
+                    )
+                elif processed_docs:
+                    processed_list = "\n".join(f"  • {d.original_filename}" for d in processed_docs)
+                    context = (
+                        f"You have {len(processed_docs)} processed document(s), but none contain information related to the user's question.\n"
+                        f"Documents: {processed_list}\n"
+                        "Please rephrase your question or upload a document that covers this topic."
+                    )
+                else:
+                    context = "No documents have been uploaded yet. Please upload business documents to build your knowledge base."
             else:
                 context = "No documents have been uploaded yet. Please upload business documents to build your knowledge base."
         except Exception:

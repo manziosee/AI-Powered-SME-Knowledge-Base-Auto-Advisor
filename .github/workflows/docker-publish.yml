@@ -51,6 +51,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
+          # Install torch CPU first from PyTorch index (required for sentence-transformers)
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu torch
+          # Install remaining dependencies
           pip install -r requirements.txt
           # Use direct versioned URL — avoids malformed URL bug in spaCy 3.7.x download command
           pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl

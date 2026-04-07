@@ -187,6 +187,11 @@ export default function TrainingPage() {
   // Remove a sample
   const removeSample = (idx: number) => setSamples((prev) => prev.filter((_, i) => i !== idx));
 
+  // Update sample label
+  const updateSampleLabel = (idx: number, newLabel: string) => {
+    setSamples((prev) => prev.map((s, i) => i === idx ? { ...s, label: newLabel } : s));
+  };
+
   // Parse CSV text into samples
   const parseCsvText = (text: string): { parsed: TrainingSample[]; errors: number } => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -502,12 +507,20 @@ export default function TrainingPage() {
                   <div className="max-h-48 overflow-y-auto">
                     {samples.map((s, i) => (
                       <div key={i} className="flex items-center gap-3 px-3 py-2 border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface-hover)]">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
-                          s.label === "critical" ? "text-rose-500 border-rose-500/30 bg-rose-500/10"
-                          : s.label === "high" ? "text-amber-500 border-amber-500/30 bg-amber-500/10"
-                          : s.label === "medium" ? "text-blue-500 border-blue-500/30 bg-blue-500/10"
-                          : "text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
-                        }`}>{s.label}</span>
+                        <select
+                          value={s.label}
+                          onChange={(e) => updateSampleLabel(i, e.target.value)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border bg-[var(--bg)] cursor-pointer ${
+                            s.label === "critical" ? "text-rose-500 border-rose-500/30"
+                            : s.label === "high" ? "text-amber-500 border-amber-500/30"
+                            : s.label === "medium" ? "text-blue-500 border-blue-500/30"
+                            : "text-emerald-500 border-emerald-500/30"
+                          }`}
+                        >
+                          {RISK_LABELS.map((l) => (
+                            <option key={l} value={l}>{l}</option>
+                          ))}
+                        </select>
                         <span className="text-[var(--fg-muted)] text-xs flex-1 truncate">{s.text}</span>
                         <button
                           type="button"

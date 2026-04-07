@@ -21,8 +21,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy ONLY requirements first — pip layer is cached until requirements.txt changes
 COPY requirements.txt .
+# Install torch CPU from PyTorch index first, then install remaining requirements
 RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir --prefix=/install -r requirements.txt
+ && pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch \
+ && pip install --no-cache-dir --prefix=/install --no-deps -r requirements.txt \
+ && pip install --no-cache-dir --prefix=/install \
+     fastapi uvicorn[standard] pydantic pydantic-settings \
+     sqlalchemy alembic psycopg2-binary asyncpg pgvector \
+     "python-jose[cryptography]" "passlib[bcrypt]" python-multipart bcrypt \
+     redis celery flower \
+     groq langchain langchain-text-splitters langchain-groq \
+     sentence-transformers \
+     spacy rank-bm25 "python-dateutil" tiktoken \
+     scikit-learn joblib numpy pandas \
+     pypdf pytesseract Pillow pdf2image python-docx openpyxl python-magic aiofiles \
+     boto3 botocore \
+     reportlab \
+     httpx \
+     email-validator \
+     python-dotenv python-slugify \
+     python-json-logger \
+     pytest pytest-asyncio pytest-cov faker
 
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime

@@ -31,6 +31,30 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; cls: string; icon: React.
 
 const RELEASES: Release[] = [
   {
+    version: "1.6.2",
+    date: "April 7, 2026",
+    tag: "latest",
+    summary: "Fixed Docker build CI/CD - torch CPU package specification issue.",
+    changes: [
+      { type: "fix",         text: "Docker build: Changed torch from '2.2.0+cpu' to 'torch' (latest CPU version from PyTorch index)" },
+      { type: "fix",         text: "Dockerfile: Added separate torch install from PyTorch CPU index before requirements.txt" },
+    ],
+  },
+  {
+    version: "1.6.1",
+    date: "April 7, 2026",
+    tag: "latest",
+    summary: "Training label editor, advisor session persistence, improved document status messages, and Pydantic V2 config migration.",
+    changes: [
+      { type: "feature",     text: "Training page now has dropdown selector for each sample label (low/medium/high/critical) — fix for 'needs at least 2 distinct labels' error" },
+      { type: "improvement", text: "Advisor/chatbot now properly loads and persists session history from backend API" },
+      { type: "improvement", text: "Chatbot/advisor responses distinguish between processing vs processed documents with actionable guidance" },
+      { type: "improvement", text: "Config.py migrated to Pydantic V2 — DEBUG boolean now parses correctly from environment variables" },
+      { type: "fix",         text: "All Python files validated with AST parser — no syntax errors" },
+      { type: "fix",         text: "17 pytest tests passing" },
+    ],
+  },
+  {
     version: "1.6.0",
     date: "April 7, 2026",
     tag: "latest",

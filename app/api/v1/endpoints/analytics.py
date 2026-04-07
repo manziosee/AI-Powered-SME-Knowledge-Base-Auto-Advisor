@@ -182,6 +182,75 @@ async def get_compliance_score(
 
 
 # ---------------------------------------------------------------------------
+# Time-series document & query activity
+# ---------------------------------------------------------------------------
+
+@router.get("/activity")
+async def get_activity(
+    days: int = Query(14, ge=7, le=90, description="Number of days to look back"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Daily counts of documents uploaded, processed, and knowledge entries created."""
+    if not current_user.company_id:
+        return {"days": days, "series": []}
+
+    cid = current_user.company_id
+    now = datetime.utcnow()
+    start = now - timedelta(days=days)
+
+    # Daily document uploads
+    upload_sql = text("""
+        SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+        FROM documents
+        WHERE company_id = :cid AND created_at >= :start
+        GROUP BY DATE(created_at)
+        ORDER BY day
+    """)
+    upload_rows = (await db.execute(upload_sql, {"cid": str(cid), "start": start})).fetchall()
+
+    # Daily documents that moved to processed
+    processed_sql = text("""
+        SELECT DATE(updated_at) AS day, COUNT(*) AS cnt
+        FROM documents
+        WHERE company_id = :cid AND status = 'processed' AND updated_at >= :start
+        GROUP BY DATE(updated_at)
+        ORDER BY day
+    """)
+    processed_rows = (await db.execute(processed_sql, {"cid": str(cid), "start": start})).fetchall()
+
+    # Daily knowledge entries created (proxy for AI query volume / extraction activity)
+    ke_sql = text("""
+        SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+        FROM knowledge_entries
+        WHERE company_id = :cid AND created_at >= :start
+        GROUP BY DATE(created_at)
+        ORDER BY day
+    """)
+    ke_rows = (await db.execute(ke_sql, {"cid": str(cid), "start": start})).fetchall()
+
+    # Build a day-keyed dict for each series
+    uploads_by_day    = {str(r.day): r.cnt for r in upload_rows}
+    processed_by_day  = {str(r.day): r.cnt for r in processed_rows}
+    entries_by_day    = {str(r.day): r.cnt for r in ke_rows}
+
+    # Generate every day in the range
+    series = []
+    for i in range(days):
+        day = (start + timedelta(days=i + 1)).date()
+        day_str = str(day)
+        series.append({
+            "date":      day_str,
+            "label":     day.strftime("%b %d"),
+            "uploaded":  uploads_by_day.get(day_str, 0),
+            "processed": processed_by_day.get(day_str, 0),
+            "entries":   entries_by_day.get(day_str, 0),
+        })
+
+    return {"days": days, "series": series}
+
+
+# ---------------------------------------------------------------------------
 # Risk distribution
 # ---------------------------------------------------------------------------
 

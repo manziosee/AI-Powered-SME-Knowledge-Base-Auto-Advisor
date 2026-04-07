@@ -519,6 +519,48 @@ async def delete_document(
 
 
 # ---------------------------------------------------------------------------
+# Reprocess
+# ---------------------------------------------------------------------------
+
+@router.post("/{document_id}/reprocess", status_code=202)
+async def reprocess_document(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Re-trigger document processing for a stuck (uploaded/failed) document."""
+    document = await _get_doc_or_404(db, document_id, current_user.company_id)
+
+    if document.status.value not in ("uploaded", "failed", "processing"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document is already {document.status.value}. Only uploaded or failed documents can be reprocessed.",
+        )
+
+    try:
+        import boto3
+        s3_kwargs = dict(
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION,
+        )
+        if settings.S3_ENDPOINT_URL:
+            s3_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        s3 = boto3.client("s3", **s3_kwargs)
+        response = s3.get_object(Bucket=settings.S3_BUCKET_NAME, Key=document.file_path)
+        file_content = response["Body"].read()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not retrieve file from storage for reprocessing: {exc}")
+
+    document.status = DocumentStatus.UPLOADED
+    await db.commit()
+
+    process_document_task.delay(str(document.id), file_content, document.mime_type)
+
+    return {"status": "reprocessing", "document_id": str(document_id), "filename": document.original_filename}
+
+
+# ---------------------------------------------------------------------------
 # Bulk operations
 # ---------------------------------------------------------------------------
 

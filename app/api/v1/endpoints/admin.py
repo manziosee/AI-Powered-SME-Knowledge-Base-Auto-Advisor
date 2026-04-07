@@ -14,9 +14,12 @@ GET  /admin/ml/status          — ML model training status (Admin+)
 POST /admin/ml/train-risk-scorer — trigger risk scorer retraining (Admin+)
 """
 
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -439,6 +442,28 @@ async def train_risk_scorer(
             detail="Need at least 4 labelled samples to train. Provide training_data or add risk-labelled knowledge entries.",
         )
 
+    # Validate label values
+    valid_labels = {"low", "medium", "high", "critical"}
+    invalid_labels = {d["label"] for d in training_data} - valid_labels
+    if invalid_labels:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid label value(s): {sorted(invalid_labels)}. Use only: low, medium, high, critical.",
+        )
+
+    # Require at least 2 distinct classes — LogisticRegression needs multiple classes
+    distinct_labels = {d["label"] for d in training_data}
+    if len(distinct_labels) < 2:
+        only = next(iter(distinct_labels))
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"All {len(training_data)} samples have the same label '{only}'. "
+                "Training requires at least 2 distinct risk labels (e.g., low and high). "
+                "Adjust labels in your training data before retrying."
+            ),
+        )
+
     try:
         stats = _risk_scorer.train(
             texts=[d["text"] for d in training_data],
@@ -446,6 +471,7 @@ async def train_risk_scorer(
         )
         return {"status": "trained", "stats": stats}
     except Exception as exc:
+        logger.error("Risk scorer training failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Training failed: {exc}")
 
 

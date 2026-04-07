@@ -53,6 +53,7 @@ export default function CompliancePage() {
   const [score, setScore] = useState<number | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [resolved, setResolved] = useState<ResolvedMap>(loadResolved);
   const [resolveOpen, setResolveOpen] = useState<string | null>(null);
@@ -77,9 +78,15 @@ export default function CompliancePage() {
     saveResolved(updated);
   }, [resolved]);
 
-  useEffect(() => {
+  const fetchCompliance = useCallback(() => {
     setLoading(true);
-    analytics.complianceScore().then(({ data }) => {
+    setError(null);
+    analytics.complianceScore().then(({ data, error: err }) => {
+      if (err) {
+        setError(err);
+        setLoading(false);
+        return;
+      }
       if (data) {
         setScore(data.compliance_score);
         setCountry(data.country ?? null);
@@ -107,6 +114,8 @@ export default function CompliancePage() {
     });
   }, []);
 
+  useEffect(() => { fetchCompliance(); }, [fetchCompliance]);
+
   const categories = ["all", ...Array.from(new Set(rules.map((r) => r.category)))];
   const filtered = activeCategory === "all" ? rules : rules.filter((r) => r.category === activeCategory);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -129,12 +138,24 @@ export default function CompliancePage() {
             <p className="text-[var(--fg-muted)] text-sm mt-0.5">Track obligations, deadlines and gaps</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-500/15 to-emerald-500/8 border border-teal-500/30 hover:shadow-lg hover:shadow-teal-500/20 transition-all duration-300 hover:scale-105">
-          <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_6px_#2dd4bf]" />
-          <span className="text-teal-500 font-black text-2xl tracking-tight">{score !== null ? `${Math.round(score)}%` : "—"}</span>
-          <div>
-            <p className="text-teal-400 text-xs font-semibold leading-none">Compliance Score</p>
-            {country && <p className="text-[var(--fg-muted)] text-[10px] mt-0.5">{country}</p>}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={fetchCompliance}
+            disabled={loading}
+            title="Refresh compliance data"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:text-teal-500 hover:border-teal-500/30 text-xs transition-all disabled:opacity-40"
+          >
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+          <div className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-teal-500/15 to-emerald-500/8 border border-teal-500/30 hover:shadow-lg hover:shadow-teal-500/20 transition-all duration-300 hover:scale-105">
+            <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_6px_#2dd4bf]" />
+            <span className="text-teal-500 font-black text-2xl tracking-tight">{score !== null ? `${Math.round(score)}%` : "—"}</span>
+            <div>
+              <p className="text-teal-400 text-xs font-semibold leading-none">Compliance Score</p>
+              {country && <p className="text-[var(--fg-muted)] text-[10px] mt-0.5">{country}</p>}
+            </div>
           </div>
         </div>
       </div>
@@ -169,6 +190,15 @@ export default function CompliancePage() {
           </button>
         ))}
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/8 text-rose-500 text-sm">
+          <AlertTriangle size={16} className="flex-shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button type="button" onClick={fetchCompliance} className="text-xs underline hover:no-underline">Retry</button>
+        </div>
+      )}
 
       {/* Rules list */}
       {loading ? (

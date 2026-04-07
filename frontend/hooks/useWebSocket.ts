@@ -10,21 +10,27 @@ export interface WsMessage {
 interface UseWebSocketOptions {
   onMessage?: (msg: WsMessage) => void;
   enabled?: boolean;
+  maxRetries?: number;
 }
 
 const BASE_WS = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
   .replace(/^http/, "ws");
 
-export function useWebSocket({ onMessage, enabled = true }: UseWebSocketOptions = {}) {
+export function useWebSocket({ onMessage, enabled = true, maxRetries = 3 }: UseWebSocketOptions = {}) {
   const wsRef      = useRef<WebSocket | null>(null);
   const pingRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [connected, setConnected] = useState(false);
+  const attempts   = useRef(0);
 
   const connect = useCallback(() => {
     if (!enabled) return;
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
     if (!token) return;
+
+    // Stop after maxRetries to avoid noisy console errors in dev
+    if (attempts.current >= maxRetries) return;
+    attempts.current += 1;
 
     const url = `${BASE_WS}/api/v1/ws/notifications?token=${token}`;
     const ws  = new WebSocket(url);
@@ -47,7 +53,9 @@ export function useWebSocket({ onMessage, enabled = true }: UseWebSocketOptions 
       setConnected(false);
       if (pingRef.current) clearInterval(pingRef.current);
       // Auto-reconnect after 5 s
-      reconnRef.current = setTimeout(connect, 5_000);
+      if (attempts.current < maxRetries) {
+        reconnRef.current = setTimeout(connect, 5_000);
+      }
     };
 
     ws.onerror = () => ws.close();

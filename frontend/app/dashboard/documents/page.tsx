@@ -294,13 +294,15 @@ function CommentsPanel({ doc, onClose }: { doc: Doc; onClose: () => void }) {
 }
 
 // ── More-options dropdown ─────────────────────────────────────────────────────
-function DocMenu({ doc, onDelete, onShare, onComment }: {
+function DocMenu({ doc, onDelete, onShare, onComment, onReprocess }: {
   doc: Doc; onDelete: (id: string) => void;
   onShare: (doc: Doc) => void; onComment: (doc: Doc) => void;
+  onReprocess: (id: string) => void;
 }) {
-  const [open,        setOpen]       = useState(false);
-  const [menuPos,     setMenuPos]    = useState({ top: 0, right: 0 });
-  const [downloading, setDownloading] = useState(false);
+  const [open,         setOpen]        = useState(false);
+  const [menuPos,      setMenuPos]     = useState({ top: 0, right: 0 });
+  const [downloading,  setDownloading] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const handleToggle = () => {
@@ -324,10 +326,19 @@ function DocMenu({ doc, onDelete, onShare, onComment }: {
     onDelete(doc.id);
   };
 
+  const handleReprocess = async () => {
+    setOpen(false); setReprocessing(true);
+    await docsApi.reprocess(doc.id);
+    onReprocess(doc.id);
+    setReprocessing(false);
+  };
+
+  const canReprocess = doc.status === "uploaded" || doc.status === "failed";
+
   const menu = open ? (
     <>
       <div className="fixed inset-0 z-[100]" onClick={() => setOpen(false)} />
-      <div className="fixed z-[101] w-48 rounded-xl bg-[var(--bg-soft)] border border-[var(--border)] shadow-2xl py-1"
+      <div className="fixed z-[101] w-52 rounded-xl bg-[var(--bg-soft)] border border-[var(--border)] shadow-2xl py-1"
         style={{ top: menuPos.top, right: menuPos.right }}>
         <button onClick={handleDownload}
           className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors">
@@ -341,6 +352,12 @@ function DocMenu({ doc, onDelete, onShare, onComment }: {
           className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-[var(--fg-soft)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors">
           <MessageSquare size={13} className="text-blue-400" /> Comments
         </button>
+        {canReprocess && (
+          <button onClick={handleReprocess}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-amber-500 hover:bg-amber-500/8 transition-colors">
+            <RefreshCw size={13} /> Reprocess document
+          </button>
+        )}
         <div className="h-px bg-[var(--border)] mx-2" />
         <button onClick={handleDelete}
           className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-rose-500 hover:bg-rose-500/8 transition-colors">
@@ -354,7 +371,7 @@ function DocMenu({ doc, onDelete, onShare, onComment }: {
     <div>
       <button ref={btnRef} type="button" onClick={handleToggle}
         className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-all">
-        {downloading ? <Clock size={14} className="animate-spin" /> : <MoreHorizontal size={14} />}
+        {downloading || reprocessing ? <Clock size={14} className="animate-spin" /> : <MoreHorizontal size={14} />}
       </button>
       {typeof window !== "undefined" && menu && ReactDOM.createPortal(menu, document.body)}
     </div>
@@ -445,6 +462,10 @@ export default function DocumentsPage() {
     setSelected(prev => { const s = new Set(prev); s.delete(id); return s; });
   }, []);
 
+  const handleReprocess = useCallback((id: string) => {
+    setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "processing" } : d));
+  }, []);
+
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const s = new Set(prev);
@@ -487,7 +508,7 @@ export default function DocumentsPage() {
       if (data) {
         setUploads(prev => prev.map(u => u.name === file.name ? { ...u, pct: 100, done: true } : u));
         setDocs(prev => [{
-          id: data.id, name: data.name, type: data.type ?? "other",
+          id: data.id, name: data.original_filename ?? data.name ?? file.name, type: data.document_type ?? data.type ?? "other",
           risk: data.risk_level ?? "low", status: "processing",
           size: `${Math.round((data.file_size ?? 0) / 1024)} KB`,
           uploadedAt: "just now", uploadedBy: "You",
@@ -516,7 +537,7 @@ export default function DocumentsPage() {
   }, [uploadFiles]);
 
   const filtered = docs.filter(d => {
-    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = (d.name ?? "").toLowerCase().includes(search.toLowerCase());
     const matchType   = typeFilter === "all" || d.type === typeFilter;
     return matchSearch && matchType;
   });
@@ -668,7 +689,7 @@ export default function DocumentsPage() {
             <div className="col-span-1 text-[var(--fg-muted)] text-xs">{doc.size}</div>
 
             <div className="col-span-1 flex justify-end">
-              <DocMenu doc={doc} onDelete={handleDelete} onShare={setShareDoc} onComment={setCommentDoc} />
+              <DocMenu doc={doc} onDelete={handleDelete} onShare={setShareDoc} onComment={setCommentDoc} onReprocess={handleReprocess} />
             </div>
           </div>
         ))}

@@ -7,7 +7,7 @@ import {
   FileText, Shield, Search, Zap, BookOpen, Trash2,
   ThumbsUp, ThumbsDown, Eraser, ChevronDown, ChevronUp, ExternalLink,
 } from "lucide-react";
-import { advisor as advisorApi, chatbot as chatbotApi } from "@/lib/api";
+import { advisor as advisorApi, chatbot as chatbotApi, analytics } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Source { id?: string; title: string; documentId?: string }
@@ -150,20 +150,6 @@ const PROMPTS = [
   { icon: BookOpen, text: "Explain RDB licensing requirements",  color: "text-emerald-500",bg: "bg-emerald-500/8 border-emerald-500/20"},
 ];
 
-// ── Fallback canned response ──────────────────────────────────────────────────
-function buildFallback(question: string): string {
-  const q = question.toLowerCase();
-  if (q.includes("deadline") || q.includes("coming up")) {
-    return "**Upcoming Deadlines (from your documents):**\n\n- VAT Return — April 15 (overdue)\n- PAYE Filing — April 30 (7 days away)\n- Annual Returns (RDB) — May 31\n- Employment Contracts review — June 1\n\n**Recommendation:** The VAT return is already overdue. Address immediately to avoid penalties.\n\n*Source: AdvisorAI RAG Pipeline — 4 documents referenced*";
-  }
-  if (q.includes("gdpr") || q.includes("obligation")) {
-    return "**GDPR Obligations Summary:**\n\n- **Lawful basis** — You must document a lawful basis for every type of personal data you process.\n- **Data subject rights** — Respond to access requests within 30 days.\n- **Breach notification** — Report breaches to the supervisory authority within 72 hours.\n- **DPO appointment** — Required if you process data at large scale.\n\n*Source: GDPR Compliance Guide (uploaded March 2024)*";
-  }
-  if (q.includes("tax") || q.includes("compliance")) {
-    return "**Tax Compliance Status:**\n\nYour current compliance score is **94%** (4 items need attention).\n\n- VAT: Overdue — file immediately\n- Corporate Tax: On track (due Q3)\n- PAYE: 7 days remaining\n- Withholding Tax: On track\n\n*Source: Tax Compliance Tracker — last updated April 2024*";
-  }
-  return "I've searched through your documents and compliance database. Based on the information available, here's what I found:\n\n**Summary:**\nYour question relates to several documents in your knowledge base. The most relevant entries have been identified and cross-referenced with your compliance rules.\n\n- Relevant document found and indexed\n- Compliance rules checked for your jurisdiction\n- Risk level assessed: **Medium**\n\n**Recommendation:** Review the referenced documents and ensure all deadlines are tracked in your compliance calendar.\n\n*Source: AdvisorAI RAG Pipeline — 3 documents referenced*";
-}
 
 // ── Streaming helper ──────────────────────────────────────────────────────────
 async function streamAnswer(
@@ -222,6 +208,7 @@ export default function AdvisorPage() {
   const [input,          setInput]          = useState("");
   const [typing,         setTyping]         = useState(false);
   const [toast,          setToast]          = useState<string | null>(null);
+  const [sidebarStats,   setSidebarStats]   = useState({ docs: 0, entries: 0 });
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom on new message
@@ -229,7 +216,7 @@ export default function AdvisorPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  // Load sessions from API on mount (non-blocking)
+  // Load sessions + sidebar stats on mount
   useEffect(() => {
     chatbotApi.sessions().then(({ data }) => {
       if (data && data.length > 0) {
@@ -243,6 +230,15 @@ export default function AdvisorPage() {
         setActiveSession(loaded[0]);
         chatbotApi.getSession(loaded[0].id).then(({ data: sd }) => {
           if (sd?.messages) setMessages(sd.messages as Msg[]);
+        });
+      }
+    });
+
+    analytics.overview().then(({ data }) => {
+      if (data) {
+        setSidebarStats({
+          docs:    data.documents.total,
+          entries: data.knowledge_entries.total,
         });
       }
     });
@@ -260,6 +256,11 @@ export default function AdvisorPage() {
 
   const selectSession = useCallback(async (s: Session) => {
     setActiveSession(s);
+    // Never call the API for synthetic/local sessions — "init" is not a real UUID
+    if (s.id === "init" || s.id.startsWith("local-")) {
+      setMessages([]);
+      return;
+    }
     if (s.messages.length > 0) {
       setMessages(s.messages);
       return;
@@ -360,7 +361,7 @@ export default function AdvisorPage() {
     }
 
     if (!answer) {
-      answer = "I'm having trouble connecting to the AI service. Please try again in a moment.";
+      answer = "The AI service is temporarily unavailable. Please check your connection and try again. If documents are still processing, answers will improve once they are indexed.";
     }
 
     setTyping(false);
@@ -466,8 +467,8 @@ export default function AdvisorPage() {
         <div className="p-3 border-t border-[var(--border)]">
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Docs",  value: "1,248", color: "text-cyan-500"   },
-              { label: "Rules", value: "47",    color: "text-violet-500" },
+              { label: "Docs",    value: sidebarStats.docs    > 0 ? sidebarStats.docs.toLocaleString()    : "—", color: "text-cyan-500"   },
+              { label: "Entries", value: sidebarStats.entries > 0 ? sidebarStats.entries.toLocaleString() : "—", color: "text-violet-500" },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-[var(--surface)] rounded-xl p-2.5 text-center border border-[var(--border)]">
                 <p className={`text-sm font-black ${color}`}>{value}</p>
@@ -511,7 +512,11 @@ export default function AdvisorPage() {
             </div>
             <div className="flex items-center gap-1 text-[var(--fg-muted)] text-[10px]">
               <Sparkles size={10} className="text-violet-400" />
-              <span>1,248 docs indexed</span>
+              <span>
+                {sidebarStats.docs > 0
+                  ? `${sidebarStats.docs.toLocaleString()} docs indexed`
+                  : "Indexing your documents"}
+              </span>
             </div>
           </div>
         </div>

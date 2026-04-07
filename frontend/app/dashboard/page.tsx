@@ -12,7 +12,7 @@ import {
   Bell, Calendar, Clock, ArrowUpRight, Heart, LayoutDashboard, Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { analytics, notifications as notifApi, insights } from "@/lib/api";
+import { analytics, notifications as notifApi, insights, auth as authApi } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
 
 /* ── Colours ─────────────────────────────────────────────────── */
@@ -198,9 +198,42 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{ name: string; avatar: string; company: string } | null>(null);
   const [riskDistData, setRiskDistData] = useState<{ month: string; critical: number; high: number; medium: number; low: number }[]>([]);
   const [complianceScore, setComplianceScore] = useState(0);
+  const [activityData, setActivityData] = useState<{ date: string; uploaded: number; processed: number; queries: number }[]>([]);
+
+  // Fetch activity data whenever the range changes
   useEffect(() => {
-    const stored = localStorage.getItem("auth_user");
-    if (stored) setUser(JSON.parse(stored));
+    analytics.activity(chartRange === "7d" ? 7 : chartRange === "14d" ? 14 : 30).then(({ data }) => {
+      if (data?.series) {
+        setActivityData(data.series.map((s) => ({
+          date:      s.label,
+          uploaded:  s.uploaded,
+          processed: s.processed,
+          queries:   s.entries,
+        })));
+      }
+    });
+  }, [chartRange]);
+
+  useEffect(() => {
+    // Fetch user info from API (not just localStorage) so avatar initial is correct
+    authApi.me().then(({ data }) => {
+      if (data) {
+        const displayName = data.full_name ?? data.email ?? "User";
+        setUser({
+          name:    displayName,
+          avatar:  displayName[0].toUpperCase(),
+          company: data.company?.name ?? "",
+        });
+      } else {
+        // Fallback to localStorage cache
+        const stored = localStorage.getItem("auth_user");
+        if (stored) {
+          const u = JSON.parse(stored);
+          const displayName = u.full_name ?? u.email ?? "User";
+          setUser({ name: displayName, avatar: displayName[0].toUpperCase(), company: u.company?.name ?? "" });
+        }
+      }
+    });
 
     insights.health().then(({ data }) => { if (data?.score) setHealth(data as HealthData); });
     insights.expiry(90).then(({ data }) => { if (data?.documents?.length) setExpiring(data.documents); });
@@ -228,7 +261,7 @@ export default function DashboardPage() {
       if (data?.distribution) {
         const d = data.distribution;
         setRiskDistData([{
-          month: "Current",
+          month:    "Current",
           critical: (d.critical as number) || 0,
           high:     (d.high as number)     || 0,
           medium:   (d.medium as number)   || 0,
@@ -246,12 +279,7 @@ export default function DashboardPage() {
   const refColor    = dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
   const legendColor = dark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
 
-  const activityData = kpi.totalDocuments > 0 ? [{
-    date: "Current",
-    uploaded:  kpi.totalDocuments,
-    processed: kpi.processedDocs,
-    queries:   kpi.knowledgeEntries,
-  }] : [];
+  // activityData is populated from the /analytics/activity API (state above)
 
   const tooltip = <ChartTooltip dark={dark} />;
 
@@ -302,8 +330,8 @@ export default function DashboardPage() {
           </div>
 
           {/* User avatar */}
-          <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/35 flex items-center justify-center text-violet-400 font-bold text-xs">
-            {user?.avatar ?? "U"}
+          <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/35 flex items-center justify-center text-violet-400 font-bold text-xs" title={user?.name}>
+            {user?.avatar ?? "?"}
           </div>
         </div>
       </div>

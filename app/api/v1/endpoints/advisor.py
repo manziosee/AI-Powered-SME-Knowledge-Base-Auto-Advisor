@@ -65,6 +65,32 @@ async def ask_advisor(
             company_name=company_name,
             use_compression=False,  # fast path — skip compression
         )
+        # If no sources were found, surface uploaded documents + their status so the user understands why
+        if not result.get("sources"):
+            doc_rows = (await db.execute(
+                text(
+                    """
+                    SELECT original_filename, status, processed_at, created_at
+                    FROM documents
+                    WHERE company_id = :cid
+                    ORDER BY created_at DESC
+                    LIMIT 20
+                    """
+                ),
+                {"cid": str(current_user.company_id)},
+            )).fetchall()
+
+            if doc_rows:
+                status_lines = "\n".join(
+                    f"- {r.original_filename} (status: {r.status})" for r in doc_rows
+                )
+                result["answer"] = (
+                    "I don't have indexed content yet for your documents, so I can't answer precisely.\n\n"
+                    "Here are the files I see in your workspace right now:\n"
+                    f"{status_lines}\n\n"
+                    "If a file is still 'uploaded' or 'processing', wait a moment or click Reprocess in Documents. "
+                    "Once processing finishes, I'll answer using the extracted text."
+                )
         return result
     except LLMConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc))

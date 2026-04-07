@@ -331,6 +331,13 @@ export const documents = {
   async delete(id: string) {
     return request<{ message: string }>(`/documents/${id}`, { method: "DELETE" });
   },
+
+  async reprocess(id: string) {
+    return request<{ status: string; document_id: string; filename: string }>(
+      `/documents/${id}/reprocess`,
+      { method: "POST" },
+    );
+  },
 };
 
 // ── Advisor (RAG chat) ────────────────────────────────────────────────────────
@@ -423,6 +430,13 @@ export const analytics = {
       coverage_percentage: number;
       gap_rules: Array<{ id: string; title: string; category: string; severity: string; deadline?: string; action_required?: string; description?: string }>;
     }>(`/analytics/compliance-score${qs}`);
+  },
+
+  async activity(days: 7 | 14 | 30 = 14) {
+    return request<{
+      days: number;
+      series: Array<{ date: string; label: string; uploaded: number; processed: number; entries: number }>;
+    }>(`/analytics/activity?days=${days}`);
   },
 
   async riskDistribution() {

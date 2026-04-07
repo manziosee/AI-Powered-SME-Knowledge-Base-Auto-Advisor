@@ -164,7 +164,35 @@ async def send_message(
 
     context = "\n\n".join(
         f"[{e.knowledge_type}] {e.title}: {e.content}" for e in relevant_entries
-    ) or "No relevant knowledge found in your documents yet. Please upload business documents to build your knowledge base."
+    )
+
+    if not context:
+        # Documents are uploaded but may still be processing — include their names
+        # so the AI can reference them and explain the situation accurately
+        try:
+            doc_sql = text("""
+                SELECT original_filename, status, created_at
+                FROM documents
+                WHERE company_id = :company_id
+                ORDER BY created_at DESC
+                LIMIT 20
+            """)
+            doc_result = await db.execute(doc_sql, {"company_id": str(session.company_id)})
+            uploaded_docs = doc_result.fetchall()
+            if uploaded_docs:
+                doc_lines = "\n".join(
+                    f"  - {d.original_filename} (status: {d.status})" for d in uploaded_docs
+                )
+                context = (
+                    f"The user has uploaded the following documents, but their content has not been fully "
+                    f"extracted into the knowledge base yet (they may still be processing):\n{doc_lines}\n\n"
+                    "You can reference these documents by name and let the user know their content is being "
+                    "processed. Once processing completes, you will be able to answer questions about their content."
+                )
+            else:
+                context = "No documents have been uploaded yet. Please upload business documents to build your knowledge base."
+        except Exception:
+            context = "No relevant knowledge found in your documents yet. Please upload business documents to build your knowledge base."
 
     # Build message history for multi-turn
     api_history = [

@@ -132,6 +132,19 @@ export default function TrainingPage() {
 
   const handleTrain = async () => {
     if (!isAdmin) return;
+
+    // Validate label diversity before sending to backend
+    if (samples.length > 0) {
+      const distinctLabels = new Set(samples.map((s) => s.label));
+      if (distinctLabels.size < 2) {
+        const only = [...distinctLabels][0];
+        const msg = `All ${samples.length} samples are labeled '${only}'. Training needs at least 2 distinct labels (e.g., low and high). Update labels in the list above before training.`;
+        addLog(msg, "error");
+        setApiError(msg);
+        return;
+      }
+    }
+
     setLoading(true);
     addLog(`Starting training${samples.length > 0 ? ` with ${samples.length} custom samples` : " using knowledge base data"}…`, "info");
     const { data, error } = await admin.trainRiskScorer(samples.length > 0 ? samples : undefined);
@@ -152,21 +165,13 @@ export default function TrainingPage() {
   const handleTestPredict = async () => {
     if (!testText.trim()) return;
     setTestLoading(true);
+    setTestResult(null);
     const { data, error } = await admin.predictRisk(testText);
     if (data) {
       setTestResult(data);
+      setApiError(null);
     } else {
-      setApiError(error);
-      // client-side fallback
-      const kw = testText.toLowerCase();
-      const risk = kw.includes("overdue") || kw.includes("penalty") || kw.includes("expired")
-        ? "critical"
-        : kw.includes("deadline") || kw.includes("compliance")
-          ? "high"
-          : kw.includes("review") || kw.includes("update")
-            ? "medium"
-            : "low";
-      setTestResult({ risk_level: risk, confidence: 0.78 + Math.random() * 0.18 });
+      setApiError(error ?? "Prediction failed. Train the model first before testing.");
     }
     setTestLoading(false);
   };
@@ -392,7 +397,7 @@ export default function TrainingPage() {
       {apiError && (
         <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm">
           <Info size={15} className="flex-shrink-0" />
-          <span>Backend not reachable — running in demo mode. ({apiError})</span>
+          <span>{apiError}</span>
         </div>
       )}
 

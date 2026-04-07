@@ -636,6 +636,35 @@
           "response": []
         },
         {
+          "name": "Reprocess Document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents/:document_id/reprocess",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":document_id",
+                "reprocess"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "document_id",
+                  "value": ":document_id"
+                }
+              ]
+            },
+            "description": "Re-trigger processing for a stuck or failed document. Returns 202 and enqueues the processing task."
+          },
+          "response": []
+        },
+        {
           "name": "Get Document Knowledge",
           "request": {
             "method": "GET",
@@ -1084,6 +1113,36 @@
               "variable": []
             },
             "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/activity?days=14",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "analytics",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "14",
+                  "description": "Lookback window (7, 14, or 30).",
+                  "disabled": false
+                }
+              ],
+              "variable": []
+            },
+            "description": "Daily counts of uploaded, processed, and knowledge-entry events."
           },
           "response": []
         },

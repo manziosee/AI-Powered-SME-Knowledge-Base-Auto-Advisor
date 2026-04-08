@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: {
@@ -48,7 +52,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" className={cn("dark", "font-sans", geist.variable)} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
         <ThemeProvider>
           {children}

@@ -70,19 +70,25 @@ class GlobalErrorHandlerMiddleware(BaseHTTPMiddleware):
 # 3.  Rate limiting — sliding window via Redis
 #     Default: 100 requests / 60 seconds per IP
 #     Auth endpoints:  20 requests / 60 seconds per IP
+#     Can be configured via RATE_LIMIT_MAX_REQUESTS and RATE_LIMIT_WINDOW_SECONDS env vars
 # ---------------------------------------------------------------------------
 
+import os
+
+_default_max = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "200"))
+_default_window = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+
 RATE_LIMIT_RULES = {
-    "/api/v1/auth/login":           (20,  60),   # 20 req / 60 s
-    "/api/v1/auth/forgot-password": (10,  60),   # 10 req / 60 s
-    "/api/v1/auth/register":        (20,  60),
-    "/api/v1/auth/reset-password":  (10,  60),   # 10 req / 60 s
-    "/api/v1/advisor/ask":          (60,  60),   # 60 req / 60 s
-    "/api/v1/advisor/ask-agent":    (30,  60),   # 30 req / 60 s (heavier)
-    "/api/v1/chatbot":              (120, 60),
-    "/api/v1/admin":                (100, 60),   # admin endpoints
-    "/api/v1/documents/upload":     (30,  60),   # upload throttle
-    "default":                      (200, 60),   # 200 req / 60 s
+    "/api/v1/auth/login":           (int(os.getenv("RATE_LIMIT_LOGIN", "20")),  60),
+    "/api/v1/auth/forgot-password": (int(os.getenv("RATE_LIMIT_FORGOT", "10")), 60),
+    "/api/v1/auth/register":        (int(os.getenv("RATE_LIMIT_REGISTER", "20")), 60),
+    "/api/v1/auth/reset-password":  (int(os.getenv("RATE_LIMIT_RESET", "10")),  60),
+    "/api/v1/advisor/ask":          (int(os.getenv("RATE_LIMIT_ADVISOR", "60")), 60),
+    "/api/v1/advisor/ask-agent":    (int(os.getenv("RATE_LIMIT_ADVISOR_AGENT", "30")), 60),
+    "/api/v1/chatbot":              (int(os.getenv("RATE_LIMIT_CHATBOT", "120")), 60),
+    "/api/v1/admin":                (int(os.getenv("RATE_LIMIT_ADMIN", "100")), 60),
+    "/api/v1/documents/upload":     (int(os.getenv("RATE_LIMIT_UPLOAD", "30")),  60),
+    "default":                      (_default_max, _default_window),
 }
 
 

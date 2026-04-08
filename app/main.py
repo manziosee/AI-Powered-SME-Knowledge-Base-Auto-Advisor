@@ -494,6 +494,7 @@ async def redoc_redirect():
 async def health_check():
     from app.core.redis import get_redis
     from sqlalchemy import text
+    from app.core.celery_app import celery_app
 
     checks = {"api": "ok", "version": settings.APP_VERSION}
 
@@ -516,5 +517,25 @@ async def health_check():
     except Exception as exc:
         checks["redis"] = f"error: {exc}"
 
-    overall = "healthy" if all(v == "ok" for k, v in checks.items() if k != "version") else "degraded"
+    # Celery workers
+    try:
+        inspect = celery_app.control.inspect()
+        active_workers = inspect.active() or {}
+        worker_count = len(active_workers)
+        checks["celery"] = f"{worker_count} workers" if worker_count > 0 else "no workers running"
+    except Exception as exc:
+        checks["celery"] = f"error: {exc}"
+
+    # Document processing queue
+    try:
+        redis = await get_redis()
+        if redis:
+            doc_queue_len = await redis.llen("celery")
+            checks["processing_queue"] = f"{doc_queue_len} pending tasks"
+        else:
+            checks["processing_queue"] = "redis not available"
+    except Exception as exc:
+        checks["processing_queue"] = f"error: {exc}"
+
+    overall = "healthy" if all(v == "ok" for k, v in checks.items() if k not in ["version", "celery", "processing_queue"]) else "degraded"
     return {"status": overall, **checks}

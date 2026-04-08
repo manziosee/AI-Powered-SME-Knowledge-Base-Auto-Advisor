@@ -315,6 +315,10 @@ export const documents = {
     return request<Array<{ id: string; title: string; content: string; knowledge_type: string; risk_level: string; deadline?: string; tags: string[] }>>(`/documents/${id}/knowledge`);
   },
 
+  async getProcessingStatus() {
+    return request<{ total: number; uploaded: number; processing: number; processed: number; failed: number }>("/documents/processing-status");
+  },
+
   async bulkUpload(files: File[]) {
     const form = new FormData();
     files.forEach(f => form.append("files", f));

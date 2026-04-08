@@ -698,6 +698,40 @@ async def bulk_update_signature(
 
 
 # ---------------------------------------------------------------------------
+# Processing Status Summary
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/processing-status",
+    summary="Get document processing status summary",
+    description="Returns counts of documents in each processing status (uploaded, processing, processed, failed). Useful for checking if background workers are processing documents.",
+)
+async def get_processing_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Returns processing status counts for the user's company.
+    """
+    result = await db.execute(
+        select(Document.status, func.count(Document.id))
+        .where(Document.company_id == current_user.company_id)
+        .group_by(Document.status)
+    )
+    rows = result.all()
+    
+    status_counts = {status.value: count for status, count in rows}
+    
+    return {
+        "total": sum(status_counts.values()),
+        "uploaded": status_counts.get("uploaded", 0),
+        "processing": status_counts.get("processing", 0),
+        "processed": status_counts.get("processed", 0),
+        "failed": status_counts.get("failed", 0),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
 

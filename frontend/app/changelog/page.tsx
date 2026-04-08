@@ -31,9 +31,21 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; cls: string; icon: React.
 
 const RELEASES: Release[] = [
   {
+    version: "1.7.0",
+    date: "April 8, 2026",
+    tag: "latest",
+    summary: "Enhanced health monitoring, document processing status API, configurable rate limiting via environment variables, and improved Celery worker visibility.",
+    changes: [
+      { type: "feature",     text: "/health endpoint now shows Celery worker status and processing queue length" },
+      { type: "feature",     text: "GET /documents/processing-status returns counts of uploaded/processing/processed/failed documents" },
+      { type: "feature",     text: "Rate limiting now configurable via environment variables (RATE_LIMIT_LOGIN, RATE_LIMIT_ADVISOR, etc.)" },
+      { type: "improvement", text: "WebSocket endpoint documented in OpenAPI schema" },
+    ],
+  },
+  {
     version: "1.6.2",
     date: "April 7, 2026",
-    tag: "latest",
+    tag: null,
     summary: "Fixed Docker build CI/CD - torch CPU package specification issue.",
     changes: [
       { type: "fix",         text: "Docker build: Changed torch from '2.2.0+cpu' to 'torch' (latest CPU version from PyTorch index)" },

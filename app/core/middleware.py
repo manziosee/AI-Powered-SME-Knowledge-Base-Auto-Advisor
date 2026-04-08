@@ -179,10 +179,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             ),
             "Content-Security-Policy": (
                 f"default-src 'self'; "
-                f"script-src 'self' 'nonce-{nonce}'; "
-                f"style-src 'self' 'nonce-{nonce}' 'unsafe-inline'; "
+                f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
+                f"style-src 'self' 'nonce-{nonce}' 'unsafe-inline' https://cdn.jsdelivr.net; "
                 f"img-src 'self' data: blob: https:; "
-                f"font-src 'self' data:; "
+                f"font-src 'self' data: https://cdn.jsdelivr.net; "
                 f"connect-src 'self' https://api.groq.com; "
                 f"frame-ancestors 'none'; "
                 f"base-uri 'self'; "

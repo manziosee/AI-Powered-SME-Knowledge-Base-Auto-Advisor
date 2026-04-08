@@ -8,41 +8,116 @@
 :root {
   --font-inter: 'Inter', system-ui, sans-serif;
 
-  /* Light mode — warm amber/parchment, easy on the eyes */
-  --bg:           #ede7da;  /* warm parchment — like afternoon sun on paper     */
-  --bg-soft:      #e6dfd2;  /* slightly deeper warm sand                        */
-  --bg-muted:     #e9e3d7;  /* warm muted background                            */
-  --fg:           #1a1714;  /* deep warm charcoal — strong but not harsh black  */
-  --fg-bold:      #100e0b;  /* near-black for bold headings                     */
-  --fg-soft:      #2e2b24;  /* warm dark secondary text                         */
-  --fg-muted:     #7a7060;  /* warm muted brown-grey                            */
-  --border:       #cdc5b4;  /* warm tan border                                  */
-  --border-soft:  #d8d0c2;  /* softer warm border                               */
-  --surface:      #f2ece2;  /* warm card surface — lighter than bg              */
-  --surface-hover:#ebe5da;  /* warm hover state                                 */
-  --scrollbar-bg: #e6dfd2;
-  --scrollbar-thumb: #b8b0a0;
-  --dot-color: rgba(60,45,20,0.06);
-  --grid-color: rgba(60,45,20,0.04);
-  --hero-glow: rgba(124,58,237,0.06);
+  /* ═══════════════════════════════════════════════════════════════
+     PRIMARY & SECONDARY COLOR SYSTEM
+     ────────────────────────────────────────────────────────────────
+     Primary:   #6366f1 (Indigo-500) - Main brand color
+     Secondary: #06b6d4 (Cyan-500)    - Accent/complement
+     
+     Additional palette:
+     - Success: #10b981 (Emerald-500)
+     - Warning: #f59e0b (Amber-500)  
+     - Danger:  #ef4444 (Red-500)
+     - Info:    #3b82f6 (Blue-500)
+  ═══════════════════════════════════════════════════════════════ */
+  
+  /* Primary & Secondary */
+  --primary: #6366f1;        /* Indigo - main brand */
+  --primary-hover: #4f46e5;  /* Indigo-600 */
+  --primary-muted: rgba(99,102,241, 0.15);
+  --secondary: #06b6d4;       /* Cyan - accent */
+  --secondary-hover: #0891b2;/* Cyan-600 */
+  --secondary-muted: rgba(6,182,212, 0.15);
+
+  /* Status colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  /* Dark mode (default) */
+  --bg:           #0f172a;  /* slate-900 */
+  --bg-soft:      #1e293b;  /* slate-800 */
+  --bg-muted:     #334155;  /* slate-700 */
+  --fg:           #f8fafc;  /* slate-50 */
+  --fg-bold:      #ffffff;
+  --fg-soft:      #cbd5e1;  /* slate-300 */
+  --fg-muted:     #64748b;  /* slate-500 */
+  --border:       #334155;  /* slate-700 */
+  --border-soft:  #1e293b;  /* slate-800 */
+  --surface:      #1e293b;  /* slate-800 */
+  --surface-hover:#334155;  /* slate-700 */
+  --scrollbar-bg: #1e293b;
+  --scrollbar-thumb: #475569;
+  
+  /* Decorative */
+  --dot-color: rgba(99,102,241, 0.12);
+  --grid-color: rgba(99,102,241, 0.06);
+  --hero-glow: rgba(99,102,241, 0.12);
+  
+  /* Shadows for dark mode */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 20px rgba(99,102,241, 0.3);
 }
 
+/* Light mode */
+[data-theme="light"], .light {
+  /* Primary & Secondary - same colors, adjusted opacity */
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-muted: rgba(99,102,241, 0.1);
+  --secondary: #0891b2;
+  --secondary-hover: #0e7490;
+  --secondary-muted: rgba(6,182,212, 0.1);
+
+  /* Light mode backgrounds */
+  --bg:           #f8fafc;  /* slate-50 */
+  --bg-soft:      #ffffff;  /* white */
+  --bg-muted:     #f1f5f9;  /* slate-100 */
+  --fg:           #0f172a;  /* slate-900 */
+  --fg-bold:      #000000;
+  --fg-soft:      #334155;  /* slate-700 */
+  --fg-muted:     #64748b;  /* slate-500 */
+  --border:       #e2e8f0;  /* slate-200 */
+  --border-soft:  #f1f5f9;  /* slate-100 */
+  --surface:      #ffffff;  /* white */
+  --surface-hover:#f1f5f9;  /* slate-100 */
+  --scrollbar-bg: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  
+  /* Decorative */
+  --dot-color: rgba(99,102,241, 0.06);
+  --grid-color: rgba(99,102,241, 0.03);
+  --hero-glow: rgba(99,102,241, 0.06);
+  
+  /* Shadows for light mode */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --shadow-glow: 0 0 20px rgba(99,102,241, 0.15);
+}
+
+/* Legacy dark class support */
 .dark {
-  --bg:           #0a0a0a;
-  --bg-soft:      #111111;
-  --bg-muted:     #1a1a1a;
-  --fg:           #f5f5f5;
-  --fg-soft:      rgba(255,255,255,0.65);
-  --fg-muted:     rgba(255,255,255,0.38);
-  --border:       rgba(255,255,255,0.08);
-  --border-soft:  rgba(255,255,255,0.04);
-  --surface:      rgba(255,255,255,0.03);
-  --surface-hover:rgba(255,255,255,0.055);
-  --scrollbar-bg: #1a1a1a;
-  --scrollbar-thumb: #333;
-  --dot-color: rgba(255,255,255,0.12);
-  --grid-color: rgba(255,255,255,0.04);
-  --hero-glow: rgba(124,58,237,0.10);
+  --bg:           #0f172a;
+  --bg-soft:      #1e293b;
+  --bg-muted:     #334155;
+  --fg:           #f8fafc;
+  --fg-bold:      #ffffff;
+  --fg-soft:      #cbd5e1;
+  --fg-muted:     #64748b;
+  --border:       #334155;
+  --border-soft:  #1e293b;
+  --surface:      #1e293b;
+  --surface-hover:#334155;
+  --scrollbar-bg: #1e293b;
+  --scrollbar-thumb: #475569;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 20px rgba(99,102,241, 0.3);
 }
 
 /* ── Base ─────────────────────────────────────────────────────── */
@@ -65,21 +140,15 @@ body {
   transition: background-color 0.25s ease, color 0.2s ease;
 }
 
-/* ── Light mode: bold text is visibly heavier ────────────────── */
-/* Against warm parchment, bump weights so bold text punches through */
-:root:not(.dark) .font-semibold  { font-weight: 700; }
-:root:not(.dark) .font-bold      { font-weight: 800; }
-:root:not(.dark) .font-extrabold { font-weight: 800; }
-:root:not(.dark) .font-black     { font-weight: 900; }
-:root:not(.dark) strong,
-:root:not(.dark) b               { font-weight: 800; }
+/* ── Light mode overrides ──────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+}
 
-/* Headings in light mode: use the deep warm charcoal by default     */
-/* (overridden whenever a text-color class is present on the element) */
-:root:not(.dark) h1:not([class*="text-"]),
-:root:not(.dark) h2:not([class*="text-"]),
-:root:not(.dark) h3:not([class*="text-"]),
-:root:not(.dark) h4:not([class*="text-"]) { color: var(--fg-bold); }
+/* Force dark mode by default for modern look */
+:root {
+  color-scheme: dark;
+}
 
 /* ── Scrollbar ────────────────────────────────────────────────── */
 ::-webkit-scrollbar              { width: 6px; height: 6px; }
@@ -87,7 +156,7 @@ body {
 ::-webkit-scrollbar-thumb        { background: var(--scrollbar-thumb); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover  { opacity: 0.8; }
 
-::selection { background: #7c3aed; color: #fff; }
+::selection { background: var(--primary); color: #fff; }
 
 /* ── Utility classes ──────────────────────────────────────────── */
 @layer utilities {
@@ -110,14 +179,14 @@ body {
   .t-text-muted  { color: var(--fg-muted); }
 
   .gradient-text {
-    background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 50%, #8b5cf6 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-text-accent {
-    background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 50%, #7c3aed 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -869,3 +938,127 @@ body {
 .notif-item:hover {
   transform: translateX(3px);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PRIMARY/SECONDARY BUTTON & COMPONENT STYLES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Primary button */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md), 0 0 20px var(--primary-muted);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 0 30px var(--primary-muted);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Secondary button */
+.btn-secondary {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-hover) 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md), 0 0 20px var(--secondary-muted);
+}
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 0 30px var(--secondary-muted);
+}
+
+/* Outline primary */
+.btn-outline-primary {
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid var(--primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-outline-primary:hover {
+  background: var(--primary-muted);
+  box-shadow: 0 0 20px var(--primary-muted);
+}
+
+/* Badge/Tag primary */
+.badge-primary {
+  background: var(--primary-muted);
+  color: var(--primary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Badge/Tag secondary */
+.badge-secondary {
+  background: var(--secondary-muted);
+  color: var(--secondary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Card with glow on hover */
+.card-glow:hover {
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--primary-muted), 0 0 30px var(--primary-muted);
+}
+
+/* Input focus with primary color */
+.input-primary:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-muted), var(--shadow-glow);
+  outline: none;
+}
+
+/* Sidebar active indicator */
+.nav-indicator {
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+}
+
+/* Primary ring/circle */
+.ring-primary {
+  box-shadow: 0 0 0 2px var(--primary), 0 0 16px var(--primary-muted);
+}
+
+/* Status indicator colors */
+.status-success { color: var(--success); }
+.status-warning { color: var(--warning); }
+.status-danger  { color: var(--danger); }
+.status-info    { color: var(--info); }
+.status-primary { color: var(--primary); }
+.status-secondary { color: var(--secondary); }
+
+/* Background variants */
+.bg-primary { background: var(--primary); }
+.bg-secondary { background: var(--secondary); }
+.bg-success { background: var(--success); }
+.bg-warning { background: var(--warning); }
+.bg-danger  { background: var(--danger); }
+.bg-info    { background: var(--info); }
+
+/* Border primary */
+.border-primary { border-color: var(--primary); }
+.border-secondary { border-color: var(--secondary); }
+
+/* Text colors */
+.text-primary { color: var(--primary); }
+.text-secondary { color: var(--secondary); }

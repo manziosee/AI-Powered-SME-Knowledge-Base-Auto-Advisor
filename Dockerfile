@@ -42,7 +42,8 @@ RUN pip install --no-cache-dir --upgrade pip \
      email-validator \
      python-dotenv python-slugify \
      python-json-logger \
-     pytest pytest-asyncio pytest-cov faker
+     pytest pytest-asyncio pytest-cov faker \
+     bcrypt
 
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime

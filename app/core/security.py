@@ -2,17 +2,10 @@ import uuid as _uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, status
 from app.core.config import settings
 import re
-
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12,
-    bcrypt__ident="2b"
-)
 
 # Password strength: min 8 chars, at least 1 letter and 1 digit
 _PW_RE = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$')
@@ -20,13 +13,13 @@ _PW_RE = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
     except Exception:
         return False
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
 
 
 def validate_password_strength(password: str) -> None:

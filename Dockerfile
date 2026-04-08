@@ -62,14 +62,12 @@ COPY --from=builder /install /usr/local
 RUN pip install --no-cache-dir \
     https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
-# Pre-cache SentenceTransformer model — separate layer, cached until model name changes
+# Pre-cache SentenceTransformer model - optional (will download on first use if this fails)
 ENV SENTENCE_TRANSFORMERS_HOME=/app/models \
     HF_HOME=/app/models
-RUN mkdir -p /app/models /app/uploads /app/logs \
- && python -c "\
-from sentence_transformers import SentenceTransformer; \
-SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2'); \
-print('Model cached.')"
+RUN mkdir -p /app/models /app/uploads /app/logs
+
+# Model will be downloaded on first use - no explicit cache step to avoid build failures
 
 # Non-root user
 RUN addgroup --system appgroup \

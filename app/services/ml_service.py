@@ -185,9 +185,9 @@ class PredictiveRiskScorer:
                 LogisticRegression(
                     C=1.0,
                     max_iter=1000,
-                    multi_class="multinomial",
                     solver="lbfgs",
                     class_weight="balanced",
+                    n_jobs=-1,
                 ),
             ),
         ])

@@ -26,6 +26,7 @@ RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch \
  && pip install --no-cache-dir --prefix=/install --no-deps -r requirements.txt \
  && pip install --no-cache-dir --prefix=/install \
+     filelock fsspec \
      fastapi uvicorn[standard] pydantic pydantic-settings \
      sqlalchemy alembic psycopg2-binary asyncpg pgvector \
      "python-jose[cryptography]" "passlib[bcrypt]" python-multipart bcrypt \

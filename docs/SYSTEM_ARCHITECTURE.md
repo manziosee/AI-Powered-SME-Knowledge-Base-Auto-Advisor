@@ -204,3 +204,46 @@ Round Robin: Request 1 → Server 1
              Request 3 → Server 3
              Request 4 → Server 1 (cycle)
 ```
+
+## API Endpoints
+
+### Authentication
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login (JWT)
+- `POST /api/v1/auth/refresh` - Refresh token
+- `POST /api/v1/auth/logout` - Logout
+- `POST /api/v1/auth/2fa/enable` - Enable 2FA
+- `POST /api/v1/auth/2fa/verify` - Verify 2FA
+- `POST /api/v1/auth/api-keys` - Create API key
+
+### Documents
+- `POST /api/v1/documents/upload` - Upload document
+- `POST /api/v1/documents/bulk-upload` - Bulk upload
+- `GET /api/v1/documents` - List documents
+- `GET /api/v1/documents/{id}` - Get document
+- `PATCH /api/v1/documents/{id}` - Update document
+- `DELETE /api/v1/documents/{id}` - Delete document
+
+### AI Advisor
+- `POST /api/v1/advisor/ask` - Ask AI advisor
+- `GET /api/v1/advisor/stream` - Streaming responses
+- `GET /api/v1/advisor/history` - Chat history
+
+### Team Management
+- `GET /api/v1/team/members` - List team members
+- `POST /api/v1/team/invites` - Invite member
+- `GET /api/v1/team/invites` - List invitations
+- `DELETE /api/v1/team/invites/{id}` - Cancel invitation
+- `GET /api/v1/team/activity` - Activity feed
+- `GET /api/v1/team/online` - Online users
+
+### Usage & Quotas
+- `GET /api/v1/usage/stats` - Usage statistics
+- `GET /api/v1/usage/plan` - Subscription plan
+- `GET /api/v1/usage/history` - API call history
+
+### Analytics
+- `GET /api/v1/analytics/overview` - Dashboard overview
+- `GET /api/v1/analytics/activity` - Activity data
+- `GET /api/v1/analytics/compliance-score` - Compliance score
+- `GET /api/v1/analytics/risk-distribution` - Risk distribution

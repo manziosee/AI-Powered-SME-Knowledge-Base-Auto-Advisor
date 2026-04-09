@@ -479,3 +479,89 @@ async def change_password(
     current_user.hashed_password = get_password_hash(payload.new_password)
     await db.commit()
     return {"status": "ok", "message": "Password changed successfully"}
+
+
+# ---------------------------------------------------------------------------
+# Data Export (GDPR Compliance)
+# ---------------------------------------------------------------------------
+
+class ExportDataRequest(BaseModel):
+    """Types of data to include in export"""
+    include_profile: bool = True
+    include_documents: bool = False
+    include_conversations: bool = False
+    include_activity_log: bool = False
+
+
+@router.post("/me/export-data", summary="Export user data (GDPR)", description="Request a data export. Returns a download URL after processing.")
+async def request_data_export(
+    payload: ExportDataRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    GDPR-compliant endpoint to export all user data.
+    Returns a download URL after processing (async task).
+    """
+    from app.models.task import BackgroundTask, TaskStatus
+    import uuid
+    
+    # Create export task
+    task_id = str(uuid.uuid4())
+    task = BackgroundTask(
+        task_id=task_id,
+        task_name="export_user_data",
+        status=TaskStatus.PENDING,
+        priority="normal",
+        company_id=current_user.company_id,
+        user_id=current_user.id,
+        input_data=payload.model_dump(),
+    )
+    db.add(task)
+    await db.commit()
+    
+    # TODO: Queue Celery task to process export
+    # For now, return task info
+    
+    return {
+        "task_id": task_id,
+        "status": "pending",
+        "message": "Data export has been queued. Use /tasks/{task_id} to check status.",
+        "download_url": None,
+    }
+
+
+@router.get("/me/export-data/{task_id}", summary="Check export status or download", description="Check status of data export task and get download URL when ready.")
+async def get_data_export(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the status and download URL of a data export task."""
+    from app.models.task import BackgroundTask
+    from sqlalchemy import select
+    
+    result = await db.execute(
+        select(BackgroundTask).where(
+            BackgroundTask.task_id == task_id,
+            BackgroundTask.user_id == current_user.id
+        )
+    )
+    task = result.scalar_one_or_none()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Export task not found")
+    
+    download_url = None
+    if task.status == TaskStatus.COMPLETED and task.result_data:
+        download_url = task.result_data.get("download_url")
+    
+    return {
+        "task_id": task.task_id,
+        "status": task.status.value,
+        "progress": task.progress,
+        "message": task.progress_message,
+        "download_url": download_url,
+        "created_at": task.created_at,
+        "completed_at": task.completed_at,
+    }

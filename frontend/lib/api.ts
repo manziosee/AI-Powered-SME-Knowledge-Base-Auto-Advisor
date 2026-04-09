@@ -896,3 +896,25 @@ export const admin = {
     );
   },
 };
+
+// ── Team API (for team management, invitations, activity) ─────────────────────
+export const team = {
+  async listMembers() {
+    return request<{ items: Array<{ id: string; user: { id: string; name: string; email: string; avatar?: string }; role: string; is_owner: boolean; last_active?: string; joined_at: string }> }>("/team/members");
+  },
+  async listInvitations() {
+    return request<{ items: Array<{ id: string; email: string; role: string; status: string; expires_at: string; created_at: string; invited_by: { name: string; email: string } }> }>("/team/invites");
+  },
+  async invite(email: string, role: string = "member", message?: string) {
+    return request<{ id: string; email: string; role: string; status: string; expires_at: string }>("/team/invites", { method: "POST", body: JSON.stringify({ email, role, message }) });
+  },
+  async cancelInvitation(id: string) {
+    return request<{ status: string; id: string }>(`/team/invites/${id}`, { method: "DELETE" });
+  },
+  async getActivity(limit = 50, offset = 0) {
+    return request<{ items: Array<{ id: string; action: string; title: string; description?: string; user: { id: string; name: string; avatar?: string }; created_at: string }>; limit: number; offset: number }>(`/team/activity?limit=${limit}&offset=${offset}`);
+  },
+  async getOnlineUsers() {
+    return request<{ items: Array<{ user: { id: string; name: string; avatar?: string }; current_page?: string; last_seen: string }> }>("/team/online");
+  },
+};

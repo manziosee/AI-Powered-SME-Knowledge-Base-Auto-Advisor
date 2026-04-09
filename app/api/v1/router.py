@@ -20,6 +20,9 @@ from app.api.v1.endpoints import (
     subscriptions,
     templates,
     two_factor,
+    tasks,
+    team,
+    usage,
 )
 
 api_router = APIRouter()
@@ -60,3 +63,12 @@ api_router.include_router(subscriptions.router,  prefix="/subscriptions",  tags=
 
 # ── New: Accounting / Payroll Connectors ──────────────────────────────────────
 api_router.include_router(connectors.router,     prefix="/connectors",     tags=["Accounting & Payroll Connectors"])
+
+# ── New: Tasks / Async Jobs ───────────────────────────────────────────────────
+api_router.include_router(tasks.router,          prefix="/tasks",          tags=["Tasks & Background Jobs"])
+
+# ── New: Team Management ───────────────────────────────────────────────────────
+api_router.include_router(team.router,           prefix="/team",           tags=["Team Management"])
+
+# ── New: Usage & API Quotas ───────────────────────────────────────────────────
+api_router.include_router(usage.router,          prefix="/usage",          tags=["Usage & API Quotas"])

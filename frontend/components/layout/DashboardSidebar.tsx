@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, MessageSquare, BarChart3,
   ShieldCheck, Bell, Settings, Building2, LogOut,
   ChevronLeft, ChevronRight, Sun, Moon, HelpCircle, Brain, Calendar, Search, Clock,
-  ShieldAlert, Sparkles,
+  ShieldAlert, Sparkles, Users,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ const NAV: NavItem[] = [
   { label: "Compliance",    href: "/dashboard/compliance",    icon: ShieldCheck,     permission: "can_view_compliance" },
   { label: "Expiry Alerts", href: "/dashboard/expiry",        icon: Clock,           permission: "can_receive_alerts" },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell            },
+  { label: "Team",          href: "/dashboard/settings/team", icon: Users,          companyOnly: true },
   { label: "Company",       href: "/dashboard/company",       icon: Building2,       companyOnly: true },
   { label: "AI Training",   href: "/dashboard/training",      icon: Brain,           permission: "can_view_ai_training" },
   { label: "Calendar",      href: "/dashboard/calendar",      icon: Calendar        },

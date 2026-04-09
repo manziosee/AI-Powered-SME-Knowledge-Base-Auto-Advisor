@@ -2660,6 +2660,151 @@
       "description": "Search endpoints"
     },
     {
+      "name": "Team Management",
+      "item": [
+        {
+          "name": "List Team Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/team/members",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "team", "members"]
+            },
+            "description": "List all team members in the company"
+          },
+          "response": []
+        },
+        {
+          "name": "Invite Team Member",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {
+              "raw": "{{base_url}}/api/v1/team/invites",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "team", "invites"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"colleague@company.com\", \"role\": \"member\", \"message\": \"Join our team!\"}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "description": "Invite a new team member via email"
+          },
+          "response": []
+        },
+        {
+          "name": "List Invitations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/team/invites",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "team", "invites"]
+            },
+            "description": "List pending team invitations"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Invitation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/team/invites/{invitation_id}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "team", "invites", "{invitation_id}"]
+            },
+            "description": "Cancel a pending invitation"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/team/activity?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "team", "activity"],
+              "query": [{"key": "limit", "value": "50"}]
+            },
+            "description": "Get recent team activity"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Online Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/team/online",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "team", "online"]
+            },
+            "description": "Get currently online team members"
+          },
+          "response": []
+        }
+      ],
+      "description": "Team management endpoints - members, invitations, activity"
+    },
+    {
+      "name": "Usage & API Quotas",
+      "item": [
+        {
+          "name": "Get Usage Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/usage/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "usage", "stats"]
+            },
+            "description": "Get current usage statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/usage/plan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "usage", "plan"]
+            },
+            "description": "Get subscription plan details"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Usage History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/usage/history?limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "usage", "history"],
+              "query": [{"key": "limit", "value": "20"}]
+            },
+            "description": "Get API call history"
+          },
+          "response": []
+        }
+      ],
+      "description": "Usage and API quota endpoints"
+    },
+    {
       "name": "Health",
       "item": [
         {

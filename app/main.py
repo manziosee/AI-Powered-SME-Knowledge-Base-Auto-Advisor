@@ -298,6 +298,28 @@ _OPENAPI_TAGS = [
             "`GET /health` — no auth required. Used by Docker health checks and load balancers."
         ),
     },
+    {
+        "name": "Team Management",
+        "description": (
+            "Team member and invitation management.\n\n"
+            "- **Members:** `GET /team/members` — list all team members with roles\n"
+            "- **Invitations:** `POST /team/invites` — invite new members via email, `GET /team/invites` — list pending\n"
+            "- **Activity:** `GET /team/activity` — recent team activity feed\n"
+            "- **Online:** `GET /team/online` — currently online team members (heartbeat-based)\n\n"
+            "Roles: admin, editor, member, viewer\n"
+            "Requires admin role for invitations and member management."
+        ),
+    },
+    {
+        "name": "Usage & API Quotas",
+        "description": (
+            "API usage tracking and subscription quotas.\n\n"
+            "- `GET /usage/stats` — current month requests/tokens, daily usage, period dates\n"
+            "- `GET /usage/plan` — subscription plan limits and current consumption\n"
+            "- `GET /usage/history` — recent API call history with latency tracking\n\n"
+            "Usage is automatically tracked for all authenticated API calls."
+        ),
+    },
 ]
 
 app = FastAPI(

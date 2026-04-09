@@ -31,6 +31,28 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; cls: string; icon: React.
 
 const RELEASES: Release[] = [
   {
+    version: "1.8.0",
+    date: "April 9, 2026",
+    tag: "latest",
+    summary: "Team Management API, Usage & API Quotas tracking, Team Settings UI, and enhanced document features.",
+    changes: [
+      { type: "feature", text: "Team Management API - invite members, list members, manage invitations" },
+      { type: "feature", text: "GET /team/members - list all team members with roles" },
+      { type: "feature", text: "POST /team/invites - invite team members via email" },
+      { type: "feature", text: "GET /team/activity - recent team activity feed" },
+      { type: "feature", text: "GET /team/online - currently online team members" },
+      { type: "feature", text: "Usage & API Quotas API - track API consumption" },
+      { type: "feature", text: "GET /usage/stats - current month requests/tokens usage" },
+      { type: "feature", text: "GET /usage/plan - subscription plan details" },
+      { type: "feature", text: "GET /usage/history - recent API call history" },
+      { type: "feature", text: "Team Settings page - UI for managing team members and invitations" },
+      { type: "improvement", text: "Added Team menu item to sidebar for company accounts" },
+      { type: "improvement", text: "Postman collection updated with new Team and Usage endpoints" },
+      { type: "fix", text: "Fixed login 500 error by replacing passlib with direct bcrypt" },
+      { type: "fix", text: "Fixed Swagger UI white page by adding jsdelivr.net to CSP" },
+    ],
+  },
+  {
     version: "1.7.0",
     date: "April 8, 2026",
     tag: "latest",

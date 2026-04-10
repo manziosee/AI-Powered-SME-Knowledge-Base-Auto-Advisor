@@ -10,8 +10,15 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
+    "@radix-ui/react-dialog": "^1.1.0",
+    "@radix-ui/react-dropdown-menu": "^2.1.0",
+    "@radix-ui/react-select": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tooltip": "^1.1.0",
+    "@sentry/nextjs": "^8.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.3.0",
     "lucide-react": "^0.400.0",
@@ -21,9 +28,11 @@
     "react-dom": "^18",
     "recharts": "^2.15.4",
     "shadcn": "^4.2.0",
+    "sonner": "^1.5.0",
     "tailwind-merge": "^2.6.1",
     "tw-animate-css": "^1.4.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@types/node": "^20",

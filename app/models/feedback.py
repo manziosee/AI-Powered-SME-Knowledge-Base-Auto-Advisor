@@ -5,7 +5,7 @@ from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, Floa
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
-from app.db.base import BaseModel
+from app.core.database import Base
 
 
 class AIResponseFeedback(BaseModel):

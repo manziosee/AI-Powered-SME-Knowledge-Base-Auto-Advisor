@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
-class APIUsage(BaseModel):
+class APIUsage(Base):
     __tablename__ = "api_usage"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -38,7 +38,7 @@ class APIUsage(BaseModel):
     user = relationship("User")
 
 
-class APISubscriptionPlan(BaseModel):
+class APISubscriptionPlan(Base):
     __tablename__ = "api_subscription_plans"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -76,7 +76,7 @@ class APISubscriptionPlan(BaseModel):
     company = relationship("Company", back_populates="api_subscription_plan")
 
 
-class RateLimitOverride(BaseModel):
+class RateLimitOverride(Base):
     __tablename__ = "rate_limit_overrides"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

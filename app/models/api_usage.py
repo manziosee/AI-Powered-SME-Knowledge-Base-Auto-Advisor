@@ -5,7 +5,7 @@ from sqlalchemy import Column, String, DateTime, Integer, BigInteger, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.db.base import BaseModel
+from app.core.database import Base
 
 
 class APIUsage(BaseModel):

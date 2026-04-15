@@ -19,7 +19,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.api.dependencies import get_current_active_user
 from app.core.config import settings
@@ -200,8 +200,13 @@ async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depe
         except Exception:
             redis = None  # Redis unavailable — skip lockout check
 
-    result = await db.execute(select(User).where(User.email == payload.email))
-    user = result.scalar_one_or_none()
+    try:
+        result = await db.execute(select(User).where(User.email == payload.email))
+        user = result.scalar_one_or_none()
+    except Exception as db_err:
+        import logging
+        logging.error(f"DB query error: {db_err}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Database error, please retry")
 
     if not user or not verify_password(payload.password, user.hashed_password):
         # Increment failure counter in Redis

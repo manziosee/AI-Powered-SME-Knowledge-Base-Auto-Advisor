@@ -36,7 +36,7 @@ primary_region = "jnb"   # Johannesburg, South Africa (closest to your users)
 # ── Processes ────────────────────────────────────────────────────────────────
 # Two process groups — web (API) and worker (Celery)
 [processes]
-  web    = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+  web    = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
   worker = "celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q default,documents,notifications"
 
 # ── HTTP service (web process only) ──────────────────────────────────────────
@@ -55,16 +55,16 @@ primary_region = "jnb"   # Johannesburg, South Africa (closest to your users)
 
 # ── Health check ─────────────────────────────────────────────────────────────
 [[http_service.checks]]
-  grace_period = "60s"
+  grace_period = "90s"
   interval     = "30s"
   method       = "GET"
   path         = "/health"
-  timeout      = "15s"
+  timeout      = "20s"
 
 # ── Machine sizes ─────────────────────────────────────────────────────────────
-# Web: 1GB RAM (SentenceTransformer + spaCy need ~500 MB)
+# Web: 2GB RAM (SentenceTransformer + spaCy need ~500 MB, need room for startup)
 [[vm]]
-  memory   = "1gb"
+  memory   = "2gb"
   cpu_kind = "shared"
   cpus     = 1
   processes = ["web"]

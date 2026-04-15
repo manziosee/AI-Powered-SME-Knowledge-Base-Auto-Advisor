@@ -23,7 +23,7 @@ class InvitationRole(str, enum.Enum):
     EDITOR = "editor"
 
 
-class TeamInvitation(BaseModel):
+class TeamInvitation(Base):
     """Team invitation system - invite members via email with roles"""
     __tablename__ = "team_invitations"
 
@@ -64,7 +64,7 @@ class TeamInvitation(BaseModel):
     user = relationship("User", foreign_keys=[user_id])
 
 
-class TeamMember(BaseModel):
+class TeamMember(Base):
     """Team members with roles"""
     __tablename__ = "team_members"
 
@@ -96,7 +96,7 @@ class TeamMember(BaseModel):
     )
 
 
-class DocumentTag(BaseModel):
+class DocumentTag(Base):
     """Document tagging system"""
     __tablename__ = "document_tags"
 
@@ -119,7 +119,7 @@ class DocumentTag(BaseModel):
     created_by = relationship("User")
 
 
-class DocumentTagAssignment(BaseModel):
+class DocumentTagAssignment(Base):
     """Many-to-many relationship between documents and tags"""
     __tablename__ = "document_tag_assignments"
 
@@ -134,7 +134,7 @@ class DocumentTagAssignment(BaseModel):
     assigned_by = relationship("User")
 
 
-class ScheduledReport(BaseModel):
+class ScheduledReport(Base):
     """Scheduled reports - auto-generate and email reports"""
     __tablename__ = "scheduled_reports"
 
@@ -177,7 +177,7 @@ class ScheduledReport(BaseModel):
     created_by = relationship("User")
 
 
-class ActivityLog(BaseModel):
+class ActivityLog(Base):
     """Activity feed - track recent user actions"""
     __tablename__ = "activity_logs"
 
@@ -193,7 +193,7 @@ class ActivityLog(BaseModel):
     # Description
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    activity_metadata = Column(JSONB, nullable=True)
     
     # IP/Location
     ip_address = Column(String(45), nullable=True)
@@ -205,7 +205,7 @@ class ActivityLog(BaseModel):
     user = relationship("User")
 
 
-class BulkOperation(BaseModel):
+class BulkOperation(Base):
     """Track bulk operations on documents"""
     __tablename__ = "bulk_operations"
 
@@ -238,7 +238,7 @@ class BulkOperation(BaseModel):
     user = relationship("User")
 
 
-class OnlineUser(BaseModel):
+class OnlineUser(Base):
     """Track online users for real-time indicators"""
     __tablename__ = "online_users"
 

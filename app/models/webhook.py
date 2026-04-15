@@ -33,7 +33,7 @@ class WebhookDeliveryStatus(str, enum.Enum):
     RETRYING = "retrying"
 
 
-class Webhook(BaseModel):
+class Webhook(Base):
     __tablename__ = "webhooks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -61,7 +61,7 @@ class Webhook(BaseModel):
     deliveries = relationship("WebhookDelivery", back_populates="webhook", cascade="all, delete-orphan")
 
 
-class WebhookDelivery(BaseModel):
+class WebhookDelivery(Base):
     __tablename__ = "webhook_deliveries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -87,7 +87,7 @@ class WebhookDelivery(BaseModel):
     webhook = relationship("Webhook", back_populates="deliveries")
 
 
-class WebhookLog(BaseModel):
+class WebhookLog(Base):
     __tablename__ = "webhook_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -81,6 +81,7 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     api_keys = relationship("ApiKey", back_populates="user", cascade="all, delete-orphan")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    team_memberships = relationship("TeamMember", back_populates="user", cascade="all, delete-orphan")
 
     def has_permission(self, permission: str) -> bool:
         """Check if user has a specific permission (role-based OR explicit)."""
